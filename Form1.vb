@@ -18,8 +18,6 @@ Public Class Form1
     Private _onScreenKeyboardInBed As On_Screen_Keyboard
     Private _serialMouseCapturedInBed As Boolean
     Private _serialMouseHostCursorHiddenInBed As Boolean
-    Private _serialMouseHoverPointValidInBed As Boolean
-    Private _serialMouseLastHoverPointInBed As Point
     Private _serialMouseLeftInBed As Boolean
     Private _serialMouseRightInBed As Boolean
     Private _serialMouseMenuItemInBed As ToolStripMenuItem
@@ -215,6 +213,10 @@ Public Class Form1
 
     Private Sub PictureBox1_MouseDown(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseDown
         If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If Not _serialMouseCapturedInBed Then
+            If e.Button = MouseButtons.Left Then CaptureSerialMouseInBed()
+            Return
+        End If
         If _serialMouseCapturedInBed AndAlso e.Button = MouseButtons.Middle Then
             ReleaseSerialMouseCaptureInBed()
             Return
@@ -225,6 +227,7 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseUp(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseUp
+        If Not _serialMouseCapturedInBed Then Return
         If e.Button = MouseButtons.Left Then _serialMouseLeftInBed = False
         If e.Button = MouseButtons.Right Then _serialMouseRightInBed = False
         RouteSerialMouseButtonsInBed()
@@ -232,21 +235,7 @@ Public Class Form1
 
     Private Sub PictureBox1_MouseMove(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseMove
         If _closingInBed OrElse Not _machinePoweredInBed Then Return
-        If Not _serialMouseCapturedInBed Then
-            Dim currentPointInBed As New Point(e.X, e.Y)
-            If Not _serialMouseHoverPointValidInBed Then
-                _serialMouseLastHoverPointInBed = currentPointInBed
-                _serialMouseHoverPointValidInBed = True
-                Return
-            End If
-            Dim hoverDeltaXInBed As Integer = currentPointInBed.X - _serialMouseLastHoverPointInBed.X
-            Dim hoverDeltaYInBed As Integer = currentPointInBed.Y - _serialMouseLastHoverPointInBed.Y
-            _serialMouseLastHoverPointInBed = currentPointInBed
-            If hoverDeltaXInBed <> 0 OrElse hoverDeltaYInBed <> 0 Then
-                QueueSerialMouseHostMovementInBed(hoverDeltaXInBed, hoverDeltaYInBed)
-            End If
-            Return
-        End If
+        If Not _serialMouseCapturedInBed Then Return
         Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
                                      Math.Max(0, PictureBox1.ClientSize.Height \ 2))
 
@@ -270,14 +259,12 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseEnter(sender As Object, e As EventArgs) Handles PictureBox1.MouseEnter
-        _serialMouseHoverPointValidInBed = False
         ClearSerialMouseHostMovementInBed()
-        SetSerialMouseHostCursorHiddenInBed(True)
+        SetSerialMouseHostCursorHiddenInBed(_serialMouseCapturedInBed)
     End Sub
 
     Private Sub PictureBox1_MouseLeave(sender As Object, e As EventArgs) Handles PictureBox1.MouseLeave
         If _serialMouseCapturedInBed Then Return
-        _serialMouseHoverPointValidInBed = False
         ClearSerialMouseHostMovementInBed()
         SetSerialMouseHostCursorHiddenInBed(False)
         If _serialMouseLeftInBed OrElse _serialMouseRightInBed Then
@@ -314,7 +301,6 @@ Public Class Form1
         Activate()
         Focus()
         _serialMouseCapturedInBed = True
-        _serialMouseHoverPointValidInBed = False
         ClearSerialMouseHostMovementInBed()
         PictureBox1.Capture = True
         SetSerialMouseHostCursorHiddenInBed(True)
@@ -335,7 +321,6 @@ Public Class Form1
             Return
         End If
         _serialMouseCapturedInBed = False
-        _serialMouseHoverPointValidInBed = False
         _serialMouseRecenteringInBed = False
         ClearSerialMouseHostMovementInBed()
         _serialMouseLeftInBed = False
@@ -348,9 +333,7 @@ Public Class Form1
             End Try
         End If
         PictureBox1.Capture = False
-        Dim hostPointerInDisplayInBed As Boolean =
-            PictureBox1.ClientRectangle.Contains(PictureBox1.PointToClient(Cursor.Position))
-        SetSerialMouseHostCursorHiddenInBed(hostPointerInDisplayInBed)
+        SetSerialMouseHostCursorHiddenInBed(False)
         If Not String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then Text = _serialMouseUncapturedTitleInBed
         If _serialMouseMenuItemInBed IsNot Nothing Then
             _serialMouseMenuItemInBed.Checked = False
@@ -637,6 +620,30 @@ Public Class Form1
                         reportInBed.AppendLine(CPU0.DiagnosticSecondCliEntryHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticGpReturnHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticGpHandlerTraceText())
+                        reportInBed.AppendLine()
+                        reportInBed.AppendLine("===== HOST PERFORMANCE =====")
+                        SyncLock _cpuPerfLockInBed
+                            Dim targetHzInBed As Long = MachineClock.CpuClockHz
+                            Dim ratioInBed As Double = If(targetHzInBed > 0,
+                                _cpuPerfEffectiveTStatesPerSecond / CDbl(targetHzInBed), 0.0R)
+                            reportInBed.AppendLine("Target CPU clock       : " &
+                                (CDbl(targetHzInBed) / 1000000.0R).ToString("0.000") & " MHz")
+                            reportInBed.AppendLine("Effective T-state rate : " &
+                                (_cpuPerfEffectiveTStatesPerSecond / 1000000.0R).ToString("0.000") & " MT-states/s")
+                            reportInBed.AppendLine("Real-time ratio        : " &
+                                (ratioInBed * 100.0R).ToString("0.0") & " %")
+                            reportInBed.AppendLine("Pending scheduler debt : " &
+                                MachineClock.PendingTStates.ToString("N0") & " T-states")
+                            reportInBed.AppendLine("RunSlice last/avg/min/max ms: " &
+                                _cpuPerfLastSliceMilliseconds.ToString("0.000") & " / " &
+                                _cpuPerfAverageSliceMillisecondsInBed.ToString("0.000") & " / " &
+                                _cpuPerfMinimumSliceMillisecondsInBed.ToString("0.000") & " / " &
+                                _cpuPerfMaximumSliceMillisecondsInBed.ToString("0.000"))
+                            reportInBed.AppendLine("Adaptive slice ceiling : " &
+                                _machineRuntime.CurrentMaximumTStatesPerSlice.ToString("N0") & " T-states")
+                        End SyncLock
+                        Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+                        If presentationInBed IsNot Nothing Then reportInBed.AppendLine(presentationInBed.DiagnosticText())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== SOFTWARE INTERRUPTS / DOS FILE SERVICES =====")
                         reportInBed.AppendLine(CPU0.GetDiagnosticImportantIntTrace())

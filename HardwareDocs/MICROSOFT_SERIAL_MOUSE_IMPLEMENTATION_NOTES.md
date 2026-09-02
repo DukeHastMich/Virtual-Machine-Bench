@@ -37,6 +37,12 @@ movement. This models the large resolution difference between a contemporary
 host pointing device and an early Microsoft ball mouse; it does not alter or
 bypass the guest-visible serial device.
 
+The host pointer remains visible and produces no guest motion until the user
+left-clicks the displayed CRT area (or uses the Machine menu / Ctrl+Alt+M) to
+capture it. The click which enters capture is consumed by the host and is not
+reported as a guest button press. Releasing capture always restores the host
+pointer immediately.
+
 ## Diagnostic interpretation
 
 The complete diagnostic dump contains two complementary lines:
