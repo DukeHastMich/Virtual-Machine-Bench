@@ -51,6 +51,7 @@ Public Class Form1
     Private _floppyBayAInBed As PictureBox
     Private _floppyBayBInBed As PictureBox
     Private _driveBayToolTipInBed As ToolTip
+    Private _floppyBayPopupInBed As ContextMenuStrip
     Private _threeAndHalfDriveFaceInBed As Bitmap
     Private _fiveAndQuarterDriveFaceInBed As Bitmap
     Private _emptyDriveFaceInBed As Bitmap
@@ -1112,6 +1113,10 @@ Public Class Form1
         ' WinForms can deliver Deactivate and other focus/input callbacks during
         ' teardown. Mark shutdown before disposing any machine-owned object.
         _closingInBed = True
+        If _floppyBayPopupInBed IsNot Nothing Then
+            _floppyBayPopupInBed.Dispose()
+            _floppyBayPopupInBed = Nothing
+        End If
         ReleaseSerialMouseCaptureInBed()
         GPU.Enabled = False
 
@@ -2307,6 +2312,11 @@ Public Class Form1
     Private Sub ShowFloppyBayMenuInBed(faceInBed As PictureBox, driveInBed As Integer)
         If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
 
+        If _floppyBayPopupInBed IsNot Nothing Then
+            _floppyBayPopupInBed.Dispose()
+            _floppyBayPopupInBed = Nothing
+        End If
+
         ' Build from the same routine used by the Media menu, then transfer the
         ' live items (including their handlers) into a short-lived context menu.
         ' This keeps the chassis shortcut and top-level menu behavior identical.
@@ -2318,11 +2328,8 @@ Public Class Form1
             sourceInBed.DropDownItems.RemoveAt(0)
             popupInBed.Items.Add(itemInBed)
         End While
-        AddHandler popupInBed.Closed,
-            Sub(senderInBed As Object, eInBed As ToolStripDropDownClosedEventArgs)
-                popupInBed.Dispose()
-                sourceInBed.Dispose()
-            End Sub
+        sourceInBed.Dispose()
+        _floppyBayPopupInBed = popupInBed
         popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
     End Sub
 
