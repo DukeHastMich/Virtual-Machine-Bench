@@ -30,6 +30,13 @@ past the form edges. Movement is measured from the current physical
 into a second, artificial movement. Host positive X/right and positive Y/down
 counts are passed unchanged into the Microsoft packet encoder.
 
+The frontend converts four modern host-pointer pixels into one period mouse
+count. Signed remainders are retained independently on both axes, so this lower
+effective resolution does not discard slow travel or prevent shallow diagonal
+movement. This models the large resolution difference between a contemporary
+host pointing device and an early Microsoft ball mouse; it does not alter or
+bypass the guest-visible serial device.
+
 ## Diagnostic interpretation
 
 The complete diagnostic dump contains two complementary lines:

@@ -29,6 +29,12 @@ Public Class Form1
     ' here and transfer them to the physical mouse at the next machine boundary.
     Private _serialMousePendingHostXInBed As Long
     Private _serialMousePendingHostYInBed As Long
+    ' A period Microsoft ball mouse produced far fewer counts per inch than a
+    ' modern high-resolution host pointer. Preserve fractional host travel so
+    ' fine motion and shallow diagonals survive the resolution conversion.
+    Private Const SerialMouseHostPixelsPerCountInBed As Integer = 4
+    Private _serialMouseHostRemainderXInBed As Integer
+    Private _serialMouseHostRemainderYInBed As Integer
     Private _serialMouseRecenteringInBed As Boolean
     Private _serialMouseHostMoveMessagesInBed As Long
     Private _serialMouseBoundaryTransfersInBed As Long
@@ -376,13 +382,21 @@ Public Class Form1
 
     Private Sub QueueSerialMouseHostMovementInBed(deltaXInBed As Integer, deltaYInBed As Integer)
         Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
-        If deltaXInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostXInBed, CLng(deltaXInBed))
-        If deltaYInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostYInBed, CLng(deltaYInBed))
+        Dim accumulatedXInBed As Integer = _serialMouseHostRemainderXInBed + deltaXInBed
+        Dim accumulatedYInBed As Integer = _serialMouseHostRemainderYInBed + deltaYInBed
+        Dim mouseCountXInBed As Integer = accumulatedXInBed \ SerialMouseHostPixelsPerCountInBed
+        Dim mouseCountYInBed As Integer = accumulatedYInBed \ SerialMouseHostPixelsPerCountInBed
+        _serialMouseHostRemainderXInBed = accumulatedXInBed Mod SerialMouseHostPixelsPerCountInBed
+        _serialMouseHostRemainderYInBed = accumulatedYInBed Mod SerialMouseHostPixelsPerCountInBed
+        If mouseCountXInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostXInBed, CLng(mouseCountXInBed))
+        If mouseCountYInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostYInBed, CLng(mouseCountYInBed))
     End Sub
 
     Private Sub ClearSerialMouseHostMovementInBed()
         Threading.Interlocked.Exchange(_serialMousePendingHostXInBed, 0L)
         Threading.Interlocked.Exchange(_serialMousePendingHostYInBed, 0L)
+        _serialMouseHostRemainderXInBed = 0
+        _serialMouseHostRemainderYInBed = 0
     End Sub
 
     ' Called only by MachineRuntime286 while it owns the complete guest.  The
