@@ -32,6 +32,7 @@ Public Class Form1
     Private _serialMouseRecenteringInBed As Boolean
     Private _serialMouseHostMoveMessagesInBed As Long
     Private _serialMouseBoundaryTransfersInBed As Long
+    Private _serialMouseUncapturedTitleInBed As String
     Private floppyAStatus As ToolStripMenuItem
     Private floppyBStatus As ToolStripMenuItem
     Private hardDiskStatus As ToolStripMenuItem
@@ -105,6 +106,16 @@ Public Class Form1
     ' from keypad Enter, dedicated navigation from keypad keys, and left/right
     ' modifiers.  No guest scan code is created in the UI layer.
     Protected Overrides Sub WndProc(ByRef m As Message)
+        If _serialMouseCapturedInBed AndAlso
+           (m.Msg = WM_KEYDOWN OrElse m.Msg = WM_SYSKEYDOWN) AndAlso
+           CType(CInt(m.WParam.ToInt64() And &HFFFFL), Keys) = Keys.M Then
+            Dim modifiersInBed As Keys = Control.ModifierKeys
+            If (modifiersInBed And Keys.Control) <> 0 AndAlso
+               (modifiersInBed And Keys.Alt) <> 0 Then
+                ReleaseSerialMouseCaptureInBed()
+                Return
+            End If
+        End If
         Select Case m.Msg
             Case WM_KEYDOWN, WM_SYSKEYDOWN
                 If RoutePhysicalKeyboardMessage(m, pressed:=True) Then Return
@@ -283,7 +294,12 @@ Public Class Form1
         _serialMouseRecenteringInBed = True
         Cursor.Position = PictureBox1.PointToScreen(New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
                                                                Math.Max(0, PictureBox1.ClientSize.Height \ 2)))
-        If _serialMouseMenuItemInBed IsNot Nothing Then _serialMouseMenuItemInBed.Checked = True
+        If String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then _serialMouseUncapturedTitleInBed = Text
+        Text = _serialMouseUncapturedTitleInBed & " — Mouse captured (Ctrl+Alt+M or middle-click to release)"
+        If _serialMouseMenuItemInBed IsNot Nothing Then
+            _serialMouseMenuItemInBed.Checked = True
+            _serialMouseMenuItemInBed.Text = "Release COM1 serial mouse"
+        End If
     End Sub
 
     Private Sub ReleaseSerialMouseCaptureInBed()
@@ -308,7 +324,11 @@ Public Class Form1
         Dim hostPointerInDisplayInBed As Boolean =
             PictureBox1.ClientRectangle.Contains(PictureBox1.PointToClient(Cursor.Position))
         SetSerialMouseHostCursorHiddenInBed(hostPointerInDisplayInBed)
-        If _serialMouseMenuItemInBed IsNot Nothing Then _serialMouseMenuItemInBed.Checked = False
+        If Not String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then Text = _serialMouseUncapturedTitleInBed
+        If _serialMouseMenuItemInBed IsNot Nothing Then
+            _serialMouseMenuItemInBed.Checked = False
+            _serialMouseMenuItemInBed.Text = "Capture COM1 serial mouse"
+        End If
         If Not _closingInBed AndAlso _machinePoweredInBed Then
             ActiveControl = Nothing
             Activate()
@@ -1120,7 +1140,9 @@ Public Class Form1
         machine.DropDownItems.Add("On-screen keyboard...", Nothing, Sub() ShowOnScreenKeyboardInBed())
         _serialMouseMenuItemInBed = New ToolStripMenuItem("Capture COM1 serial mouse") With {
             .CheckOnClick = False,
-            .ToolTipText = "Click the guest display to capture; middle-click or use this menu to release"
+            .ShortcutKeys = Keys.Control Or Keys.Alt Or Keys.M,
+            .ShowShortcutKeys = True,
+            .ToolTipText = "Capture the guest pointer; release with Ctrl+Alt+M, middle-click, or this menu"
         }
         AddHandler _serialMouseMenuItemInBed.Click,
             Sub()
