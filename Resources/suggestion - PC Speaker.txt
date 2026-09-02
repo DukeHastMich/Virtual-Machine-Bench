@@ -1,0 +1,257 @@
+PC Speaker Archaeological-Fidelity Suggestions
+================================================
+
+Objective
+---------
+
+The goal is not merely to make the PC speaker sound cleaner or more pleasant.
+The goal is archaeological virtualization:
+
+* From inside the virtual machine, software should be unable to distinguish it
+  from the selected original 80286 machine.
+* From the operator's chair, the machine should be functionally equivalent to
+  that original machine.
+
+Authentic rasp, resonance, restricted bandwidth, and distortion should remain.
+Only artifacts introduced by the emulator, such as digital aliasing, dropped
+audio, and inaccurate timer transitions, should be removed.
+
+
+Required Architectural Separation
+---------------------------------
+
+Keep the guest-visible electrical hardware and the physical presentation model
+strictly separate:
+
+    Guest-visible electrical hardware
+    8254/82C54 PIT -> port 61h logic -> motherboard speaker-driver node
+                                           |
+                                           v
+    Physical presentation
+    driver circuit -> speaker mechanics -> chassis acoustics -> listener
+
+The electrical layer must be cycle- and edge-accurate. The presentation layer
+should reproduce a particular documented or measured physical machine, rather
+than applying a generic audio enhancement.
+
+
+1. Replace Point Sampling with Timestamped Edge Integration
+-----------------------------------------------------------
+
+The present implementation asks for the instantaneous PIT channel-2 state at
+each 48 kHz PCM sample point. This is accurate at those individual instants, but
+it can alias transitions from the 1.193182 MHz PIT clock and rapid software
+changes to port 61h. That aliasing can create croaks and unstable tones that a
+physical speaker cone would not produce.
+
+Record every transition of the electrical speaker node in emulated physical
+time. For each output sample, analytically calculate how long the node was high
+and low during that sample interval. Use the resulting area or average as the
+input to the electrical/acoustic model.
+
+This approach preserves:
+
+* Normal PIT-generated square waves.
+* Odd-divisor duty cycles.
+* Direct speaker control through port 61h.
+* High-rate one-bit PCM and PWM techniques used by DOS software.
+* Exact guest timing, without inventing an audio frequency.
+
+High-rate internal rendering can still be useful, but oversampling alone is not
+as exact as timestamped transition integration.
+
+
+2. Complete the 8254/82C54 Timing Model
+---------------------------------------
+
+An IBM AT-class machine uses an 8254-compatible timer, whether implemented as a
+discrete device or inside a later chipset. The current Pit8253 class already
+contains useful 8254 behavior, including read-back commands, but archaeological
+accuracy requires all externally observable timing details to match the chosen
+device.
+
+Verify and, where required, refine:
+
+* The clock edge on which a newly written count becomes active.
+* Partial low-byte/high-byte writes and the null-count flag.
+* GATE sampling and mode-specific GATE behavior.
+* OUT transitions in modes 0 through 5.
+* Mode 2 terminal-count pulse timing.
+* Mode 3 odd-count high and low phases.
+* Counter reads and latches while the counter is changing.
+* Read-back status and count ordering.
+* BCD counting behavior.
+* Writes and GATE changes occurring between PIT input-clock edges.
+
+The timer implementation should ultimately be named and profiled according to
+the reference hardware: discrete Intel 8254, compatible 82C54, or the timer in
+a specific AT chipset. Compatible devices may have observable quirks.
+
+
+3. Model the Actual Motherboard Speaker Driver
+----------------------------------------------
+
+The logical speaker node should feed a model of the selected motherboard's real
+driver circuit before it becomes mechanical force on the speaker.
+
+Derive the model from the reference motherboard schematic and, ideally, bench
+measurements. Include relevant properties such as:
+
+* Logic polarity and gate topology.
+* Driver type and saturation voltage.
+* Supply voltage under load.
+* Source impedance.
+* Voice-coil resistance and inductance.
+* Motherboard resistors and capacitors.
+* Transient or flyback behavior where applicable.
+
+These details matter most for rapid PWM, short impulses, clicks, and software
+that toggles the speaker-data bit directly.
+
+
+4. Use a Measured Speaker and Chassis Response
+----------------------------------------------
+
+A generic high-pass/low-pass equalizer cannot establish archaeological
+accuracy. The preferred solution is a measured response from a representative
+original machine.
+
+Measurement procedure:
+
+1. Mount the original speaker in its original chassis and location.
+2. Drive it through the original motherboard speaker circuit.
+3. Capture logarithmic sweeps, impulses, standard PIT divisors, BIOS beeps, and
+   representative one-bit PCM/PWM patterns.
+4. Record both close to the speaker and at a defined operator-head position.
+5. Keep microphone, gain, distance, angle, chassis panels, and room conditions
+   documented and repeatable.
+6. Deconvolve the appropriate measurements into an impulse response.
+7. Convolve the modeled electrical signal with that response during playback.
+
+For equivalence from the chair, the chassis, mounting arrangement, radiation
+pattern, and listening position are all part of the reference. A close-microphone
+measurement by itself is insufficient.
+
+
+5. Measure and Model Nonlinear Behavior
+---------------------------------------
+
+An impulse response describes only linear behavior. A real small speaker and
+its driver also exhibit level-dependent behavior, including driver saturation,
+voice-coil heating, suspension limits, and cone-excursion compression.
+
+Capture the reference machine at several controlled levels. Suitable models,
+in increasing complexity, include:
+
+* A measured static nonlinearity followed by the measured impulse response
+  (a Hammerstein model).
+* Several level-dependent impulse responses with controlled interpolation.
+* A fitted electromechanical loudspeaker and enclosure model.
+
+Do not add arbitrary soft clipping or warmth to the archaeological path. Any
+nonlinearity should be supported by measurements from the reference hardware.
+
+
+6. Define an Exact Reference Machine
+------------------------------------
+
+"Top-of-the-line 80286" does not identify one unique acoustic or electrical
+system. Late 286 machines differed in timer/chipset implementation, driver
+circuit, speaker part, mounting, enclosure, supply behavior, and physical size.
+
+Create a named reference profile containing at least:
+
+* Manufacturer and model.
+* Motherboard model and revision.
+* Chipset and timer implementation.
+* BIOS vendor and revision.
+* CPU and turbo frequencies.
+* Speaker manufacturer, part number, impedance, and dimensions where known.
+* Speaker mounting location and method.
+* Chassis model, construction, and panel configuration.
+* Measurement equipment, geometry, levels, and environmental conditions.
+
+Additional machine profiles can be added later. The common guest interface may
+remain IBM AT compatible, while electrical and acoustic details are selected by
+the active documented hardware profile.
+
+
+7. Make Host Audio Delivery Lossless During Normal Operation
+------------------------------------------------------------
+
+Dropping an audio buffer is preferable to feeding host delays back into guest
+hardware timing, but a dropped buffer is not something the physical PC speaker
+could do. It breaks equivalence at the chair.
+
+Use a dedicated producer/consumer ring buffer sized to survive ordinary Windows
+scheduling jitter. Track underruns, overruns, latency, and clock drift. These
+conditions should be visible in diagnostics and absent during a valid fidelity
+test.
+
+The emulated motherboard clock must remain authoritative. If the whole emulator
+runs faster than real time, throttle at the outer machine-clock or presentation
+boundary, never by stalling the emulated PIT or speaker hardware. Long-term host
+audio-clock drift should be handled without discarding guest transitions or
+changing guest-observable time.
+
+
+8. Preserve Diagnostic Access to Every Layer
+---------------------------------------------
+
+Provide diagnostic captures or bypasses for:
+
+* Raw port 61h writes and timestamps.
+* PIT channel-2 GATE and OUT transitions.
+* The combined motherboard speaker-driver logic node.
+* The modeled driver voltage/current.
+* The speaker-model input and output.
+* Final chair-position PCM.
+* Host buffer drops, underruns, overruns, and latency.
+
+These should not change guest behavior. They make it possible to compare each
+stage directly against a logic analyzer, oscilloscope, electrical recording, or
+microphone capture from the original machine.
+
+
+Accuracy Levels and Validation Order
+------------------------------------
+
+Implement and validate in this order:
+
+Level 1 - Exact port and PIT register behavior
+    Software-visible reads, writes, latches, modes, and reset state match the
+    selected reference machine.
+
+Level 2 - Exact timestamped electrical transitions
+    PIT OUT2, GATE2, speaker-data enable, and the combined driver node match a
+    logic-analyzer trace.
+
+Level 3 - Measured motherboard-driver behavior
+    Driver voltage/current and transient behavior match oscilloscope captures.
+
+Level 4 - Measured speaker and chassis behavior
+    Acoustic output matches calibrated recordings with the original speaker in
+    its original enclosure.
+
+Level 5 - Calibrated chair-position reproduction
+    Playback level and spectral/temporal response match the documented operator
+    position within defined tolerances.
+
+
+Recommended Immediate Work
+--------------------------
+
+The first code change should replace 48 kHz instantaneous point sampling with a
+timestamped speaker-node transition stream and exact per-sample edge integration.
+This removes emulator-created aliasing while retaining genuine hardware rasp and
+bandwidth limitations.
+
+The next task should be to select and document the exact reference machine. Once
+that target is fixed, collect its motherboard schematics and timer documentation,
+then perform synchronized logic-node, electrical, and acoustic measurements.
+
+Avoid adding subjective "clean," "warm," or generic resonance processing to the
+fidelity path. Optional listening modes may exist outside it, but the default
+archaeological profile should be traceable to documented circuitry and measured
+physical hardware.
+

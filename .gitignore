@@ -1,0 +1,29 @@
+# Visual Studio and .NET build state
+.vs/
+bin/
+obj/
+*.user
+*.suo
+
+# Codex verification/build directories
+.codex-build/
+.codex-obj/
+.restore-check/
+.restore-obj/
+
+# Runtime diagnostics and generated output
+Doutput/
+logs/
+
+# Local backup collections
+.BrickPalletBackups/
+Backup/
+
+# Editor/patch backup copies
+*.bak
+*.bak[0-9]*
+*.pre-*
+
+# OS noise
+Thumbs.db
+Desktop.ini

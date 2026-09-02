@@ -1,0 +1,1408 @@
+     1                                  ; Virtual Computer clean-room PC/AT firmware
+     2                                  ; 64 KiB system ROM mapped at physical F0000h.
+     3                                  bits 16
+     4                                  org 0
+     5                                  
+     6                                  %define BDA_SEG 0x0040
+     7                                  %define VIDEO_SEG 0xB800
+     8                                  
+     9                                  start:
+    10 00000000 FA                          cli
+    11 00000001 FC                          cld
+    12 00000002 31C0                        xor ax, ax
+    13 00000004 8ED8                        mov ds, ax
+    14 00000006 8EC0                        mov es, ax
+    15 00000008 8ED0                        mov ss, ax
+    16 0000000A BC0070                      mov sp, 0x7000
+    17                                  
+    18                                      ; Build a real-mode IVT. Unknown services safely IRET.
+    19 0000000D 31FF                        xor di, di
+    20 0000000F B8[7C01]                    mov ax, default_int
+    21 00000012 BA00F0                      mov dx, 0xF000
+    22 00000015 B90001                      mov cx, 256
+    23 00000018 AB                      .ivt: stosw
+    24 00000019 92                          xchg ax, dx
+    25 0000001A AB                          stosw
+    26 0000001B 92                          xchg ax, dx
+    27 0000001C E2FA                        loop .ivt
+    28                                  
+    29 0000001E C7062000[7D01]              mov word [0x08*4], int08
+    30 00000024 C7062400[9501]              mov word [0x09*4], int09
+    31 0000002A C7064000[8203]              mov word [0x10*4], int10
+    32 00000030 C7064400[CA07]              mov word [0x11*4], int11
+    33 00000036 C7064800[D507]              mov word [0x12*4], int12
+    34 0000003C C7064C00[D907]              mov word [0x13*4], int13
+    35 00000042 C7065400[2F08]              mov word [0x15*4], int15
+    36 00000048 C7065800[9009]              mov word [0x16*4], int16
+    37 0000004E C7066400[1F0A]              mov word [0x19*4], int19
+    38 00000054 C7066800[0D0A]              mov word [0x1A*4], int1a
+    39                                  
+    40                                      ; BIOS data area.
+    41 0000005A B84000                      mov ax, BDA_SEG
+    42 0000005D 8EC0                        mov es, ax
+    43 0000005F 31FF                        xor di, di
+    44 00000061 31C0                        xor ax, ax
+    45 00000063 B98000                      mov cx, 128
+    46 00000066 F3AB                        rep stosw
+    47 00000068 26C7060E00C09F              mov word [es:0x0E], 0x9FC0       ; 1 KiB EBDA segment
+    48 0000006F 26C70610002100              mov word [es:0x10], 0x0021       ; equipment: display + floppy
+    49 00000076 26C70613007F02              mov word [es:0x13], 639          ; conventional KiB (top 1 KiB reserved EBDA)
+    50 0000007D 26C7061A001E00              mov word [es:0x1A], 0x001E       ; keyboard ring head
+    51 00000084 26C7061C001E00              mov word [es:0x1C], 0x001E       ; keyboard ring tail
+    52 0000008B 26C606490003                mov byte [es:0x49], 3            ; 80x25 color
+    53 00000091 26C7064A005000              mov word [es:0x4A], 80
+    54 00000098 26C7064C000010              mov word [es:0x4C], 0x1000       ; bytes per text page
+    55 0000009F 26C7064E000000              mov word [es:0x4E], 0            ; active-page display offset
+    56 000000A6 26C70660000706              mov word [es:0x60], 0x0607       ; cursor start/end scan lines
+    57 000000AD 26C606620000                mov byte [es:0x62], 0            ; active display page
+    58                                  
+    59                                      ; Master/slave 8259 and 18.2 Hz PIT.
+    60 000000B3 B011                        mov al, 0x11
+    61 000000B5 E620                        out 0x20, al
+    62 000000B7 E6A0                        out 0xA0, al
+    63 000000B9 B008                        mov al, 0x08
+    64 000000BB E621                        out 0x21, al
+    65 000000BD B070                        mov al, 0x70
+    66 000000BF E6A1                        out 0xA1, al
+    67 000000C1 B004                        mov al, 0x04
+    68 000000C3 E621                        out 0x21, al
+    69 000000C5 B002                        mov al, 0x02
+    70 000000C7 E6A1                        out 0xA1, al
+    71 000000C9 B001                        mov al, 0x01
+    72 000000CB E621                        out 0x21, al
+    73 000000CD E6A1                        out 0xA1, al
+    74 000000CF B0BC                        mov al, 0xBC                    ; timer, keyboard, cascade unmasked
+    75 000000D1 E621                        out 0x21, al
+    76 000000D3 B0FF                        mov al, 0xFF
+    77 000000D5 E6A1                        out 0xA1, al
+    78 000000D7 B036                        mov al, 0x36
+    79 000000D9 E643                        out 0x43, al
+    80 000000DB 30C0                        xor al, al
+    81 000000DD E640                        out 0x40, al
+    82 000000DF E640                        out 0x40, al
+    83                                  
+    84 000000E1 E83B00                      call reset_cga_start
+    85 000000E4 E81400                      call clear_screen
+    86 000000E7 0E                          push cs
+    87 000000E8 1F                          pop ds                         ; embedded POST strings live in the ROM segment
+    88 000000E9 BE[770A]                    mov si, logo
+    89 000000EC E84700                      call print
+    90 000000EF BE[770B]                    mov si, post_text
+    91 000000F2 E84100                      call print
+    92 000000F5 FB                          sti
+    93 000000F6 CD19                        int 0x19
+    94 000000F8 F4                      .halt: hlt
+    95 000000F9 EBFD                        jmp .halt
+    96                                  
+    97                                  clear_screen:
+    98 000000FB 50                          push ax
+    99 000000FC 51                          push cx
+   100 000000FD 57                          push di
+   101 000000FE 06                          push es
+   102 000000FF B800B8                      mov ax, VIDEO_SEG
+   103 00000102 8EC0                        mov es, ax
+   104 00000104 31FF                        xor di, di
+   105 00000106 B82007                      mov ax, 0x0720
+   106 00000109 B9D007                      mov cx, 2000
+   107 0000010C F3AB                        rep stosw
+   108 0000010E B84000                      mov ax, BDA_SEG
+   109 00000111 8EC0                        mov es, ax
+   110 00000113 26C70650000000              mov word [es:0x50], 0
+   111 0000011A 07                          pop es
+   112 0000011B 5F                          pop di
+   113 0000011C 59                          pop cx
+   114 0000011D 58                          pop ax
+   115 0000011E C3                          ret
+   116                                  
+   117                                  reset_cga_start:
+   118 0000011F 50                          push ax
+   119 00000120 52                          push dx
+   120 00000121 BAD403                      mov dx, 0x3D4
+   121 00000124 B00C                        mov al, 0x0C
+   122 00000126 EE                          out dx, al
+   123 00000127 42                          inc dx
+   124 00000128 30C0                        xor al, al
+   125 0000012A EE                          out dx, al
+   126 0000012B 4A                          dec dx
+   127 0000012C B00D                        mov al, 0x0D
+   128 0000012E EE                          out dx, al
+   129 0000012F 42                          inc dx
+   130 00000130 30C0                        xor al, al
+   131 00000132 EE                          out dx, al
+   132 00000133 5A                          pop dx
+   133 00000134 58                          pop ax
+   134 00000135 C3                          ret
+   135                                  
+   136                                  ; DS:SI zero-terminated ROM string, direct standard color text memory.
+   137                                  print:
+   138 00000136 50                          push ax
+   139 00000137 53                          push bx
+   140 00000138 52                          push dx
+   141 00000139 57                          push di
+   142 0000013A 06                          push es
+   143 0000013B B84000                      mov ax, BDA_SEG
+   144 0000013E 8EC0                        mov es, ax
+   145 00000140 268B3E5000                  mov di, [es:0x50]
+   146 00000145 B800B8                      mov ax, VIDEO_SEG
+   147 00000148 8EC0                        mov es, ax
+   148                                  .next:
+   149 0000014A AC                          lodsb
+   150 0000014B 84C0                        test al, al
+   151 0000014D 741D                        jz .done
+   152 0000014F 3C0D                        cmp al, 13
+   153 00000151 74F7                        je .next
+   154 00000153 3C0A                        cmp al, 10
+   155 00000155 7510                        jne .put
+   156 00000157 89F8                        mov ax, di
+   157 00000159 31D2                        xor dx, dx
+   158 0000015B BBA000                      mov bx, 160
+   159 0000015E F7F3                        div bx
+   160 00000160 40                          inc ax
+   161 00000161 F7E3                        mul bx
+   162 00000163 89C7                        mov di, ax
+   163 00000165 EBE3                        jmp .next
+   164                                  .put:
+   165 00000167 B407                        mov ah, 0x07
+   166 00000169 AB                          stosw
+   167 0000016A EBDE                        jmp .next
+   168                                  .done:
+   169 0000016C B84000                      mov ax, BDA_SEG
+   170 0000016F 8EC0                        mov es, ax
+   171 00000171 26893E5000                  mov [es:0x50], di
+   172 00000176 07                          pop es
+   173 00000177 5F                          pop di
+   174 00000178 5A                          pop dx
+   175 00000179 5B                          pop bx
+   176 0000017A 58                          pop ax
+   177 0000017B C3                          ret
+   178                                  
+   179 0000017C CF                      default_int: iret
+   180                                  
+   181                                  int08:
+   182 0000017D 50                          push ax
+   183 0000017E 1E                          push ds
+   184 0000017F B84000                      mov ax, BDA_SEG
+   185 00000182 8ED8                        mov ds, ax
+   186 00000184 FF066C00                    inc word [0x6C]
+   187 00000188 7504                        jnz .eoi
+   188 0000018A FF066E00                    inc word [0x6E]
+   189                                  .eoi:
+   190 0000018E B020                        mov al, 0x20
+   191 00000190 E620                        out 0x20, al
+   192 00000192 1F                          pop ds
+   193 00000193 58                          pop ax
+   194 00000194 CF                          iret
+   195                                  
+   196                                  int09:
+   197 00000195 50                          push ax
+   198 00000196 53                          push bx
+   199 00000197 51                          push cx
+   200 00000198 52                          push dx
+   201 00000199 1E                          push ds
+   202 0000019A E460                        in al, 0x60
+   203 0000019C 88C2                        mov dl, al
+   204 0000019E B84000                      mov ax, BDA_SEG
+   205 000001A1 8ED8                        mov ds, ax
+   206 000001A3 88D0                        mov al, dl
+   207 000001A5 3CE0                        cmp al, 0xE0
+   208 000001A7 7508                        jne .not_extended
+   209 000001A9 800E960002                  or byte [0x96], 2
+   210 000001AE E93F01                      jmp .eoi
+   211                                  .not_extended:
+   212 000001B1 A880                        test al, 0x80
+   213 000001B3 7403                        jz short .make_code
+   214 000001B5 E90A01                      jmp .break_code
+   215                                  .make_code:
+   216 000001B8 3C2A                        cmp al, 0x2A
+   217 000001BA 7503                        jne short .not_lshift
+   218 000001BC E9D200                      jmp .left_shift_down
+   219                                  .not_lshift:
+   220 000001BF 3C36                        cmp al, 0x36
+   221 000001C1 7503                        jne short .not_rshift
+   222 000001C3 E9D200                      jmp .right_shift_down
+   223                                  .not_rshift:
+   224 000001C6 3C1D                        cmp al, 0x1D
+   225 000001C8 7503                        jne short .not_ctrl
+   226 000001CA E9D200                      jmp .ctrl_down
+   227                                  .not_ctrl:
+   228 000001CD 3C38                        cmp al, 0x38
+   229 000001CF 7503                        jne short .not_alt
+   230 000001D1 E9D200                      jmp .alt_down
+   231                                  .not_alt:
+   232 000001D4 3C3A                        cmp al, 0x3A
+   233 000001D6 7503                        jne short .not_caps
+   234 000001D8 E9D200                      jmp .caps_toggle
+   235                                  .not_caps:
+   236 000001DB 3C45                        cmp al, 0x45
+   237 000001DD 7503                        jne short .not_num
+   238 000001DF E9D200                      jmp .num_toggle
+   239                                  .not_num:
+   240 000001E2 3C46                        cmp al, 0x46
+   241 000001E4 7503                        jne short .not_scroll
+   242 000001E6 E9D200                      jmp .scroll_toggle
+   243                                  .not_scroll:
+   244 000001E9 3C3A                        cmp al, 0x3A
+   245 000001EB 7623                        jbe .translate
+   246 000001ED 3C44                        cmp al, 0x44                   ; F1-F10
+   247 000001EF 7703                        ja short .not_f1_f10
+   248 000001F1 E99700                      jmp .enqueue_scan_only
+   249                                  .not_f1_f10:
+   250 000001F4 3C47                        cmp al, 0x47
+   251 000001F6 7303                        jae short .maybe_navigation
+   252 000001F8 E9F500                      jmp .eoi
+   253                                  .maybe_navigation:
+   254 000001FB 3C53                        cmp al, 0x53                   ; keypad/navigation including Delete
+   255 000001FD 7703                        ja short .not_navigation
+   256 000001FF E98900                      jmp .enqueue_scan_only
+   257                                  .not_navigation:
+   258 00000202 3C57                        cmp al, 0x57                   ; F11
+   259 00000204 7503                        jne short .not_f11
+   260 00000206 E98200                      jmp .enqueue_scan_only
+   261                                  .not_f11:
+   262 00000209 3C58                        cmp al, 0x58                   ; F12
+   263 0000020B 747E                        je .enqueue_scan_only
+   264 0000020D E9E000                      jmp .eoi
+   265                                  .translate:
+   266 00000210 31DB                        xor bx, bx
+   267 00000212 88C3                        mov bl, al
+   268 00000214 2E8A97[FA02]                mov dl, [cs:key_ascii+bx]
+   269 00000219 8A0E1700                    mov cl, [0x17]
+   270 0000021D F6C103                      test cl, 3
+   271 00000220 7405                        jz .caps
+   272 00000222 2E8A97[3E03]                mov dl, [cs:key_shift_ascii+bx]
+   273                                  .caps:
+   274 00000227 F6C140                      test cl, 0x40
+   275 0000022A 741C                        jz .control
+   276 0000022C 80FA41                      cmp dl, 'A'
+   277 0000022F 720A                        jb .caps_lower
+   278 00000231 80FA5A                      cmp dl, 'Z'
+   279 00000234 7705                        ja .caps_lower
+   280 00000236 80CA20                      or dl, 0x20
+   281 00000239 EB0D                        jmp .control
+   282                                  .caps_lower:
+   283 0000023B 80FA61                      cmp dl, 'a'
+   284 0000023E 7208                        jb .control
+   285 00000240 80FA7A                      cmp dl, 'z'
+   286 00000243 7703                        ja .control
+   287 00000245 80E2DF                      and dl, 0xDF
+   288                                  .control:
+   289 00000248 F6C104                      test cl, 4
+   290 0000024B 7414                        jz .alternate
+   291 0000024D 88D6                        mov dh, dl
+   292 0000024F 80E6DF                      and dh, 0xDF
+   293 00000252 80FE41                      cmp dh, 'A'
+   294 00000255 720A                        jb .alternate
+   295 00000257 80FE5A                      cmp dh, 'Z'
+   296 0000025A 7705                        ja .alternate
+   297 0000025C 88F2                        mov dl, dh
+   298 0000025E 80EA40                      sub dl, 0x40
+   299                                  .alternate:
+   300 00000261 F6C108                      test cl, 8
+   301 00000264 7402                        jz .enqueue
+   302 00000266 30D2                        xor dl, dl
+   303                                  .enqueue:
+   304 00000268 88C4                        mov ah, al
+   305 0000026A 88D0                        mov al, dl
+   306                                  .queue_word:
+   307 0000026C 8B1E1C00                    mov bx, [0x1C]                 ; tail offset
+   308 00000270 89DA                        mov dx, bx
+   309 00000272 83C202                      add dx, 2
+   310 00000275 83FA3E                      cmp dx, 0x3E
+   311 00000278 7203                        jb .check_full
+   312 0000027A BA1E00                      mov dx, 0x1E
+   313                                  .check_full:
+   314 0000027D 3B161A00                    cmp dx, [0x1A]                 ; full if next tail equals head
+   315 00000281 746D                        je .eoi
+   316 00000283 8907                        mov [bx], ax
+   317 00000285 89161C00                    mov [0x1C], dx
+   318 00000289 EB65                        jmp .eoi
+   319                                  .enqueue_scan_only:
+   320 0000028B 88C4                        mov ah, al
+   321 0000028D 30C0                        xor al, al
+   322 0000028F EBDB                        jmp .queue_word
+   323                                  .left_shift_down:
+   324 00000291 800E170002                  or byte [0x17], 2
+   325 00000296 EB58                        jmp .eoi
+   326                                  .right_shift_down:
+   327 00000298 800E170001                  or byte [0x17], 1
+   328 0000029D EB51                        jmp .eoi
+   329                                  .ctrl_down:
+   330 0000029F 800E170004                  or byte [0x17], 4
+   331 000002A4 EB4A                        jmp .eoi
+   332                                  .alt_down:
+   333 000002A6 800E170008                  or byte [0x17], 8
+   334 000002AB EB43                        jmp .eoi
+   335                                  .caps_toggle:
+   336 000002AD 8036170040                  xor byte [0x17], 0x40
+   337 000002B2 EB3C                        jmp .eoi
+   338                                  .num_toggle:
+   339 000002B4 8036170020                  xor byte [0x17], 0x20
+   340 000002B9 EB35                        jmp .eoi
+   341                                  .scroll_toggle:
+   342 000002BB 8036170010                  xor byte [0x17], 0x10
+   343 000002C0 EB2E                        jmp .eoi
+   344                                  .break_code:
+   345 000002C2 247F                        and al, 0x7F
+   346 000002C4 3C2A                        cmp al, 0x2A
+   347 000002C6 740E                        je .left_shift_up
+   348 000002C8 3C36                        cmp al, 0x36
+   349 000002CA 7411                        je .right_shift_up
+   350 000002CC 3C1D                        cmp al, 0x1D
+   351 000002CE 7414                        je .ctrl_up
+   352 000002D0 3C38                        cmp al, 0x38
+   353 000002D2 7417                        je .alt_up
+   354 000002D4 EB1A                        jmp .eoi
+   355                                  .left_shift_up:
+   356 000002D6 80261700FD                  and byte [0x17], 0xFD
+   357 000002DB EB13                        jmp .eoi
+   358                                  .right_shift_up:
+   359 000002DD 80261700FE                  and byte [0x17], 0xFE
+   360 000002E2 EB0C                        jmp .eoi
+   361                                  .ctrl_up:
+   362 000002E4 80261700FB                  and byte [0x17], 0xFB
+   363 000002E9 EB05                        jmp .eoi
+   364                                  .alt_up:
+   365 000002EB 80261700F7                  and byte [0x17], 0xF7
+   366                                  .eoi:
+   367 000002F0 B020                        mov al, 0x20
+   368 000002F2 E620                        out 0x20, al
+   369 000002F4 1F                          pop ds
+   370 000002F5 5A                          pop dx
+   371 000002F6 59                          pop cx
+   372 000002F7 5B                          pop bx
+   373 000002F8 58                          pop ax
+   374 000002F9 CF                          iret
+   375                                  
+   376                                  ; IBM set-1 make-code translation used by the ROM IRQ1 handler.
+   377                                  key_ascii:
+   378 000002FA 001B31323334353637-         db 0,27,'1234567890-=',8,9
+   378 00000303 3839302D3D0809     
+   379 0000030A 71776572747975696F-         db 'qwertyuiop[]',13,0,'asdfghjkl',59,39,96,0,92
+   379 00000313 705B5D0D0061736466-
+   379 0000031C 67686A6B6C3B276000-
+   379 00000325 5C                 
+   380 00000326 7A786376626E6D2C2E-         db 'zxcvbnm,./',0,'*',0,' ',0,0,0,0,0,0,0,0,0,0
+   380 0000032F 2F002A002000000000-
+   380 00000338 000000000000       
+   381                                  key_shift_ascii:
+   382 0000033E 001B21402324255E26-         db 0,27,'!@#$%^&*()_+',8,9
+   382 00000347 2A28295F2B0809     
+   383 0000034E 51574552545955494F-         db 'QWERTYUIOP{}',13,0,'ASDFGHJKL:',34,126,0,124
+   383 00000357 507B7D0D0041534446-
+   383 00000360 47484A4B4C3A227E00-
+   383 00000369 7C                 
+   384 0000036A 5A584356424E4D3C3E-         db 'ZXCVBNM<>?',0,'*',0,' ',0,0,0,0,0,0,0,0,0,0
+   384 00000373 3F002A002000000000-
+   384 0000037C 000000000000       
+   385                                  
+   386                                  int10:
+   387 00000382 80FC00                      cmp ah, 0x00
+   388 00000385 7469                        je video_set_mode
+   389 00000387 80FC01                      cmp ah, 0x01
+   390 0000038A 7503                        jne short .not01
+   391 0000038C E9B100                      jmp video_set_shape
+   392                                  .not01:
+   393 0000038F 80FC02                      cmp ah, 0x02
+   394 00000392 7503                        jne short .not02
+   395 00000394 E9B700                      jmp video_set_cursor
+   396                                  .not02:
+   397 00000397 80FC03                      cmp ah, 0x03
+   398 0000039A 7503                        jne short .not03
+   399 0000039C E9C600                      jmp video_get_cursor
+   400                                  .not03:
+   401 0000039F 80FC05                      cmp ah, 0x05
+   402 000003A2 7503                        jne short .not05
+   403 000003A4 E9D900                      jmp video_set_page
+   404                                  .not05:
+   405 000003A7 80FC06                      cmp ah, 0x06
+   406 000003AA 7503                        jne short .not06
+   407 000003AC E91902                      jmp video_scroll_up
+   408                                  .not06:
+   409 000003AF 80FC07                      cmp ah, 0x07
+   410 000003B2 7503                        jne short .not07
+   411 000003B4 E9FB02                      jmp video_scroll_down
+   412                                  .not07:
+   413 000003B7 80FC08                      cmp ah, 0x08
+   414 000003BA 7503                        jne short .not08
+   415 000003BC E93601                      jmp video_read_cell
+   416                                  .not08:
+   417 000003BF 80FC09                      cmp ah, 0x09
+   418 000003C2 7503                        jne short .not09
+   419 000003C4 E93901                      jmp video_write_cell
+   420                                  .not09:
+   421 000003C7 80FC0A                      cmp ah, 0x0A
+   422 000003CA 7503                        jne short .not0a
+   423 000003CC E94201                      jmp video_write_char
+   424                                  .not0a:
+   425 000003CF 80FC0E                      cmp ah, 0x0E
+   426 000003D2 7503                        jne short .not0e
+   427 000003D4 E94F01                      jmp video_tty
+   428                                  .not0e:
+   429 000003D7 80FC0F                      cmp ah, 0x0F
+   430 000003DA 7503                        jne short .not0f
+   431 000003DC E9CD03                      jmp video_get_mode
+   432                                  .not0f:
+   433 000003DF 80FC12                      cmp ah, 0x12
+   434 000003E2 7503                        jne short .not12
+   435 000003E4 E9D803                      jmp video_ega_query
+   436                                  .not12:
+   437 000003E7 80FC1A                      cmp ah, 0x1A
+   438 000003EA 7503                        jne short .unknown
+   439 000003EC E9D803                      jmp video_display_query
+   440                                  .unknown:
+   441 000003EF CF                          iret
+   442                                  
+   443                                  video_set_mode:
+   444 000003F0 50                          push ax
+   445 000003F1 52                          push dx
+   446 000003F2 06                          push es
+   447 000003F3 247F                        and al, 0x7F
+   448 000003F5 88C2                        mov dl, al
+   449 000003F7 B84000                      mov ax, BDA_SEG
+   450 000003FA 8EC0                        mov es, ax
+   451 000003FC 2688164900                  mov [es:0x49], dl
+   452 00000401 26C7064A005000              mov word [es:0x4A], 80
+   453 00000408 26C7064C000010              mov word [es:0x4C], 0x1000
+   454 0000040F 26C7064E000000              mov word [es:0x4E], 0
+   455 00000416 26C70650000000              mov word [es:0x50], 0
+   456 0000041D 26C606620000                mov byte [es:0x62], 0
+   457 00000423 BAD403                      mov dx, 0x3D4
+   458 00000426 B00C                        mov al, 0x0C
+   459 00000428 EE                          out dx, al
+   460 00000429 42                          inc dx
+   461 0000042A 30C0                        xor al, al
+   462 0000042C EE                          out dx, al
+   463 0000042D 4A                          dec dx
+   464 0000042E B00D                        mov al, 0x0D
+   465 00000430 EE                          out dx, al
+   466 00000431 42                          inc dx
+   467 00000432 30C0                        xor al, al
+   468 00000434 EE                          out dx, al
+   469 00000435 07                          pop es
+   470 00000436 5A                          pop dx
+   471 00000437 58                          pop ax
+   472 00000438 A880                        test al, 0x80
+   473 0000043A 7503                        jnz .done
+   474 0000043C E8BCFC                      call clear_screen
+   475                                  .done:
+   476 0000043F CF                          iret
+   477                                  
+   478                                  video_set_shape:
+   479 00000440 50                          push ax
+   480 00000441 1E                          push ds
+   481 00000442 B84000                      mov ax, BDA_SEG
+   482 00000445 8ED8                        mov ds, ax
+   483 00000447 890E6000                    mov [0x60], cx
+   484 0000044B 1F                          pop ds
+   485 0000044C 58                          pop ax
+   486 0000044D CF                          iret
+   487                                  
+   488                                  video_set_cursor:
+   489 0000044E 50                          push ax
+   490 0000044F 53                          push bx
+   491 00000450 1E                          push ds
+   492 00000451 88F8                        mov al, bh
+   493 00000453 30E4                        xor ah, ah
+   494 00000455 D1E0                        shl ax, 1
+   495 00000457 89C3                        mov bx, ax
+   496 00000459 B84000                      mov ax, BDA_SEG
+   497 0000045C 8ED8                        mov ds, ax
+   498 0000045E 895750                      mov [bx+0x50], dx
+   499 00000461 1F                          pop ds
+   500 00000462 5B                          pop bx
+   501 00000463 58                          pop ax
+   502 00000464 CF                          iret
+   503                                  
+   504                                  video_get_cursor:
+   505 00000465 50                          push ax
+   506 00000466 53                          push bx
+   507 00000467 1E                          push ds
+   508 00000468 88F8                        mov al, bh
+   509 0000046A 30E4                        xor ah, ah
+   510 0000046C D1E0                        shl ax, 1
+   511 0000046E 89C3                        mov bx, ax
+   512 00000470 B84000                      mov ax, BDA_SEG
+   513 00000473 8ED8                        mov ds, ax
+   514 00000475 8B5750                      mov dx, [bx+0x50]
+   515 00000478 8B0E6000                    mov cx, [0x60]
+   516 0000047C 1F                          pop ds
+   517 0000047D 5B                          pop bx
+   518 0000047E 58                          pop ax
+   519 0000047F CF                          iret
+   520                                  
+   521                                  video_set_page:
+   522 00000480 50                          push ax
+   523 00000481 53                          push bx
+   524 00000482 52                          push dx
+   525 00000483 1E                          push ds
+   526 00000484 88C2                        mov dl, al
+   527 00000486 80E207                      and dl, 7
+   528 00000489 B84000                      mov ax, BDA_SEG
+   529 0000048C 8ED8                        mov ds, ax
+   530 0000048E 88166200                    mov [0x62], dl
+   531 00000492 31C0                        xor ax, ax
+   532 00000494 88D0                        mov al, dl
+   533 00000496 BB0010                      mov bx, 0x1000
+   534 00000499 F7E3                        mul bx
+   535 0000049B A34E00                      mov [0x4E], ax
+   536 0000049E D1E8                        shr ax, 1                       ; 6845 start address is in character words
+   537 000004A0 89C3                        mov bx, ax
+   538 000004A2 BAD403                      mov dx, 0x3D4
+   539 000004A5 B00C                        mov al, 0x0C
+   540 000004A7 EE                          out dx, al
+   541 000004A8 42                          inc dx
+   542 000004A9 88F8                        mov al, bh
+   543 000004AB EE                          out dx, al
+   544 000004AC 4A                          dec dx
+   545 000004AD B00D                        mov al, 0x0D
+   546 000004AF EE                          out dx, al
+   547 000004B0 42                          inc dx
+   548 000004B1 88D8                        mov al, bl
+   549 000004B3 EE                          out dx, al
+   550 000004B4 1F                          pop ds
+   551 000004B5 5A                          pop dx
+   552 000004B6 5B                          pop bx
+   553 000004B7 58                          pop ax
+   554 000004B8 CF                          iret
+   555                                  
+   556                                  ; Convert page BH and cursor from the BDA to ES:DI in color text RAM.
+   557                                  video_cursor_address:
+   558 000004B9 50                          push ax
+   559 000004BA 53                          push bx
+   560 000004BB 51                          push cx
+   561 000004BC 52                          push dx
+   562 000004BD 1E                          push ds
+   563 000004BE 88F8                        mov al, bh
+   564 000004C0 2407                        and al, 7
+   565 000004C2 30E4                        xor ah, ah
+   566 000004C4 89C7                        mov di, ax
+   567 000004C6 C1E70C                      shl di, 12
+   568 000004C9 D1E0                        shl ax, 1
+   569 000004CB 89C3                        mov bx, ax
+   570 000004CD B84000                      mov ax, BDA_SEG
+   571 000004D0 8ED8                        mov ds, ax
+   572 000004D2 8B5750                      mov dx, [bx+0x50]
+   573 000004D5 89D1                        mov cx, dx
+   574 000004D7 31C0                        xor ax, ax
+   575 000004D9 88E8                        mov al, ch
+   576 000004DB BBA000                      mov bx, 160
+   577 000004DE F7E3                        mul bx
+   578 000004E0 01C7                        add di, ax
+   579 000004E2 31C0                        xor ax, ax
+   580 000004E4 88C8                        mov al, cl
+   581 000004E6 D1E0                        shl ax, 1
+   582 000004E8 01C7                        add di, ax
+   583 000004EA B800B8                      mov ax, VIDEO_SEG
+   584 000004ED 8EC0                        mov es, ax
+   585 000004EF 1F                          pop ds
+   586 000004F0 5A                          pop dx
+   587 000004F1 59                          pop cx
+   588 000004F2 5B                          pop bx
+   589 000004F3 58                          pop ax
+   590 000004F4 C3                          ret
+   591                                  
+   592                                  video_read_cell:
+   593 000004F5 57                          push di
+   594 000004F6 06                          push es
+   595 000004F7 E8BFFF                      call video_cursor_address
+   596 000004FA 268B05                      mov ax, [es:di]
+   597 000004FD 07                          pop es
+   598 000004FE 5F                          pop di
+   599 000004FF CF                          iret
+   600                                  
+   601                                  video_write_cell:
+   602 00000500 50                          push ax
+   603 00000501 51                          push cx
+   604 00000502 57                          push di
+   605 00000503 06                          push es
+   606 00000504 E8B2FF                      call video_cursor_address
+   607 00000507 FC                          cld
+   608 00000508 88DC                        mov ah, bl
+   609 0000050A F3AB                        rep stosw
+   610 0000050C 07                          pop es
+   611 0000050D 5F                          pop di
+   612 0000050E 59                          pop cx
+   613 0000050F 58                          pop ax
+   614 00000510 CF                          iret
+   615                                  
+   616                                  video_write_char:
+   617 00000511 50                          push ax
+   618 00000512 51                          push cx
+   619 00000513 57                          push di
+   620 00000514 06                          push es
+   621 00000515 E8A1FF                      call video_cursor_address
+   622 00000518 FC                          cld
+   623                                  .loop:
+   624 00000519 268805                      mov [es:di], al
+   625 0000051C 83C702                      add di, 2
+   626 0000051F E2F8                        loop .loop
+   627 00000521 07                          pop es
+   628 00000522 5F                          pop di
+   629 00000523 59                          pop cx
+   630 00000524 58                          pop ax
+   631 00000525 CF                          iret
+   632                                  
+   633                                  video_tty:
+   634 00000526 50                          push ax
+   635 00000527 53                          push bx
+   636 00000528 51                          push cx
+   637 00000529 52                          push dx
+   638 0000052A 56                          push si
+   639 0000052B 57                          push di
+   640 0000052C 06                          push es
+   641 0000052D 1E                          push ds
+   642 0000052E 88C1                        mov cl, al
+   643 00000530 B84000                      mov ax, BDA_SEG
+   644 00000533 8ED8                        mov ds, ax
+   645 00000535 31DB                        xor bx, bx
+   646 00000537 8A1E6200                    mov bl, [0x62]
+   647 0000053B D1E3                        shl bx, 1
+   648 0000053D 8B5750                      mov dx, [bx+0x50]
+   649 00000540 80F907                      cmp cl, 7
+   650 00000543 746A                        je .save
+   651 00000545 80F908                      cmp cl, 8
+   652 00000548 745F                        je .backspace
+   653 0000054A 80F90D                      cmp cl, 13
+   654 0000054D 743C                        je .carriage
+   655 0000054F 80F90A                      cmp cl, 10
+   656 00000552 743E                        je .linefeed
+   657 00000554 B800B8                      mov ax, VIDEO_SEG
+   658 00000557 8EC0                        mov es, ax
+   659 00000559 89D6                        mov si, dx
+   660 0000055B 31FF                        xor di, di
+   661 0000055D A06200                      mov al, [0x62]
+   662 00000560 30E4                        xor ah, ah
+   663 00000562 89C7                        mov di, ax
+   664 00000564 C1E70C                      shl di, 12
+   665 00000567 89F0                        mov ax, si
+   666 00000569 88E0                        mov al, ah
+   667 0000056B 30E4                        xor ah, ah
+   668 0000056D BBA000                      mov bx, 160
+   669 00000570 F7E3                        mul bx
+   670 00000572 01C7                        add di, ax
+   671 00000574 89F0                        mov ax, si
+   672 00000576 25FF00                      and ax, 0x00FF
+   673 00000579 D1E0                        shl ax, 1
+   674 0000057B 01C7                        add di, ax
+   675 0000057D 88C8                        mov al, cl
+   676 0000057F B407                        mov ah, 7
+   677 00000581 AB                          stosw
+   678 00000582 89F2                        mov dx, si
+   679 00000584 FEC2                        inc dl
+   680 00000586 80FA50                      cmp dl, 80
+   681 00000589 7224                        jb .save
+   682                                  .carriage:
+   683 0000058B 30D2                        xor dl, dl
+   684 0000058D 80F90D                      cmp cl, 13
+   685 00000590 741D                        je .save
+   686                                  .linefeed:
+   687 00000592 FEC6                        inc dh
+   688 00000594 80FE19                      cmp dh, 25
+   689 00000597 7216                        jb .save
+   690 00000599 B80106                      mov ax, 0x0601
+   691 0000059C B707                        mov bh, 7
+   692 0000059E 31C9                        xor cx, cx
+   693 000005A0 BA4F18                      mov dx, 0x184F
+   694 000005A3 CD10                        int 0x10
+   695 000005A5 B618                        mov dh, 24
+   696 000005A7 EB06                        jmp .save
+   697                                  .backspace:
+   698 000005A9 84D2                        test dl, dl
+   699 000005AB 7402                        jz .save
+   700 000005AD FECA                        dec dl
+   701                                  .save:
+   702 000005AF B84000                      mov ax, BDA_SEG
+   703 000005B2 8ED8                        mov ds, ax
+   704 000005B4 31DB                        xor bx, bx
+   705 000005B6 8A1E6200                    mov bl, [0x62]
+   706 000005BA D1E3                        shl bx, 1
+   707 000005BC 895750                      mov [bx+0x50], dx
+   708 000005BF 1F                          pop ds
+   709 000005C0 07                          pop es
+   710 000005C1 5F                          pop di
+   711 000005C2 5E                          pop si
+   712 000005C3 5A                          pop dx
+   713 000005C4 59                          pop cx
+   714 000005C5 5B                          pop bx
+   715 000005C6 58                          pop ax
+   716 000005C7 CF                          iret
+   717                                  
+   718                                  ; AH=06/07, rectangular text-window scroll. AL=0 clears the window.
+   719                                  video_scroll_up:
+   720 000005C8 55                          push bp
+   721 000005C9 89E5                        mov bp, sp
+   722 000005CB 50                          push ax
+   723 000005CC 53                          push bx
+   724 000005CD 51                          push cx
+   725 000005CE 52                          push dx
+   726 000005CF 56                          push si
+   727 000005D0 57                          push di
+   728 000005D1 1E                          push ds
+   729 000005D2 06                          push es
+   730 000005D3 83EC04                      sub sp, 4
+   731 000005D6 368A46F9                    mov al, [ss:bp-7]               ; window height = bottom-top+1
+   732 000005DA 362A46FB                    sub al, [ss:bp-5]
+   733 000005DE FEC0                        inc al
+   734 000005E0 368A5EFE                    mov bl, [ss:bp-2]               ; requested line count
+   735 000005E4 84DB                        test bl, bl
+   736 000005E6 7477                        jz .clear_all
+   737 000005E8 38C3                        cmp bl, al
+   738 000005EA 7373                        jae .clear_all
+   739 000005EC 368A46FB                    mov al, [ss:bp-5]
+   740 000005F0 368846EE                    mov [ss:bp-18], al              ; destination row
+   741 000005F4 00D8                        add al, bl
+   742 000005F6 368846ED                    mov [ss:bp-19], al              ; source row
+   743 000005FA B800B8                      mov ax, VIDEO_SEG
+   744 000005FD 8ED8                        mov ds, ax
+   745 000005FF 8EC0                        mov es, ax
+   746 00000601 FC                          cld
+   747                                  .copy_row:
+   748 00000602 31C0                        xor ax, ax
+   749 00000604 368A46EE                    mov al, [ss:bp-18]
+   750 00000608 BBA000                      mov bx, 160
+   751 0000060B F7E3                        mul bx
+   752 0000060D 89C7                        mov di, ax
+   753 0000060F 31C0                        xor ax, ax
+   754 00000611 368A46FA                    mov al, [ss:bp-6]
+   755 00000615 D1E0                        shl ax, 1
+   756 00000617 01C7                        add di, ax
+   757 00000619 31C0                        xor ax, ax
+   758 0000061B 368A46ED                    mov al, [ss:bp-19]
+   759 0000061F BBA000                      mov bx, 160
+   760 00000622 F7E3                        mul bx
+   761 00000624 89C6                        mov si, ax
+   762 00000626 31C0                        xor ax, ax
+   763 00000628 368A46FA                    mov al, [ss:bp-6]
+   764 0000062C D1E0                        shl ax, 1
+   765 0000062E 01C6                        add si, ax
+   766 00000630 31C9                        xor cx, cx
+   767 00000632 368A4EF8                    mov cl, [ss:bp-8]
+   768 00000636 362A4EFA                    sub cl, [ss:bp-6]
+   769 0000063A 41                          inc cx
+   770 0000063B F3A5                        rep movsw
+   771 0000063D 36FE46EE                    inc byte [ss:bp-18]
+   772 00000641 36FE46ED                    inc byte [ss:bp-19]
+   773 00000645 368A46ED                    mov al, [ss:bp-19]
+   774 00000649 363A46F9                    cmp al, [ss:bp-7]
+   775 0000064D 76B3                        jbe .copy_row
+   776 0000064F 368A46F9                    mov al, [ss:bp-7]
+   777 00000653 362A46FE                    sub al, [ss:bp-2]
+   778 00000657 FEC0                        inc al
+   779 00000659 368846EC                    mov [ss:bp-20], al              ; first vacated row
+   780 0000065D EB0D                        jmp .fill
+   781                                  .clear_all:
+   782 0000065F 368A46FB                    mov al, [ss:bp-5]
+   783 00000663 368846EC                    mov [ss:bp-20], al
+   784 00000667 B800B8                      mov ax, VIDEO_SEG
+   785 0000066A 8EC0                        mov es, ax
+   786                                  .fill:
+   787 0000066C FC                          cld
+   788                                  .fill_row:
+   789 0000066D 31C0                        xor ax, ax
+   790 0000066F 368A46EC                    mov al, [ss:bp-20]
+   791 00000673 BBA000                      mov bx, 160
+   792 00000676 F7E3                        mul bx
+   793 00000678 89C7                        mov di, ax
+   794 0000067A 31C0                        xor ax, ax
+   795 0000067C 368A46FA                    mov al, [ss:bp-6]
+   796 00000680 D1E0                        shl ax, 1
+   797 00000682 01C7                        add di, ax
+   798 00000684 31C9                        xor cx, cx
+   799 00000686 368A4EF8                    mov cl, [ss:bp-8]
+   800 0000068A 362A4EFA                    sub cl, [ss:bp-6]
+   801 0000068E 41                          inc cx
+   802 0000068F B020                        mov al, 0x20
+   803 00000691 368A66FD                    mov ah, [ss:bp-3]
+   804 00000695 F3AB                        rep stosw
+   805 00000697 36FE46EC                    inc byte [ss:bp-20]
+   806 0000069B 368A46EC                    mov al, [ss:bp-20]
+   807 0000069F 363A46F9                    cmp al, [ss:bp-7]
+   808 000006A3 76C8                        jbe .fill_row
+   809 000006A5 83C404                      add sp, 4
+   810 000006A8 07                          pop es
+   811 000006A9 1F                          pop ds
+   812 000006AA 5F                          pop di
+   813 000006AB 5E                          pop si
+   814 000006AC 5A                          pop dx
+   815 000006AD 59                          pop cx
+   816 000006AE 5B                          pop bx
+   817 000006AF 58                          pop ax
+   818 000006B0 5D                          pop bp
+   819 000006B1 CF                          iret
+   820                                  video_scroll_down:
+   821 000006B2 55                          push bp
+   822 000006B3 89E5                        mov bp, sp
+   823 000006B5 50                          push ax
+   824 000006B6 53                          push bx
+   825 000006B7 51                          push cx
+   826 000006B8 52                          push dx
+   827 000006B9 56                          push si
+   828 000006BA 57                          push di
+   829 000006BB 1E                          push ds
+   830 000006BC 06                          push es
+   831 000006BD 83EC04                      sub sp, 4
+   832 000006C0 368A46F9                    mov al, [ss:bp-7]
+   833 000006C4 362A46FB                    sub al, [ss:bp-5]
+   834 000006C8 FEC0                        inc al
+   835 000006CA 368A5EFE                    mov bl, [ss:bp-2]
+   836 000006CE 84DB                        test bl, bl
+   837 000006D0 747F                        jz .clear_all
+   838 000006D2 38C3                        cmp bl, al
+   839 000006D4 737B                        jae .clear_all
+   840 000006D6 368A46F9                    mov al, [ss:bp-7]
+   841 000006DA 368846EE                    mov [ss:bp-18], al              ; destination row
+   842 000006DE 28D8                        sub al, bl
+   843 000006E0 368846ED                    mov [ss:bp-19], al              ; source row
+   844 000006E4 B800B8                      mov ax, VIDEO_SEG
+   845 000006E7 8ED8                        mov ds, ax
+   846 000006E9 8EC0                        mov es, ax
+   847 000006EB FD                          std
+   848                                  .copy_row:
+   849 000006EC 31C0                        xor ax, ax
+   850 000006EE 368A46EE                    mov al, [ss:bp-18]
+   851 000006F2 BBA000                      mov bx, 160
+   852 000006F5 F7E3                        mul bx
+   853 000006F7 89C7                        mov di, ax
+   854 000006F9 31C0                        xor ax, ax
+   855 000006FB 368A46F8                    mov al, [ss:bp-8]               ; right edge, copy backwards
+   856 000006FF D1E0                        shl ax, 1
+   857 00000701 01C7                        add di, ax
+   858 00000703 31C0                        xor ax, ax
+   859 00000705 368A46ED                    mov al, [ss:bp-19]
+   860 00000709 BBA000                      mov bx, 160
+   861 0000070C F7E3                        mul bx
+   862 0000070E 89C6                        mov si, ax
+   863 00000710 31C0                        xor ax, ax
+   864 00000712 368A46F8                    mov al, [ss:bp-8]
+   865 00000716 D1E0                        shl ax, 1
+   866 00000718 01C6                        add si, ax
+   867 0000071A 31C9                        xor cx, cx
+   868 0000071C 368A4EF8                    mov cl, [ss:bp-8]
+   869 00000720 362A4EFA                    sub cl, [ss:bp-6]
+   870 00000724 41                          inc cx
+   871 00000725 F3A5                        rep movsw
+   872 00000727 368A46ED                    mov al, [ss:bp-19]
+   873 0000072B 363A46FB                    cmp al, [ss:bp-5]
+   874 0000072F 740A                        je .copy_done
+   875 00000731 36FE4EEE                    dec byte [ss:bp-18]
+   876 00000735 36FE4EED                    dec byte [ss:bp-19]
+   877 00000739 EBB1                        jmp .copy_row
+   878                                  .copy_done:
+   879 0000073B 368A46FB                    mov al, [ss:bp-5]
+   880 0000073F 368846EC                    mov [ss:bp-20], al
+   881 00000743 368A5EFE                    mov bl, [ss:bp-2]
+   882 00000747 FECB                        dec bl
+   883 00000749 00C3                        add bl, al
+   884 0000074B 36885EED                    mov [ss:bp-19], bl              ; last vacated row
+   885 0000074F EB15                        jmp .fill
+   886                                  .clear_all:
+   887 00000751 368A46FB                    mov al, [ss:bp-5]
+   888 00000755 368846EC                    mov [ss:bp-20], al
+   889 00000759 368A46F9                    mov al, [ss:bp-7]
+   890 0000075D 368846ED                    mov [ss:bp-19], al
+   891 00000761 B800B8                      mov ax, VIDEO_SEG
+   892 00000764 8EC0                        mov es, ax
+   893                                  .fill:
+   894 00000766 FC                          cld
+   895                                  .fill_row:
+   896 00000767 31C0                        xor ax, ax
+   897 00000769 368A46EC                    mov al, [ss:bp-20]
+   898 0000076D BBA000                      mov bx, 160
+   899 00000770 F7E3                        mul bx
+   900 00000772 89C7                        mov di, ax
+   901 00000774 31C0                        xor ax, ax
+   902 00000776 368A46FA                    mov al, [ss:bp-6]
+   903 0000077A D1E0                        shl ax, 1
+   904 0000077C 01C7                        add di, ax
+   905 0000077E 31C9                        xor cx, cx
+   906 00000780 368A4EF8                    mov cl, [ss:bp-8]
+   907 00000784 362A4EFA                    sub cl, [ss:bp-6]
+   908 00000788 41                          inc cx
+   909 00000789 B020                        mov al, 0x20
+   910 0000078B 368A66FD                    mov ah, [ss:bp-3]
+   911 0000078F F3AB                        rep stosw
+   912 00000791 36FE46EC                    inc byte [ss:bp-20]
+   913 00000795 368A46EC                    mov al, [ss:bp-20]
+   914 00000799 363A46ED                    cmp al, [ss:bp-19]
+   915 0000079D 76C8                        jbe .fill_row
+   916 0000079F 83C404                      add sp, 4
+   917 000007A2 07                          pop es
+   918 000007A3 1F                          pop ds
+   919 000007A4 5F                          pop di
+   920 000007A5 5E                          pop si
+   921 000007A6 5A                          pop dx
+   922 000007A7 59                          pop cx
+   923 000007A8 5B                          pop bx
+   924 000007A9 58                          pop ax
+   925 000007AA 5D                          pop bp
+   926 000007AB CF                          iret
+   927                                  
+   928                                  video_get_mode:
+   929 000007AC 1E                          push ds
+   930 000007AD B84000                      mov ax, BDA_SEG
+   931 000007B0 8ED8                        mov ds, ax
+   932 000007B2 A04900                      mov al, [0x49]
+   933 000007B5 8A264A00                    mov ah, [0x4A]
+   934 000007B9 8A3E6200                    mov bh, [0x62]
+   935 000007BD 1F                          pop ds
+   936 000007BE CF                          iret
+   937                                  video_ega_query:
+   938 000007BF 80FB10                      cmp bl, 0x10
+   939 000007C2 7502                        jne .done
+   940 000007C4 B7FF                        mov bh, 0xFF                    ; no EGA feature connector
+   941                                  .done:
+   942 000007C6 CF                          iret
+   943                                  video_display_query:
+   944 000007C7 30C0                        xor al, al                      ; INT 10h/1Ah unsupported on CGA
+   945 000007C9 CF                          iret
+   946                                  
+   947                                  int11:
+   948 000007CA 1E                          push ds
+   949 000007CB B84000                      mov ax, BDA_SEG
+   950 000007CE 8ED8                        mov ds, ax
+   951 000007D0 A11000                      mov ax, [0x10]
+   952 000007D3 1F                          pop ds
+   953 000007D4 CF                          iret
+   954                                  
+   955 000007D5 B87F02                  int12: mov ax, 639
+   956 000007D8 CF                          iret
+   957                                  
+   958                                  ; Core disk BIOS. AH=00 reset, 02 read, 08 parameters.
+   959                                  int13:
+   960 000007D9 55                          push bp
+   961 000007DA 89E5                        mov bp, sp
+   962 000007DC 80FC00                      cmp ah, 0x00
+   963 000007DF 7440                        je .success
+   964 000007E1 80FC02                      cmp ah, 0x02
+   965 000007E4 7426                        je .read
+   966 000007E6 80FC08                      cmp ah, 0x08
+   967 000007E9 7404                        je .params
+   968 000007EB B401                        mov ah, 0x01
+   969 000007ED EB39                        jmp .failure
+   970                                  .params:
+   971 000007EF F6C280                      test dl, 0x80
+   972 000007F2 750C                        jnz .hd_params
+   973 000007F4 B54F                        mov ch, 79
+   974 000007F6 B112                        mov cl, 18
+   975 000007F8 B601                        mov dh, 1
+   976 000007FA B202                        mov dl, 2
+   977 000007FC 30E4                        xor ah, ah
+   978 000007FE EB21                        jmp .success
+   979                                  .hd_params:
+   980 00000800 B5FF                        mov ch, 255
+   981 00000802 B13F                        mov cl, 63
+   982 00000804 B60F                        mov dh, 15
+   983 00000806 B201                        mov dl, 1
+   984 00000808 30E4                        xor ah, ah
+   985 0000080A EB15                        jmp .success
+   986                                  .read:
+   987 0000080C F6C280                      test dl, 0x80
+   988 0000080F 7509                        jnz .ata_read
+   989 00000811 E83600                      call floppy_read
+   990 00000814 7212                        jc .failure
+   991 00000816 30E4                        xor ah, ah
+   992 00000818 EB07                        jmp .success
+   993                                  .ata_read:
+   994 0000081A E80801                      call ata_read_chs
+   995 0000081D 7209                        jc .failure
+   996 0000081F 30E4                        xor ah, ah
+   997                                  .success:
+   998 00000821 36836606FE                  and word [ss:bp+6], 0xFFFE
+   999 00000826 5D                          pop bp
+  1000 00000827 CF                          iret
+  1001                                  .failure:
+  1002 00000828 36834E0601                  or word [ss:bp+6], 1
+  1003 0000082D 5D                          pop bp
+  1004 0000082E CF                          iret
+  1005                                  
+  1006                                  ; AT system services used during DOS kernel initialization.
+  1007                                  int15:
+  1008 0000082F 55                          push bp
+  1009 00000830 89E5                        mov bp, sp
+  1010 00000832 80FC88                      cmp ah, 0x88                   ; extended memory above 1 MiB, in KiB
+  1011 00000835 7409                        je .extended_memory
+  1012 00000837 B486                        mov ah, 0x86                   ; unsupported function
+  1013 00000839 36834E0601                  or word [ss:bp+6], 1
+  1014 0000083E 5D                          pop bp
+  1015 0000083F CF                          iret
+  1016                                  .extended_memory:
+  1017 00000840 B8003C                      mov ax, 0x3C00                 ; 15 MiB = 15360 KiB
+  1018 00000843 36836606FE                  and word [ss:bp+6], 0xFFFE
+  1019 00000848 5D                          pop bp
+  1020 00000849 CF                          iret
+  1021                                  
+  1022                                  ; Read AL sectors from floppy CHS CH/DH/CL into ES:BX via DMA channel 2.
+  1023                                  floppy_read:
+  1024 0000084A 50                          push ax
+  1025 0000084B 53                          push bx
+  1026 0000084C 51                          push cx
+  1027 0000084D 52                          push dx
+  1028 0000084E 56                          push si
+  1029 0000084F 57                          push di
+  1030 00000850 1E                          push ds
+  1031                                  
+  1032                                      ; The 8237 cannot cross a 64 KiB page. Read one sector at a time into
+  1033                                      ; a fixed EBDA bounce buffer, then copy with the CPU to caller ES:BX.
+  1034 00000851 89C6                        mov si, ax
+  1035 00000853 89DF                        mov di, bx
+  1036 00000855 B8C09F                      mov ax, 0x9FC0
+  1037 00000858 8ED8                        mov ds, ax
+  1038 0000085A 882E0002                    mov [0x200], ch                 ; current cylinder
+  1039 0000085E 88360102                    mov [0x201], dh                 ; current head
+  1040 00000862 88C8                        mov al, cl
+  1041 00000864 243F                        and al, 0x3F
+  1042 00000866 A20202                      mov [0x202], al                 ; current sector
+  1043 00000869 88160302                    mov [0x203], dl                 ; drive
+  1044 0000086D 89F0                        mov ax, si
+  1045 0000086F A20402                      mov [0x204], al                 ; remaining sectors
+  1046                                  
+  1047                                  .next_sector:
+  1048 00000872 803E040200                  cmp byte [0x204], 0
+  1049 00000877 7503                        jne short .do_sector
+  1050 00000879 E9A000                      jmp .success
+  1051                                  
+  1052                                  .do_sector:
+  1053                                      ; DMA channel 2: device -> memory, 512 bytes at physical 9FC0:0000.
+  1054 0000087C 30C0                        xor al, al
+  1055 0000087E E60C                        out 0x0C, al
+  1056 00000880 B002                        mov al, 2
+  1057 00000882 E60A                        out 0x0A, al
+  1058 00000884 B046                        mov al, 0x46
+  1059 00000886 E60B                        out 0x0B, al
+  1060 00000888 B800FC                      mov ax, 0xFC00
+  1061 0000088B E604                        out 0x04, al
+  1062 0000088D 88E0                        mov al, ah
+  1063 0000088F E604                        out 0x04, al
+  1064 00000891 B009                        mov al, 9
+  1065 00000893 E681                        out 0x81, al
+  1066 00000895 B8FF01                      mov ax, 511
+  1067 00000898 E605                        out 0x05, al
+  1068 0000089A 88E0                        mov al, ah
+  1069 0000089C E605                        out 0x05, al
+  1070 0000089E B002                        mov al, 2
+  1071 000008A0 E60A                        out 0x0A, al
+  1072 000008A2 B01C                        mov al, 0x1C
+  1073 000008A4 BAF203                      mov dx, 0x3F2
+  1074 000008A7 EE                          out dx, al
+  1075 000008A8 BAF503                      mov dx, 0x3F5
+  1076 000008AB B0E6                        mov al, 0xE6
+  1077 000008AD EE                          out dx, al
+  1078 000008AE A00102                      mov al, [0x201]
+  1079 000008B1 C0E002                      shl al, 2
+  1080 000008B4 0A060302                    or al, [0x203]
+  1081 000008B8 EE                          out dx, al
+  1082 000008B9 A00002                      mov al, [0x200]
+  1083 000008BC EE                          out dx, al
+  1084 000008BD A00102                      mov al, [0x201]
+  1085 000008C0 EE                          out dx, al
+  1086 000008C1 A00202                      mov al, [0x202]
+  1087 000008C4 EE                          out dx, al
+  1088 000008C5 B002                        mov al, 2
+  1089 000008C7 EE                          out dx, al
+  1090 000008C8 A00202                      mov al, [0x202]                 ; EOT = this sector only
+  1091 000008CB EE                          out dx, al
+  1092 000008CC B01B                        mov al, 0x1B
+  1093 000008CE EE                          out dx, al
+  1094 000008CF B0FF                        mov al, 0xFF
+  1095 000008D1 EE                          out dx, al
+  1096                                      ; Controller completes synchronously in this substrate.
+  1097 000008D2 EC                          in al, dx
+  1098 000008D3 A8C0                        test al, 0xC0
+  1099 000008D5 753C                        jnz .discard_bad
+  1100 000008D7 B90600                      mov cx, 6
+  1101 000008DA EC                      .result: in al, dx
+  1102 000008DB E2FD                        loop .result
+  1103                                  
+  1104                                      ; Copy the bounce sector to the caller's buffer.
+  1105 000008DD 1E                          push ds
+  1106 000008DE B8C09F                      mov ax, 0x9FC0
+  1107 000008E1 8ED8                        mov ds, ax
+  1108 000008E3 31F6                        xor si, si
+  1109 000008E5 B90001                      mov cx, 256
+  1110 000008E8 FC                          cld
+  1111 000008E9 F3A5                        rep movsw
+  1112 000008EB 1F                          pop ds
+  1113                                  
+  1114 000008EC FE060202                    inc byte [0x202]
+  1115 000008F0 803E020213                  cmp byte [0x202], 19
+  1116 000008F5 7215                        jb .advance_done
+  1117 000008F7 C606020201                  mov byte [0x202], 1
+  1118 000008FC 8036010201                  xor byte [0x201], 1
+  1119 00000901 803E010200                  cmp byte [0x201], 0
+  1120 00000906 7504                        jne .advance_done
+  1121 00000908 FE060002                    inc byte [0x200]
+  1122                                  .advance_done:
+  1123 0000090C FE0E0402                    dec byte [0x204]
+  1124 00000910 E95FFF                      jmp .next_sector
+  1125                                  
+  1126                                  .discard_bad:
+  1127 00000913 B90600                      mov cx, 6
+  1128 00000916 EC                      .discard: in al, dx
+  1129 00000917 E2FD                        loop .discard
+  1130 00000919 F9                          stc
+  1131 0000091A EB01                        jmp .done
+  1132                                  .success:
+  1133 0000091C F8                          clc
+  1134                                  .done:
+  1135 0000091D 1F                          pop ds
+  1136 0000091E 5F                          pop di
+  1137 0000091F 5E                          pop si
+  1138 00000920 5A                          pop dx
+  1139 00000921 59                          pop cx
+  1140 00000922 5B                          pop bx
+  1141 00000923 58                          pop ax
+  1142 00000924 C3                          ret
+  1143                                  
+  1144                                  ; Minimal LBA-compatible CHS path for the emulated ATA master.
+  1145                                  ata_read_chs:
+  1146 00000925 50                          push ax
+  1147 00000926 53                          push bx
+  1148 00000927 51                          push cx
+  1149 00000928 52                          push dx
+  1150 00000929 56                          push si
+  1151 0000092A 57                          push di
+  1152 0000092B 89C6                        mov si, ax
+  1153                                      ; LBA = ((cylinder * 16 + head) * 63) + sector - 1
+  1154 0000092D 31C0                        xor ax, ax
+  1155 0000092F 88E8                        mov al, ch
+  1156 00000931 BF1000                      mov di, 16
+  1157 00000934 F7E7                        mul di
+  1158 00000936 31FF                        xor di, di
+  1159 00000938 89D7                        mov di, dx
+  1160 0000093A 83E70F                      and di, 0x000F
+  1161 0000093D 01F8                        add ax, di
+  1162 0000093F BF3F00                      mov di, 63
+  1163 00000942 F7E7                        mul di
+  1164 00000944 89CF                        mov di, cx
+  1165 00000946 83E73F                      and di, 0x003F
+  1166 00000949 4F                          dec di
+  1167 0000094A 01F8                        add ax, di
+  1168 0000094C 89C7                        mov di, ax
+  1169 0000094E BAF601                      mov dx, 0x1F6
+  1170 00000951 B0E0                        mov al, 0xE0
+  1171 00000953 EE                          out dx, al
+  1172 00000954 BAF201                      mov dx, 0x1F2
+  1173 00000957 89F0                        mov ax, si
+  1174 00000959 EE                          out dx, al
+  1175 0000095A 42                          inc dx
+  1176 0000095B 89F8                        mov ax, di
+  1177 0000095D EE                          out dx, al
+  1178 0000095E 42                          inc dx
+  1179 0000095F 88E0                        mov al, ah
+  1180 00000961 EE                          out dx, al
+  1181 00000962 42                          inc dx
+  1182 00000963 30C0                        xor al, al
+  1183 00000965 EE                          out dx, al
+  1184 00000966 83C202                      add dx, 2
+  1185 00000969 B020                        mov al, 0x20
+  1186 0000096B EE                          out dx, al
+  1187 0000096C EC                          in al, dx
+  1188 0000096D A801                        test al, 1
+  1189 0000096F 7517                        jnz .bad
+  1190 00000971 89DF                        mov di, bx
+  1191 00000973 89F1                        mov cx, si
+  1192 00000975 81E1FF00                    and cx, 0x00FF
+  1193 00000979 B80001                      mov ax, 256
+  1194 0000097C F7E1                        mul cx
+  1195 0000097E 89C1                        mov cx, ax
+  1196 00000980 BAF001                      mov dx, 0x1F0
+  1197 00000983 F36D                        rep insw
+  1198 00000985 F8                          clc
+  1199 00000986 EB01                        jmp .done
+  1200 00000988 F9                      .bad: stc
+  1201                                  .done:
+  1202 00000989 5F                          pop di
+  1203 0000098A 5E                          pop si
+  1204 0000098B 5A                          pop dx
+  1205 0000098C 59                          pop cx
+  1206 0000098D 5B                          pop bx
+  1207 0000098E 58                          pop ax
+  1208 0000098F C3                          ret
+  1209                                  
+  1210                                  int16:
+  1211 00000990 80FC00                      cmp ah, 0
+  1212 00000993 741C                        je .read
+  1213 00000995 80FC01                      cmp ah, 1
+  1214 00000998 7440                        je .peek
+  1215 0000099A 80FC02                      cmp ah, 2
+  1216 0000099D 7461                        je .shift_status
+  1217 0000099F 80FC10                      cmp ah, 0x10
+  1218 000009A2 740D                        je .read
+  1219 000009A4 80FC11                      cmp ah, 0x11
+  1220 000009A7 7431                        je .peek
+  1221 000009A9 80FC12                      cmp ah, 0x12
+  1222 000009AC 7452                        je .shift_status
+  1223 000009AE 30E4                        xor ah, ah
+  1224 000009B0 CF                          iret
+  1225                                  .read:
+  1226 000009B1 53                          push bx
+  1227 000009B2 1E                          push ds
+  1228                                  .wait_key:
+  1229 000009B3 B84000                      mov ax, BDA_SEG
+  1230 000009B6 8ED8                        mov ds, ax
+  1231 000009B8 8B1E1A00                    mov bx, [0x1A]
+  1232 000009BC 3B1E1C00                    cmp bx, [0x1C]
+  1233 000009C0 7504                        jne .dequeue
+  1234 000009C2 FB                          sti
+  1235 000009C3 F4                          hlt
+  1236 000009C4 EBED                        jmp .wait_key
+  1237                                  .dequeue:
+  1238 000009C6 8B07                        mov ax, [bx]
+  1239 000009C8 83C302                      add bx, 2
+  1240 000009CB 83FB3E                      cmp bx, 0x3E
+  1241 000009CE 7203                        jb .save_head
+  1242 000009D0 BB1E00                      mov bx, 0x1E
+  1243                                  .save_head:
+  1244 000009D3 891E1A00                    mov [0x1A], bx
+  1245 000009D7 1F                          pop ds
+  1246 000009D8 5B                          pop bx
+  1247 000009D9 CF                          iret
+  1248                                  .peek:
+  1249 000009DA 55                          push bp
+  1250 000009DB 89E5                        mov bp, sp
+  1251 000009DD 53                          push bx
+  1252 000009DE 1E                          push ds
+  1253 000009DF BB4000                      mov bx, BDA_SEG
+  1254 000009E2 8EDB                        mov ds, bx
+  1255 000009E4 8B1E1A00                    mov bx, [0x1A]
+  1256 000009E8 3B1E1C00                    cmp bx, [0x1C]
+  1257 000009EC 7409                        je .none
+  1258 000009EE 8B07                        mov ax, [bx]
+  1259 000009F0 36836606BF                  and word [ss:bp+6], 0xFFBF
+  1260 000009F5 EB05                        jmp .peek_done
+  1261                                  .none:
+  1262 000009F7 36834E0640                  or word [ss:bp+6], 0x0040
+  1263                                  .peek_done:
+  1264 000009FC 1F                          pop ds
+  1265 000009FD 5B                          pop bx
+  1266 000009FE 5D                          pop bp
+  1267 000009FF CF                          iret
+  1268                                  .shift_status:
+  1269 00000A00 1E                          push ds
+  1270 00000A01 B84000                      mov ax, BDA_SEG
+  1271 00000A04 8ED8                        mov ds, ax
+  1272 00000A06 A01700                      mov al, [0x17]
+  1273 00000A09 30E4                        xor ah, ah
+  1274 00000A0B 1F                          pop ds
+  1275 00000A0C CF                          iret
+  1276                                  
+  1277                                  int1a:
+  1278 00000A0D 1E                          push ds
+  1279 00000A0E B84000                      mov ax, BDA_SEG
+  1280 00000A11 8ED8                        mov ds, ax
+  1281 00000A13 8B166C00                    mov dx, [0x6C]
+  1282 00000A17 8B0E6E00                    mov cx, [0x6E]
+  1283 00000A1B 30C0                        xor al, al
+  1284 00000A1D 1F                          pop ds
+  1285 00000A1E CF                          iret
+  1286                                  
+  1287                                  int19:
+  1288 00000A1F FA                          cli
+  1289 00000A20 31C0                        xor ax, ax
+  1290 00000A22 8EC0                        mov es, ax
+  1291 00000A24 BB007C                      mov bx, 0x7C00
+  1292 00000A27 B80102                      mov ax, 0x0201
+  1293 00000A2A 31C9                        xor cx, cx
+  1294 00000A2C B101                        mov cl, 1
+  1295 00000A2E 31D2                        xor dx, dx
+  1296 00000A30 CD13                        int 0x13
+  1297 00000A32 7209                        jc .harddisk
+  1298 00000A34 26813EFE7D55AA              cmp word [es:0x7DFE], 0xAA55
+  1299 00000A3B 7419                        je .floppy_go
+  1300                                  .harddisk:
+  1301 00000A3D B80102                      mov ax, 0x0201
+  1302 00000A40 B90100                      mov cx, 1
+  1303 00000A43 30F6                        xor dh, dh
+  1304 00000A45 B280                        mov dl, 0x80
+  1305 00000A47 CD13                        int 0x13
+  1306 00000A49 721F                        jc .failed
+  1307 00000A4B 26813EFE7D55AA              cmp word [es:0x7DFE], 0xAA55
+  1308 00000A52 7516                        jne .failed
+  1309 00000A54 EB02                        jmp .go
+  1310                                  .floppy_go:
+  1311 00000A56 30D2                        xor dl, dl
+  1312                                  .go:
+  1313 00000A58 E8A0F6                      call clear_screen                ; clean boot handoff, as period BIOSes did
+  1314 00000A5B 31C0                        xor ax, ax
+  1315 00000A5D 8ED8                        mov ds, ax
+  1316 00000A5F 8ED0                        mov ss, ax
+  1317 00000A61 BC007C                      mov sp, 0x7C00
+  1318 00000A64 FB                          sti
+  1319 00000A65 EA007C0000                  jmp 0x0000:0x7C00
+  1320                                  .failed:
+  1321 00000A6A 0E                          push cs
+  1322 00000A6B 1F                          pop ds
+  1323 00000A6C BE[FE0B]                    mov si, boot_fail
+  1324 00000A6F E8C4F6                      call print
+  1325 00000A72 FB                          sti
+  1326 00000A73 F4                      .wait: hlt
+  1327 00000A74 EBFD                        jmp .wait
+  1328                                  
+  1329 00000A76 00                      dummy db 0
+  1330 00000A77 0A20202B2D2D2D2D2D-     logo db 10,'  +----------------------------------------------------------+',10
+  1330 00000A80 2D2D2D2D2D2D2D2D2D-
+  1330 00000A89 2D2D2D2D2D2D2D2D2D-
+  1330 00000A92 2D2D2D2D2D2D2D2D2D-
+  1330 00000A9B 2D2D2D2D2D2D2D2D2D-
+  1330 00000AA4 2D2D2D2D2D2D2D2D2D-
+  1330 00000AAD 2D2D2D2D2D2D2D2D2B-
+  1330 00000AB6 0A                 
+  1331 00000AB7 20207C202020202020-          db '  |             V I R T U A L   C O M P U T E R              |',10
+  1331 00000AC0 202020202020205620-
+  1331 00000AC9 492052205420552041-
+  1331 00000AD2 204C20202043204F20-
+  1331 00000ADB 4D2050205520542045-
+  1331 00000AE4 205220202020202020-
+  1331 00000AED 202020202020207C0A 
+  1332 00000AF6 20207C202020202020-          db '  |                    PC/AT SYSTEM BIOS                      |',10
+  1332 00000AFF 202020202020202020-
+  1332 00000B08 202020202050432F41-
+  1332 00000B11 542053595354454D20-
+  1332 00000B1A 42494F532020202020-
+  1332 00000B23 202020202020202020-
+  1332 00000B2C 20202020202020207C-
+  1332 00000B35 0A                 
+  1333 00000B36 20202B2D2D2D2D2D2D-          db '  +----------------------------------------------------------+',10,10,0
+  1333 00000B3F 2D2D2D2D2D2D2D2D2D-
+  1333 00000B48 2D2D2D2D2D2D2D2D2D-
+  1333 00000B51 2D2D2D2D2D2D2D2D2D-
+  1333 00000B5A 2D2D2D2D2D2D2D2D2D-
+  1333 00000B63 2D2D2D2D2D2D2D2D2D-
+  1333 00000B6C 2D2D2D2D2D2D2D2B0A-
+  1333 00000B75 0A00               
+  1334 00000B77 202038303238362070-     post_text db '  80286 processor test ........ OK',10
+  1334 00000B80 726F636573736F7220-
+  1334 00000B89 74657374202E2E2E2E-
+  1334 00000B92 2E2E2E2E204F4B0A   
+  1335 00000B9A 2020363339204B4220-               db '  639 KB conventional memory .. OK',10
+  1335 00000BA3 636F6E76656E74696F-
+  1335 00000BAC 6E616C206D656D6F72-
+  1335 00000BB5 79202E2E204F4B0A   
+  1336 00000BBD 2020496E697469616C-               db '  Initializing system hardware  ...',10
+  1336 00000BC6 697A696E6720737973-
+  1336 00000BCF 74656D206861726477-
+  1336 00000BD8 61726520202E2E2E0A 
+  1337 00000BE1 202053656172636869-               db '  Searching for boot media',10,10,0
+  1337 00000BEA 6E6720666F7220626F-
+  1337 00000BF3 6F74206D656469610A-
+  1337 00000BFC 0A00               
+  1338 00000BFE 20204E6F20626F6F74-     boot_fail db '  No bootable disk was found.',10,10
+  1338 00000C07 61626C65206469736B-
+  1338 00000C10 2077617320666F756E-
+  1338 00000C19 642E0A0A           
+  1339 00000C1D 20204D6F756E742061-               db '  Mount a bootable .IMA/.IMG floppy or hard-disk image,',10
+  1339 00000C26 20626F6F7461626C65-
+  1339 00000C2F 202E494D412F2E494D-
+  1339 00000C38 4720666C6F70707920-
+  1339 00000C41 6F7220686172642D64-
+  1339 00000C4A 69736B20696D616765-
+  1339 00000C53 2C0A               
+  1340 00000C55 20206F7220616E2049-               db '  or an ISO CD-ROM, then reset the machine.',10,0
+  1340 00000C5E 534F2043442D524F4D-
+  1340 00000C67 2C207468656E207265-
+  1340 00000C70 73657420746865206D-
+  1340 00000C79 616368696E652E0A00 
+  1341                                  
+  1342 00000C82 FF<rep F36Eh>           times 0xFFF0-($-$$) db 0xFF
+  1343 0000FFF0 EA[0000]00F0            reset_vector: jmp 0xF000:start
+  1344 0000FFF5 FF<rep Bh>              times 0x10000-($-$$) db 0xFF

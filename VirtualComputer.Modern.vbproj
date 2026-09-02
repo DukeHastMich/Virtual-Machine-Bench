@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>WindowsApplication1</RootNamespace>
+    <StartupObject>WindowsApplication1.Program</StartupObject>
+    <PlatformTarget>x64</PlatformTarget>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionStrict>Off</OptionStrict>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <ApplicationIcon />
+  </PropertyGroup>
+  <ItemGroup>
+    <Import Include="System.Drawing" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Firmware\atbios.rom" Link="Firmware\atbios.rom" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="bin\Debug\Roms\*.ROM" Link="Roms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="On-Screen-Keyboard.Designer.vb" />
+    <Compile Include="On-Screen-Keyboard.vb" />
+    <Compile Include="Program.vb" />
+    <Compile Include="BiosCalls.vb" />
+    <Compile Include="CGAcard.vb" />
+    <Compile Include="Declares.vb" />
+    <Compile Include="FloppyMedia.vb" />
+    <Compile Include="FloppyController.vb" />
+    <Compile Include="Form1.vb" /> 
+    <Compile Include="Form1.Designer.vb">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </Compile>
+    <Compile Include="HardwareBus.vb" />
+    <Compile Include="LegacyIoPorts.vb" />
+    <Compile Include="Ne2000Isa.vb" />
+    <Compile Include="SoundBlaster16Isa.vb" />
+    <Compile Include="EpsonFxVirtualPrinter.vb" />
+    <Compile Include="IdeController.vb" />
+    <Compile Include="KeyboardRealityDiagnostics.vb" />
+    <Compile Include="SuperIoRealityDiagnostics.vb" />
+    <Compile Include="AtKeyboard101.vb" />
+    <Compile Include="MotherboardDevices.vb" />
+    <Compile Include="ProcessorCore.vb" />
+    <Compile Include="ScreenModes.vb" />
+    <Compile Include="StorageDevices.vb" />
+    <Compile Include="SystemRoms.vb" />
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>true</AutoGen>
+      <DesignTime>true</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>true</AutoGen>
+      <DesignTimeSharedInput>true</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  <Compile Include="MachineTiming.vb" /><Compile Include="ProcessorTiming.vb" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ChassisPanelForm.resx" />
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="On-Screen-Keyboard.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="DiamondStealthPro928.vb" />
+    <None Update="Firmware\stealthpro.rom"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="IdeDriveShelf.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CrtPresenter.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MachineConfiguration.vb" />
+    <Compile Include="IsaCardJumperPanels.vb" />
+    <Compile Include="SystemConfigurationDrawer.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="FrontPanelState.vb" />
+    <Compile Include="ChassisPanelForm.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SneakerNet.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Intel80287.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PcSpeakerAudio.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MediaWorkbenchSupport.vb" />
+  </ItemGroup>
+</Project>
+

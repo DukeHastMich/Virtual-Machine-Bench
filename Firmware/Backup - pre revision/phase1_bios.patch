@@ -1,0 +1,1019 @@
+--- /mnt/data/atbios.asm	2026-08-06 14:36:54.492325763 +0000
++++ /mnt/data/atbios_phase1.asm	2026-08-06 14:54:59.679195863 +0000
+@@ -5,6 +5,30 @@
+ 
+ %define BDA_SEG 0x0040
+ %define VIDEO_SEG 0xB800
++%define EBDA_SEG 0x9FC0
++
++; Standard BIOS data-area disk fields.
++%define BDA_DISKETTE_STATUS 0x0041
++%define BDA_HDD_STATUS      0x0074
++%define BDA_HDD_COUNT       0x0075
++
++; Private disk workspace near the end of the 1 KiB EBDA.  The first 512
++; bytes remain available as a sector/IDENTIFY bounce buffer.
++%define HDW_CYLINDER        0x03C0
++%define HDW_BUFFER          0x03C2
++%define HDW_HEAD            0x03C4
++%define HDW_SECTOR          0x03C5
++%define HDW_REMAINING       0x03C6
++%define HDW_COMPLETED       0x03C7
++%define HDW_MODE            0x03C8
++%define HDW_ERROR           0x03C9
++
++%define HD_CYLINDERS        0x03E0
++%define HD_TOTAL_LOW        0x03E2
++%define HD_TOTAL_HIGH       0x03E4
++%define HD_HEADS            0x03E6
++%define HD_SECTORS_TRACK    0x03E7
++%define HD_PRESENT          0x03E8
+ 
+ start:
+     cli
+@@ -45,7 +69,7 @@
+     mov cx, 128
+     rep stosw
+     mov word [es:0x0E], 0x9FC0       ; 1 KiB EBDA segment
+-    mov word [es:0x10], 0x0021       ; equipment: display + floppy
++    mov word [es:0x10], 0x0061       ; CGA 80x25 plus two floppy drives
+     mov word [es:0x13], 639          ; conventional KiB (top 1 KiB reserved EBDA)
+     mov word [es:0x1A], 0x001E       ; keyboard ring head
+     mov word [es:0x1C], 0x001E       ; keyboard ring tail
+@@ -55,6 +79,9 @@
+     mov word [es:0x4E], 0            ; active-page display offset
+     mov word [es:0x60], 0x0607       ; cursor start/end scan lines
+     mov byte [es:0x62], 0            ; active display page
++    mov byte [es:BDA_DISKETTE_STATUS], 0
++    mov byte [es:BDA_HDD_STATUS], 0
++    mov byte [es:BDA_HDD_COUNT], 0
+ 
+     ; Master/slave 8259 and 18.2 Hz PIT.
+     mov al, 0x11
+@@ -81,6 +108,10 @@
+     out 0x40, al
+     out 0x40, al
+ 
++    ; Detect the ATA master and cache a CHS geometry that matches the
++    ; controller's 16-head/63-sector translation.
++    call ata_detect
++
+     call reset_cga_start
+     call clear_screen
+     push cs
+@@ -955,54 +986,292 @@
+ int12: mov ax, 639
+     iret
+ 
+-; Core disk BIOS. AH=00 reset, 02 read, 08 parameters.
++; Core disk BIOS for DOS-era CHS callers.
++; AH=00 reset, 01 status, 02 read, 03 write, 04 verify, 08 parameters,
++;    0C seek, 10 ready, 15 drive type/capacity.
+ int13:
+     push bp
+     mov bp, sp
++    sub sp, 2
++    mov [ss:bp-2], dx               ; preserve the original drive number
++
+     cmp ah, 0x00
+-    je .success
++    je .reset
++    cmp ah, 0x01
++    je .status
+     cmp ah, 0x02
+     je .read
++    cmp ah, 0x03
++    je .write
++    cmp ah, 0x04
++    je .verify
+     cmp ah, 0x08
+     je .params
+-    mov ah, 0x01
++    cmp ah, 0x09
++    je .ready
++    cmp ah, 0x0C
++    je .seek
++    cmp ah, 0x0D
++    je .reset
++    cmp ah, 0x10
++    je .ready
++    cmp ah, 0x11
++    je .seek
++    cmp ah, 0x14
++    je .ready
++    cmp ah, 0x15
++    je .drive_type
++    mov ah, 0x01                    ; invalid function
+     jmp .failure
+-.params:
+-    test dl, 0x80
+-    jnz .hd_params
+-    mov ch, 79
+-    mov cl, 18
+-    mov dh, 1
+-    mov dl, 2
++
++.reset:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .reset_hard_disk
++    cmp al, 2
++    jae .drive_not_ready
++    mov dx, 0x3F2
++    xor al, al
++    out dx, al
++    mov al, 0x0C
++    out dx, al
+     xor ah, ah
+     jmp .success
+-.hd_params:
+-    mov ch, 255
+-    mov cl, 63
+-    mov dh, 15
+-    mov dl, 1
++.reset_hard_disk:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_drive_present
++    jc .drive_not_ready
++    mov dx, 0x3F6
++    mov al, 0x06                    ; nIEN + software reset
++    out dx, al
++    mov al, 0x02                    ; release reset, keep interrupts disabled
++    out dx, al
+     xor ah, ah
+     jmp .success
++
++.status:
++    mov al, [ss:bp-2]
++    cmp al, 2
++    jb .get_status
++    cmp al, 0x80
++    jne .drive_not_ready
++.get_status:
++    push bx
++    mov bl, al
++    call bios_get_disk_status
++    pop bx
++    test ah, ah
++    jnz .failure
++    jmp .success
++
+ .read:
+-    test dl, 0x80
+-    jnz .ata_read
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .read_hard_disk
++    cmp al, 2
++    jae .drive_not_ready
+     call floppy_read
+-    jc .failure
++    jc .controller_failure
+     xor ah, ah
+     jmp .success
+-.ata_read:
+-    call ata_read_chs
+-    jc .failure
++.read_hard_disk:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_transfer_chs
++    jc .ata_failure
+     xor ah, ah
+-.success:
+-    and word [ss:bp+6], 0xFFFE
+-    pop bp
+-    iret
++    jmp .success
++
++.write:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .write_hard_disk
++    cmp al, 2
++    jae .drive_not_ready
++    call floppy_write
++    jc .controller_failure
++    xor ah, ah
++    jmp .success
++.write_hard_disk:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_transfer_chs
++    jc .ata_failure
++    xor ah, ah
++    jmp .success
++
++.verify:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .verify_hard_disk
++    cmp al, 2
++    jae .drive_not_ready
++    ; The emulated floppy controller validates sectors during normal reads.
++    ; DOS installation does not require a destructive or buffer-altering
++    ; floppy verify, so report ready here.
++    xor ah, ah
++    jmp .success
++.verify_hard_disk:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_transfer_chs
++    jc .ata_failure
++    xor ah, ah
++    jmp .success
++
++.params:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .hard_disk_params
++    cmp al, 2
++    jae .drive_not_ready
++    mov ch, 79                     ; 80 cylinders, maximum index 79
++    mov cl, 18                     ; 18 sectors per track
++    mov dh, 1                      ; two heads, maximum index 1
++    mov dl, 2                      ; two BIOS diskette drive numbers
++    mov bl, 4                      ; 1.44 MB drive type
++    push cs
++    pop es
++    mov di, floppy_dpt
++    xor ah, ah
++    jmp .success
++.hard_disk_params:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_drive_present
++    jc .drive_not_ready
++    push ds
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov ax, [HD_CYLINDERS]
++    dec ax                         ; INT 13h returns the maximum cylinder
++    mov ch, al
++    mov cl, [HD_SECTORS_TRACK]
++    mov bl, ah
++    and bl, 3
++    shl bl, 6
++    or cl, bl
++    mov dh, [HD_HEADS]
++    dec dh
++    mov dl, 1
++    pop ds
++    xor ah, ah
++    jmp .success
++
++.seek:
++.ready:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .ready_hard_disk
++    cmp al, 2
++    jae .drive_not_ready
++    xor ah, ah
++    jmp .success
++.ready_hard_disk:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_drive_present
++    jc .drive_not_ready
++    xor ah, ah
++    jmp .success
++
++.drive_type:
++    mov al, [ss:bp-2]
++    test al, 0x80
++    jnz .hard_disk_type
++    cmp al, 2
++    jae .drive_not_ready
++    mov ah, 1                      ; diskette, no change-line support promised
++    jmp .success
++.hard_disk_type:
++    cmp al, 0x80
++    jne .drive_not_ready
++    call ata_drive_present
++    jc .drive_not_ready
++    push ds
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov dx, [HD_TOTAL_LOW]
++    mov cx, [HD_TOTAL_HIGH]
++    pop ds
++    mov ah, 3                      ; fixed disk; CX:DX contains 512-byte sectors
++    jmp .success
++
++.ata_failure:
++    call ata_get_last_error
++    test ah, ah
++    jnz .failure
++.controller_failure:
++    mov ah, 0x20
++    jmp .failure
++.drive_not_ready:
++    mov ah, 0xAA
++
+ .failure:
++    push ax
++    push bx
++    mov al, ah
++    mov bl, [ss:bp-2]
++    call bios_set_disk_status
++    pop bx
++    pop ax
++    xor al, al
+     or word [ss:bp+6], 1
++    mov sp, bp
++    pop bp
++    iret
++
++.success:
++    push ax
++    push bx
++    xor al, al
++    mov bl, [ss:bp-2]
++    call bios_set_disk_status
++    pop bx
++    pop ax
++    and word [ss:bp+6], 0xFFFE
++    mov sp, bp
+     pop bp
+     iret
+ 
++; AL=status, BL=original BIOS drive.  All registers are preserved.
++bios_set_disk_status:
++    push ax
++    push bx
++    push ds
++    mov bh, al
++    mov ax, BDA_SEG
++    mov ds, ax
++    test bl, 0x80
++    jnz .hard_disk
++    mov [BDA_DISKETTE_STATUS], bh
++    jmp .done
++.hard_disk:
++    mov [BDA_HDD_STATUS], bh
++.done:
++    pop ds
++    pop bx
++    pop ax
++    ret
++
++; BL=original BIOS drive; returns AH=last status.  AL is scratch.
++bios_get_disk_status:
++    push bx
++    push ds
++    mov ax, BDA_SEG
++    mov ds, ax
++    test bl, 0x80
++    jnz .hard_disk
++    mov ah, [BDA_DISKETTE_STATUS]
++    jmp .done
++.hard_disk:
++    mov ah, [BDA_HDD_STATUS]
++.done:
++    pop ds
++    pop bx
++    ret
++
+ ; AT system services used during DOS kernel initialization.
+ int15:
+     push bp
+@@ -1053,9 +1322,9 @@
+     ; DMA channel 2: device -> memory, 512 bytes at physical 9FC0:0000.
+     xor al, al
+     out 0x0C, al
+-    mov al, 2
++    mov al, 6                      ; mask DMA channel 2 while programming
+     out 0x0A, al
+-    mov al, 0x46
++    mov al, 0x46                   ; single, device-to-memory, channel 2
+     out 0x0B, al
+     mov ax, 0xFC00
+     out 0x04, al
+@@ -1069,7 +1338,14 @@
+     out 0x05, al
+     mov al, 2
+     out 0x0A, al
+-    mov al, 0x1C
++    mov al, [0x203]
++    cmp al, 1
++    jne .motor_a
++    mov al, 0x2D                    ; motor B, DMA/IRQ enabled, drive B selected
++    jmp .motor_ready
++.motor_a:
++    mov al, 0x1C                    ; motor A, DMA/IRQ enabled, drive A selected
++.motor_ready:
+     mov dx, 0x3F2
+     out dx, al
+     mov dx, 0x3F5
+@@ -1141,64 +1417,426 @@
+     pop ax
+     ret
+ 
+-; Minimal LBA-compatible CHS path for the emulated ATA master.
+-ata_read_chs:
++; Write AL sectors from ES:BX to floppy CHS CH/DH/CL through DMA channel 2.
++floppy_write:
+     push ax
+     push bx
+     push cx
+     push dx
+     push si
+     push di
++    push ds
++    push es
++
+     mov si, ax
+-    ; LBA = ((cylinder * 16 + head) * 63) + sector - 1
+-    xor ax, ax
+-    mov al, ch
+-    mov di, 16
+-    mul di
++    mov di, bx
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov [0x200], ch                 ; current cylinder
++    mov [0x201], dh                 ; current head
++    mov al, cl
++    and al, 0x3F
++    mov [0x202], al                 ; current sector
++    mov [0x203], dl                 ; drive
++    mov ax, si
++    mov [0x204], al                 ; remaining sectors
++
++.next_sector:
++    cmp byte [0x204], 0
++    je .success
++
++    ; Copy one caller sector into the EBDA bounce buffer.
++    push es
++    push ds
++    push es
++    pop ds                          ; DS = caller ES
++    mov si, di
++    mov ax, EBDA_SEG
++    mov es, ax
+     xor di, di
+-    mov di, dx
+-    and di, 0x000F
+-    add ax, di
+-    mov di, 63
+-    mul di
+-    mov di, cx
+-    and di, 0x003F
+-    dec di
+-    add ax, di
+-    mov di, ax
++    mov cx, 256
++    cld
++    rep movsw
++    mov bx, si                      ; next caller offset
++    pop ds                          ; DS = EBDA
++    pop es                          ; ES = caller segment
++    mov di, bx
++
++    xor al, al
++    out 0x0C, al
++    mov al, 6                      ; mask DMA channel 2
++    out 0x0A, al
++    mov al, 0x4A                   ; single, memory-to-device, channel 2
++    out 0x0B, al
++    mov ax, 0xFC00
++    out 0x04, al
++    mov al, ah
++    out 0x04, al
++    mov al, 9
++    out 0x81, al
++    mov ax, 511
++    out 0x05, al
++    mov al, ah
++    out 0x05, al
++    mov al, 2                      ; unmask DMA channel 2
++    out 0x0A, al
++
++    mov al, [0x203]
++    cmp al, 1
++    jne .motor_a
++    mov al, 0x2D                    ; motor B, DMA/IRQ enabled, drive B selected
++    jmp .motor_ready
++.motor_a:
++    mov al, 0x1C                    ; motor A, DMA/IRQ enabled, drive A selected
++.motor_ready:
++    mov dx, 0x3F2
++    out dx, al
++    mov dx, 0x3F5
++    mov al, 0xC5                   ; MFM WRITE DATA
++    out dx, al
++    mov al, [0x201]
++    shl al, 2
++    or al, [0x203]
++    out dx, al
++    mov al, [0x200]
++    out dx, al
++    mov al, [0x201]
++    out dx, al
++    mov al, [0x202]
++    out dx, al
++    mov al, 2
++    out dx, al
++    mov al, [0x202]
++    out dx, al
++    mov al, 0x1B
++    out dx, al
++    mov al, 0xFF
++    out dx, al
++
++    in al, dx                       ; ST0
++    test al, 0xC0
++    jnz .discard_bad
++    mov cx, 6
++.result:
++    in al, dx
++    loop .result
++
++    inc byte [0x202]
++    cmp byte [0x202], 19
++    jb .advance_done
++    mov byte [0x202], 1
++    xor byte [0x201], 1
++    cmp byte [0x201], 0
++    jne .advance_done
++    inc byte [0x200]
++.advance_done:
++    dec byte [0x204]
++    jmp .next_sector
++
++.discard_bad:
++    mov cx, 6
++.discard:
++    in al, dx
++    loop .discard
++    stc
++    jmp .done
++.success:
++    clc
++.done:
++    pop es
++    pop ds
++    pop di
++    pop si
++    pop dx
++    pop cx
++    pop bx
++    pop ax
++    ret
++
++; Detect the ATA master and cache geometry/capacity in the EBDA.
++ata_detect:
++    push ax
++    push bx
++    push cx
++    push dx
++    push di
++    push ds
++    push es
++
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov byte [HD_PRESENT], 0
++    mov word [HD_CYLINDERS], 0
++    mov byte [HD_HEADS], 0
++    mov byte [HD_SECTORS_TRACK], 0
++    mov word [HD_TOTAL_LOW], 0
++    mov word [HD_TOTAL_HIGH], 0
++
++    mov ax, BDA_SEG
++    mov es, ax
++    mov byte [es:BDA_HDD_COUNT], 0
++    mov byte [es:BDA_HDD_STATUS], 0
++
++    mov dx, 0x3F6
++    mov al, 0x02                    ; disable ATA interrupts; BIOS uses polling
++    out dx, al
+     mov dx, 0x1F6
+-    mov al, 0xE0
++    mov al, 0xA0                    ; master, CHS mode
+     out dx, al
+     mov dx, 0x1F2
+-    mov ax, si
++    xor al, al
+     out dx, al
+     inc dx
+-    mov ax, di
+     out dx, al
+     inc dx
+-    mov al, ah
+     out dx, al
+     inc dx
+-    xor al, al
+     out dx, al
+-    add dx, 2
+-    mov al, 0x20
++    mov dx, 0x1F7
++    mov al, 0xEC                    ; IDENTIFY DEVICE
+     out dx, al
+-    in al, dx
+-    test al, 1
+-    jnz .bad
+-    mov di, bx
+-    mov cx, si
+-    and cx, 0x00FF
+-    mov ax, 256
+-    mul cx
+-    mov cx, ax
++    call ata_wait_drq
++    jc .done
++
++    mov ax, EBDA_SEG
++    mov es, ax
++    xor di, di
++    mov cx, 256
+     mov dx, 0x1F0
++    cld
+     rep insw
++    call ata_wait_complete
++    jc .done
++
++    ; IDENTIFY words 1, 3, and 6 contain the translated CHS geometry.
++    mov ax, [2]
++    test ax, ax
++    jz .done
++    cmp ax, 1024
++    jbe .cylinders_ok
++    mov ax, 1024
++.cylinders_ok:
++    mov [HD_CYLINDERS], ax
++
++    mov ax, [6]
++    test ax, ax
++    jz .done
++    cmp ax, 16
++    jbe .heads_ok
++    mov ax, 16
++.heads_ok:
++    mov [HD_HEADS], al
++
++    mov ax, [12]
++    test ax, ax
++    jz .done
++    cmp ax, 63
++    jbe .sectors_ok
++    mov ax, 63
++.sectors_ok:
++    mov [HD_SECTORS_TRACK], al
++
++    ; IDENTIFY words 57-58 are the current CHS-addressable capacity.
++    mov ax, [114]
++    mov [HD_TOTAL_LOW], ax
++    mov ax, [116]
++    mov [HD_TOTAL_HIGH], ax
++    or ax, [HD_TOTAL_LOW]
++    jnz .capacity_ok
++    ; Fallback to words 60-61 if a controller omits current capacity.
++    mov ax, [120]
++    mov [HD_TOTAL_LOW], ax
++    mov ax, [122]
++    mov [HD_TOTAL_HIGH], ax
++    or ax, [HD_TOTAL_LOW]
++    jz .done
++.capacity_ok:
++    mov byte [HD_PRESENT], 1
++    mov ax, BDA_SEG
++    mov es, ax
++    mov byte [es:BDA_HDD_COUNT], 1
++.done:
++    pop es
++    pop ds
++    pop di
++    pop dx
++    pop cx
++    pop bx
++    pop ax
++    ret
++
++; Return CF clear when the cached ATA master is present.
++ata_drive_present:
++    push ax
++    push ds
++    mov ax, EBDA_SEG
++    mov ds, ax
++    cmp byte [HD_PRESENT], 1
++    jne .missing
+     clc
+     jmp .done
+-.bad: stc
++.missing:
++    stc
+ .done:
++    pop ds
++    pop ax
++    ret
++
++; Return AH with the most recent ATA BIOS error code.
++ata_get_last_error:
++    push ds
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov ah, [HDW_ERROR]
++    pop ds
++    ret
++
++; Common CHS transfer for INT 13h AH=02 read, AH=03 write, AH=04 verify.
++; The controller is deliberately programmed for one sector per ATA command;
++; this matches its synchronous PIO data phase and avoids ambiguous multi-sector
++; DRQ handshakes.  All caller registers are preserved; CF reports success.
++ata_transfer_chs:
++    push ax
++    push bx
++    push cx
++    push dx
++    push si
++    push di
++    push ds
++
++    mov si, ax                       ; original function/count
++    mov di, bx                       ; current caller buffer offset
++    mov ax, EBDA_SEG
++    mov ds, ax
++    mov byte [HDW_ERROR], 0
++
++    cmp byte [HD_PRESENT], 1
++    je .present
++    mov byte [HDW_ERROR], 0xAA
++    jmp .bad
++.present:
++    mov ax, si
++    test al, al
++    jnz .count_nonzero
++    mov byte [HDW_ERROR], 0x01
++    jmp .bad
++.count_nonzero:
++    cmp al, 127
++    jbe .count_ok
++    mov byte [HDW_ERROR], 0x01
++    jmp .bad
++.count_ok:
++    mov [HDW_REMAINING], al
++    mov byte [HDW_COMPLETED], 0
++    mov [HDW_MODE], ah
++    mov [HDW_BUFFER], di
++
++    ; Decode the 10-bit BIOS cylinder from CH plus CL bits 6-7.
++    xor ax, ax
++    mov al, ch
++    xor bx, bx
++    mov bl, cl
++    and bl, 0xC0
++    shl bx, 2
++    or ax, bx
++    mov [HDW_CYLINDER], ax
++    mov al, dh
++    mov [HDW_HEAD], al
++    mov al, cl
++    and al, 0x3F
++    mov [HDW_SECTOR], al
++
++    ; ES:BX must not wrap during a read or write request.
++    cmp byte [HDW_MODE], 0x04
++    je .validate
++    mov ax, si
++    and ax, 0x00FF
++    shl ax, 9
++    add ax, di
++    jnc .validate
++    mov byte [HDW_ERROR], 0x09       ; data boundary error
++    jmp .bad
++
++.validate:
++    call ata_validate_current
++    jnc .next_sector
++    mov byte [HDW_ERROR], 0x04       ; requested sector not found
++    jmp .bad
++
++.next_sector:
++    call ata_program_current
++    mov dx, 0x1F7
++    mov al, 0x20                     ; READ SECTORS
++    cmp byte [HDW_MODE], 0x03
++    jne .issue
++    mov al, 0x30                     ; WRITE SECTORS
++.issue:
++    out dx, al
++    call ata_wait_drq
++    jnc .data_phase
++    mov [HDW_ERROR], al
++    jmp .bad
++
++.data_phase:
++    cmp byte [HDW_MODE], 0x03
++    je .write_data
++    cmp byte [HDW_MODE], 0x04
++    je .verify_data
++
++    mov di, [HDW_BUFFER]
++    mov cx, 256
++    mov dx, 0x1F0
++    cld
++    rep insw
++    mov [HDW_BUFFER], di
++    jmp .data_done
++
++.verify_data:
++    push es
++    mov ax, EBDA_SEG
++    mov es, ax
++    xor di, di
++    mov cx, 256
++    mov dx, 0x1F0
++    cld
++    rep insw
++    pop es
++    jmp .data_done
++
++.write_data:
++    mov si, [HDW_BUFFER]
++    push ds
++    push es
++    pop ds                          ; OUTSW reads caller ES:SI through DS
++    mov cx, 256
++    mov dx, 0x1F0
++    cld
++    rep outsw
++    pop ds                          ; restore EBDA workspace segment
++    mov [HDW_BUFFER], si
++
++.data_done:
++    call ata_wait_complete
++    jnc .sector_done
++    mov [HDW_ERROR], al
++    jmp .bad
++
++.sector_done:
++    inc byte [HDW_COMPLETED]
++    dec byte [HDW_REMAINING]
++    jz .good
++    call ata_advance_current
++    jnc .next_sector
++    mov byte [HDW_ERROR], 0x04
++    jmp .bad
++
++.good:
++    clc
++    jmp .restore
++.bad:
++    stc
++.restore:
++    pop ds
+     pop di
+     pop si
+     pop dx
+@@ -1207,6 +1845,138 @@
+     pop ax
+     ret
+ 
++; Validate the current translated CHS tuple.  DS must equal EBDA_SEG.
++ata_validate_current:
++    push ax
++    mov ax, [HDW_CYLINDER]
++    cmp ax, [HD_CYLINDERS]
++    jae .bad
++    mov al, [HDW_HEAD]
++    cmp al, [HD_HEADS]
++    jae .bad
++    mov al, [HDW_SECTOR]
++    test al, al
++    jz .bad
++    cmp al, [HD_SECTORS_TRACK]
++    ja .bad
++    clc
++    jmp .done
++.bad:
++    stc
++.done:
++    pop ax
++    ret
++
++; Advance one sector using the cached 16-head/63-sector geometry.
++ata_advance_current:
++    push ax
++    inc byte [HDW_SECTOR]
++    mov al, [HDW_SECTOR]
++    cmp al, [HD_SECTORS_TRACK]
++    jbe .good
++    mov byte [HDW_SECTOR], 1
++    inc byte [HDW_HEAD]
++    mov al, [HDW_HEAD]
++    cmp al, [HD_HEADS]
++    jb .good
++    mov byte [HDW_HEAD], 0
++    inc word [HDW_CYLINDER]
++    mov ax, [HDW_CYLINDER]
++    cmp ax, [HD_CYLINDERS]
++    jae .bad
++.good:
++    clc
++    jmp .done
++.bad:
++    stc
++.done:
++    pop ax
++    ret
++
++; Program one CHS sector into the primary ATA task file.  DS=EBDA_SEG.
++ata_program_current:
++    push ax
++    push dx
++    mov dx, 0x1F6
++    mov al, [HDW_HEAD]
++    and al, 0x0F
++    or al, 0xA0                     ; master, CHS mode
++    out dx, al
++    mov dx, 0x1F2
++    mov al, 1
++    out dx, al
++    inc dx
++    mov al, [HDW_SECTOR]
++    out dx, al
++    inc dx
++    mov ax, [HDW_CYLINDER]
++    out dx, al                      ; cylinder low
++    inc dx
++    mov al, ah
++    out dx, al                      ; cylinder high
++    pop dx
++    pop ax
++    ret
++
++; Wait for BSY=0, ERR=0, DRQ=1.  AL returns a BIOS status on failure.
++ata_wait_drq:
++    push cx
++    push dx
++    mov cx, 0xFFFF
++    mov dx, 0x1F7
++.poll:
++    in al, dx
++    test al, 0x80
++    jnz .again
++    test al, 0x01
++    jnz .controller_error
++    test al, 0x08
++    jnz .ready
++.again:
++    loop .poll
++    mov al, 0x80                    ; timeout
++    stc
++    jmp .done
++.controller_error:
++    mov al, 0x20                    ; controller failure
++    stc
++    jmp .done
++.ready:
++    xor al, al
++    clc
++.done:
++    pop dx
++    pop cx
++    ret
++
++; Wait for the PIO data phase to finish.  AL returns BIOS status on failure.
++ata_wait_complete:
++    push cx
++    push dx
++    mov cx, 0xFFFF
++    mov dx, 0x1F7
++.poll:
++    in al, dx
++    test al, 0x80
++    jnz .again
++    test al, 0x01
++    jnz .controller_error
++    xor al, al
++    clc
++    jmp .done
++.again:
++    loop .poll
++    mov al, 0x80
++    stc
++    jmp .done
++.controller_error:
++    mov al, 0x20
++    stc
++.done:
++    pop dx
++    pop cx
++    ret
++
+ int16:
+     cmp ah, 0
+     je .read
+@@ -1326,6 +2096,9 @@
+ .wait: hlt
+     jmp .wait
+ 
++floppy_dpt:
++    db 0xDF,0x02,0x25,0x02,18,0x1B,0xFF,0x6C,0xF6,15,8
++
+ dummy db 0
+ logo db 10,'  +----------------------------------------------------------+',10
+      db '  |             V I R T U A L   C O M P U T E R              |',10

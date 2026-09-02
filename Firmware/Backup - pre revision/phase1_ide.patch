@@ -1,0 +1,72 @@
+--- /mnt/data/IdeController.vb	2026-08-06 14:20:55.428336561 +0000
++++ /mnt/data/IdeController_phase1.vb	2026-08-06 14:50:29.144438969 +0000
+@@ -205,6 +205,10 @@
+             Case &H30, &H31
+                 _pendingLba = CurrentLba()
+                 _pendingSectors = EffectiveSectorCount()
++                If _pendingLba < 0 OrElse _pendingLba + _pendingSectors > _hardDisk.SectorCount Then
++                    FailCommand(&H10)
++                    Return
++                End If
+                 ReDim _data(_pendingSectors * 512 - 1)
+                 _dataIndex = 0 : _writePending = True : _status = StatusDriveReady Or StatusDataRequest
+             Case &HE7
+@@ -243,14 +247,21 @@
+     End Sub
+ 
+     Private Sub CommitAtaWrite()
+-        For sector As Integer = 0 To _pendingSectors - 1
+-            Dim block(511) As Byte
+-            Array.Copy(_data, sector * 512, block, 0, 512)
+-            _hardDisk.WriteSector(_pendingLba + sector, block)
+-        Next
+-        _hardDisk.Flush()
+-        _writePending = False
+-        FinishCommand()
++        Try
++            For sector As Integer = 0 To _pendingSectors - 1
++                Dim block(511) As Byte
++                Array.Copy(_data, sector * 512, block, 0, 512)
++                _hardDisk.WriteSector(_pendingLba + sector, block)
++            Next
++            _hardDisk.Flush()
++            _writePending = False
++            FinishCommand()
++        Catch ex As Exception
++            _writePending = False
++            _data = Nothing
++            _dataIndex = 0
++            FailCommand(&H40)
++        End Try
+     End Sub
+ 
+     Private Function CurrentLba() As Long
+@@ -272,8 +283,26 @@
+         ReDim _data(511)
+         PutWord(0, If(atapi, &H8580US, &H40US))
+         If Not atapi AndAlso _hardDisk IsNot Nothing Then
+-            Dim sectors As UInteger = CUInt(Math.Min(_hardDisk.SectorCount, UInteger.MaxValue))
+-            PutWord(60, CUShort(sectors And &HFFFFUI)) : PutWord(61, CUShort(sectors >> 16))
++            Const heads As Integer = 16
++            Const sectorsPerTrack As Integer = 63
++            Dim cylinders As Integer = CInt(Math.Max(1L, Math.Min(1024L, _hardDisk.SectorCount \ CLng(heads * sectorsPerTrack))))
++            Dim lbaSectors As UInteger = CUInt(Math.Min(_hardDisk.SectorCount, CLng(UInteger.MaxValue)))
++            Dim chsSectors As UInteger = CUInt(cylinders * heads * sectorsPerTrack)
++
++            ' Legacy translated geometry used by the executable BIOS INT 13h layer.
++            PutWord(1, CUShort(cylinders))
++            PutWord(3, CUShort(heads))
++            PutWord(6, CUShort(sectorsPerTrack))
++            PutWord(53, 1US)
++            PutWord(54, CUShort(cylinders))
++            PutWord(55, CUShort(heads))
++            PutWord(56, CUShort(sectorsPerTrack))
++            PutWord(57, CUShort(chsSectors And &HFFFFUI))
++            PutWord(58, CUShort(chsSectors >> 16))
++
++            ' Native 28-bit LBA capacity remains available to software that asks.
++            PutWord(60, CUShort(lbaSectors And &HFFFFUI))
++            PutWord(61, CUShort(lbaSectors >> 16))
+             PutAtaString(27, 20, "VIRTUAL COMPUTER ATA DISK")
+         Else
+             PutAtaString(27, 20, "VIRTUAL COMPUTER ATAPI CD-ROM")

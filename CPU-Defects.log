@@ -1,0 +1,384 @@
+Harris CS80C286 CPU defect ledger
+=================================
+
+MAINTENANCE INSTRUCTIONS FOR CODEX / FUTURE SELF
+-------------------------------------------------
+1. This file is a working ledger, not a history or changelog.
+2. Add an entry only when a defect is confirmed by source inspection, an
+   architectural reference, a focused test, or repeatable guest evidence.
+   Clearly label an unresolved symptom as such.
+3. Include the affected routine(s), architectural consequence, evidence, and
+   the verification needed before removal.
+4. WHEN A DEFECT IS FIXED AND VERIFIED, DELETE ITS ENTIRE ENTRY FROM THIS FILE.
+   Do not leave completed entries, strike them out, or merely mark them fixed.
+5. Do not remove an entry merely because code was patched.  Remove it only
+   after a build succeeds and a focused test or affected guest workload proves
+   the corrected behavior.
+6. If work stops before the ledger is empty, leave all unresolved entries here
+   so the next session can resume without reconstructing the audit.
+
+
+CPU-001 - Protected interrupt-entry validation failures halt the emulator
+-------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, EnterInterrupt (approximately lines 3254-3310)
+
+EnterInterrupt formerly used Fault(...) for its protection checks.  It now
+raises #GP, #NP, #SS, or #TS with selector/IDT error codes, and exception entry
+is sequenced so two contributory faults produce #DF(0), while a protection
+fault entering #DF produces the 80286 SHUTDOWN state.  Faults encountered while
+entering a benign exception are delivered serially instead of being
+misclassified as double faults.
+
+Consequence: protected-mode software can hang instead of receiving its fault;
+nested exception behavior and shutdown behavior can be incorrect; Windows may
+lose the exact control-flow contract its DPMI host expects.
+
+Verification required before deletion: focused tests for IDT-limit, gate DPL,
+gate-not-present, invalid target selector, bad TSS stack, nested delivery fault,
+and the resulting selector/IDT error codes, plus a successful build.
+
+
+CPU-002 - Interrupt/trap gates mishandle conforming code-segment targets
+------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, EnterInterrupt (approximately lines 3275-3300)
+
+The routine derives targetPrivilege directly from the target descriptor DPL and
+uses it both to decide whether to switch stacks and to construct the new CS.
+That is correct only for a nonconforming target.  An interrupt or trap gate into
+a conforming code segment retains the caller's CPL; descriptor DPL is a reachability
+constraint, not the new CPL.  The current path can therefore perform a spurious
+inner-privilege stack switch and install the wrong CS RPL.
+
+Consequence: corrupted protected-mode interrupt frames, wrong CPL, wrong stack,
+and later IRET/DPMI-return failures.
+
+Verification required before deletion: ring-transition tests for conforming and
+nonconforming interrupt and trap gates, checking CS RPL, CPL, SS:SP, frame word
+order, IF behavior, and return through IRET, plus a successful build.
+
+
+CPU-003 - Protected IRET and RETF omit required code privilege validation
+------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, ExecuteIret and ExecuteFarReturnInBed
+
+Both paths check selector existence, presence, executable type, and offset
+limit, but do not fully validate descriptor DPL/RPL rules for conforming versus
+nonconforming code.  They largely infer the destination privilege from CS.RPL
+alone.  A real 80286 applies different rules to conforming and nonconforming
+targets and faults invalid combinations before committing CS, SS, SP, or IP.
+
+Consequence: invalid returns may be accepted with inconsistent CPL/descriptor
+state, while valid conforming returns may be treated as privilege changes.  The
+result can surface later as corrupted DPMI return state rather than at the
+offending instruction.
+
+Verification required before deletion: same-level and outer-level IRET/RETF
+tests covering conforming/nonconforming targets, RPL/DPL mismatches, #GP/#NP/#SS
+error codes, stack atomicity on faults, and successful valid returns.
+
+
+CPU-004 - Windows 3.1 Standard Mode reports Invalid DPMI return at :9F31
+------------------------------------------------------------------------
+Status: REPEATABLE UNRESOLVED SYMPTOM; ROOT CAUSE NOT YET PROVEN
+Affected workload: Windows 3.1 Setup / DOSX Standard Mode on emulated 80286
+
+Observed result: "Standard Mode: Invalid DPMI return from 048F:9F31".  The
+selector can vary between implementations, while offset 9F31 has also appeared
+in another incomplete PC emulator.  The BIOS code-09 reset frame is stable and
+plausible, 42 protected/real mode transitions complete, and no CPU exception is
+recorded at the final DOS prompt.  This now points toward protected-mode CPU
+control-transfer semantics rather than the BIOS shutdown dispatcher.
+
+Current diagnostic: protected-mode INT 31h automatically arms a bounded trace;
+IRET and RETF targets at offset 9F31 are recorded; the trace is embedded in the
+ordinary CPU/PIC/PIT one-click dump.
+
+Verification required before deletion: Windows Setup must pass this transition
+and continue into Windows without the Invalid DPMI return message.  If another
+ledger defect proves to be the cause, delete this symptom entry only after that
+guest verification succeeds.
+
+
+CPU-005 - Protected-mode stores do not enforce segment write permission
+------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, SegmentAddress and the Read/WriteRM paths
+
+SegmentAddress validates cached-segment presence and limits, but it is not told
+whether an access is a read or a write and therefore cannot reject stores
+through read-only data segments.  StageSegmentLoadInBed correctly permits a
+read-only data selector in DS/ES, but subsequent WriteByte/WriteWord operations
+use the resulting physical address without checking the descriptor writable
+bit.  A real 80286 raises #GP for such a store (or #SS when the offending
+access is through SS).
+
+Consequence: protected-mode memory protection can be bypassed and corruption
+may be detected only later by the DPMI host or kernel.
+
+Verification required before deletion: focused byte/word stores through
+writable and read-only DS/ES/SS descriptors, limit-crossing stores, correct
+#GP/#SS selection and error codes, no partial write on fault, and a successful
+build.
+
+
+CPU-006 - ModR/M operands validate only the first byte of multi-byte accesses
+-------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, DecodeModRM, ReadRM16/WriteRM16, and direct
+               operand.Address users
+
+DecodeModRM resolves every memory operand through CurrentDataAddress with the
+default length of one byte.  ReadRM16 and WriteRM16 then access two bytes using
+the already-resolved physical address without rechecking the cached segment
+limit.  Far pointers, descriptor-table operands, and BOUND consume still larger
+images from operand.Address with the same issue.
+
+Consequence: accesses can cross a normal or expand-down segment boundary
+without #GP/#SS, possibly reading or modifying the next physical byte before
+the protected-mode kernel can intervene.
+
+Verification required before deletion: byte, word, 4-byte far-pointer, 6-byte
+descriptor-table, and BOUND operand tests at both ordinary and expand-down
+boundaries; correct #GP/#SS and no partial writes; successful build.
+
+
+CPU-007 - LOADALL is not restricted to CPL 0
+---------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, ExecuteSystemOpcode opcode 0F 05
+
+The core executes 80286 LOADALL without a privilege check.  In protected mode
+LOADALL is restricted to CPL 0; an outer-ring attempt must raise #GP(0).
+
+Verification required before deletion: LOADALL succeeds at CPL 0, faults with
+#GP(0) at CPL 1-3 without changing architectural state, and build succeeds.
+
+
+CPU-008 - LOCK prefix omits the 80286 IOPL privilege check
+----------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, pStep prefix decode / BeginBusLockInBed
+
+The source explicitly treats LOCK as unprivileged and asserts the emulated bus
+lock whenever F0h is decoded.  On the 80286, LOCK is permitted only when
+CPL <= IOPL; otherwise it raises #GP(0).
+
+Verification required before deletion: LOCK at each CPL/IOPL combination,
+correct #GP(0) with no bus-lock assertion or operand side effect, successful
+allowed locked memory operation, and successful build.
+
+
+CPU-009 - CPL is derived from the cached CS descriptor DPL
+-----------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, CurrentPrivilegeLevelInBed and AssignSegment
+
+CurrentPrivilegeLevelInBed returns the cached CS descriptor DPL whenever CS is
+valid.  CPL is the RPL of the loaded CS selector.  These values intentionally
+differ while executing a conforming code segment, whose descriptor DPL is only
+the reachability threshold and does not become CPL.  AssignSegment repeats the
+same cached-DPL assumption while validating protected-mode segment loads.
+
+Consequence: after a valid transfer into conforming code, privileged operations,
+IOPL checks, segment loads, gates, interrupts, and returns can all be evaluated
+as though the caller had gained the target descriptor's privilege.
+
+Verification required before deletion: enter conforming DPL 0 code from CPL 3
+and confirm visible CS RPL/CPL remain 3; verify CLI, STI, HLT, I/O, segment loads,
+interrupt entry, and return checks still use CPL 3; successful build and guest
+verification.
+
+
+CPU-010 - Descriptor presence is tested before type and privilege validity
+-------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; FOCUSED VERIFICATION PENDING
+Affected code: ProcessorCore.vb, AssignSegment, StageSegmentLoadInBed,
+StageStackSegmentForPrivilegeInBed, ExecuteIret, ExecuteFarReturnInBed,
+ExecuteFarControlTransferInBed, and ExecuteCallGateInBed
+
+Several protected-mode paths test P=0 before establishing that the descriptor
+is a legal target of the requested operation.  The 80286 first rejects an
+illegal type or privilege combination with #GP/#TS; #NP/#SS applies only when
+the descriptor otherwise passes those checks and is absent.
+
+Consequence: software receives the wrong exception vector and error-code class
+for descriptors that are both absent and invalid for the operation.
+
+Verification required before deletion: focused absent-plus-wrong-type and
+absent-plus-wrong-privilege cases for DS/ES/SS/CS loads, IRET, RETF, far
+CALL/JMP, call gates, and privilege stack loads, checking exception priority,
+error codes, atomicity, and successful build.
+
+
+CPU-011 - LMSW protected-mode entry derives CPL from the stale real-mode CS
+-------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; GUEST VERIFICATION PENDING
+Affected code: ProcessorCore.vb, ExecuteSystemGroup1,
+               CurrentPrivilegeLevelInBed, CS-cache commit paths
+
+Immediately after LMSW sets PE, the visible CS still contains the real-mode
+segment value and its hidden cache still describes the pre-protected-mode
+execution environment.  The low two bits of that visible value are not an RPL
+and must not establish CPL.  The 80286 enters this transition at CPL 0 until a
+protected-mode control transfer loads CS.  Treating a real-mode CS of 206Ah as
+CPL 2 caused Windows Setup's first far JMP to its ring-0 selector 0078h to raise
+#GP and ultimately put the processor into SHUTDOWN.
+
+The core now tracks whether a protected-mode CS has actually been loaded.  CPL
+is zero during the LMSW entry window and becomes the loaded CS selector's RPL
+after the first successful protected-mode CS commit.  Ordinary conforming and
+nonconforming privilege checks remain unchanged.
+
+Verification required before deletion: successful build; Windows Setup must
+pass its first protected-mode far JMP without #GP or an unintended shutdown;
+subsequent protected-mode transfers must report CPL from the loaded CS RPL.
+
+
+CPU-012 - LAR access-rights byte is returned in AL instead of AH
+----------------------------------------------------------------
+Status: FIX IMPLEMENTED; GUEST VERIFICATION PENDING
+Affected code: ProcessorCore.vb, ExecuteLar
+
+ExecuteLar shifted the Byte-typed descriptor access value directly by eight.
+VB evaluates the shift at the Byte operand width, masks the shift count, and
+therefore left the access byte in AL.  The 80286 LAR result places the access
+rights in bits 15:8.  Windows 3.1's DPMI #GP dispatcher consequently received
+AX=00FB for selector 048Fh instead of FB00h; its `AND AH,F8h` / `CMP AH,F8h`
+validation failed and reported "Invalid DPMI return from 048F:9F31".
+
+The access byte is now widened before shifting, producing the architecturally
+positioned high byte without altering LAR's destination when validation fails.
+
+Verification required before deletion: successful build; a focused LAR test
+must return the descriptor access byte in AH with ZF=1 and preserve the entire
+destination with ZF=0 for an invalid/invisible selector; Windows Setup must pass
+the former invalid-DPMI-return point and continue into Standard Mode.
+
+
+CPU-013 - Selector exception error codes discard the LDT-table indicator
+------------------------------------------------------------------------
+Status: FIX IMPLEMENTED; GUEST VERIFICATION PENDING
+Affected code: ProcessorCore.vb, SelectorErrorCodeInBed
+
+SelectorErrorCodeInBed masked selector values with FFF8h.  That correctly
+removed RPL but incorrectly removed TI as well.  For faults caused by an LDT
+selector, the 80286 exception error code must preserve TI in bit 2 so the fault
+handler can identify the descriptor table.
+
+Windows 3.1 faulted normally while calling absent movable selector 0B6Fh.  The
+core delivered #NP error code 0B68h instead of 0B6Ch, causing the Windows DPMI
+host to search the GDT and classify the demand-load fault as outside its
+extender.  Selector-originated codes now clear only RPL; IDT-originated codes
+retain their separate IDT-bit encoding.
+
+Verification required before deletion: successful build; focused GDT and LDT
+selector faults must encode index/TI correctly with EXT=0, an IDT fault must
+encode IDT=1 and TI=0, and Windows Setup must service the 0B6Fh movable-segment
+#NP rather than report "Fault outside of MS-DOS Extender".
+
+
+CPU-014 - LOADALL cannot clear protected-mode enable
+----------------------------------------------------
+Status: FIX IMPLEMENTED; GUEST VERIFICATION PENDING
+Affected code: ProcessorCore.vb, ExecuteLoadall286InBed
+
+The LOADALL implementation forcibly retained MSW.PE whenever LOADALL began in
+protected mode.  That applies LMSW's one-way PE restriction to the undocumented
+80286 LOADALL operation, which instead replaces the complete low MSW nibble and
+can clear PE.  Windows 3.1's Standard-mode host correctly converted selector
+02F7h to real-mode paragraph 10CBh, constructed its transition image, and used
+LOADALL to enter real mode for DOS INT 21h/AH=50h.  The forced PE bit left the
+processor protected, so the following INT 3 reached the deliberately unusable
+protected IDT, asserted SHUTDOWN, reset the CPU, and cold-booted DOS.
+
+LOADALL now installs the requested PE/MP/EM/TS nibble and updates the cached-CS
+privilege-state marker to match the resulting mode.  This restores the actual
+80286 mode-transition mechanism rather than special-casing Windows or DPMI.
+
+Verification required before deletion: successful build; a focused LOADALL
+test must be able to clear PE while preserving the supplied hidden segment
+caches; Windows Setup must execute its protected-to-real DOS service and return
+to the Standard-mode host without motherboard SHUTDOWN or a DOS reboot.
+
+
+CPU-015 - Windows treats a valid not-present far-call fault as unhandled
+-----------------------------------------------------------------------
+Status: REPEATABLE UNRESOLVED SYMPTOM; ROOT CAUSE NOT YET PROVEN
+Affected workload: Windows 3.1 Setup / Standard-mode module loader
+
+The 2026-08-19 trace begins with CALL FAR 0B6F:0387.  Selector 0B6F is an
+absent LDT code descriptor, and the processor now correctly raises #NP with
+error code 0B6Ch (including TI).  Windows receives that fault but routes it to
+its fatal Standard-mode exception reporter rather than making selector 0B6F
+present and retrying the far call.  It eventually exits with AX=0001. Cleanup
+subsequently raises a null-segment #GP and an inward-RETF #GP; both are handled
+by the extender and are not the initiating failure.
+
+The 2026-08-22 VGA and CPU dumps narrow this further.  Windows successfully
+programmed standard VGA mode 12h, exercised planar memory and DAC entries, and
+deliberately restored mode 03h; no failed S3/VGA transition precedes the exit.
+Disassembly of the installed KRNL286 image corrected the earlier interpretation
+of AX=0002: 048F:5520 is an exception-report presentation-mode classifier, not
+the loader failure itself.  Its caller at 048F:578A first builds a message in a
+192-byte stack buffer; the captured buffer contains "cause a General Protec...".
+The classifier then chooses one of two reporting paths.  The inward RETF is
+later cleanup and remains an architecturally valid handled fault, not a fix.
+
+Forensic capture now retains all 65,536 bounded instruction records, records
+the #NP selector's LDT address/base/limit/access byte, and includes the complete
+048F:5520-5580 classifier bytes and live stack.  Remove these narrowly targeted
+diagnostics when CPU-015 is resolved.
+
+The 2026-08-22 rerun proved selector 0B6F's descriptor is at physical 1957B8h
+with base 000000h, limit 0B1Fh, access 7Bh, and P=0.  No write to 1957B8-1957BF
+occurs anywhere in the post-#NP bounded stream.  The accompanying Important-INT
+text retained totals for 108 INT 21h calls, but COMMAND.COM's later INT 16h
+polling displaced every call from the general 1,024-entry ring.
+
+Diagnostic follow-up added 2026-08-22: selected INT 21h file services now have
+a separate preserved 768-entry ring.  Each entry is paired at its real return
+CS:IP with DOS's CF/AX result; open/create paths are sampled directly from NEAT
+low DRAM so diagnostics add no guest bus cycle.  The same events enter the
+bounded binary stream while it is active.  Remove this DOS file-service ring,
+pending-return matcher, and its report section when CPU-015 is resolved.
+
+The first preserved DOS-file rerun shows no general storage failure.  Five
+protected-mode AH=3Dh opens of "CON" return handles 0005h-0009h successfully,
+and the
+later real-mode COMMAND.COM seek/read returns the exact requested AE95h bytes.
+Invalid-handle close failures occur only during teardown.  Protected pathname
+capture uses the already-validated DS hidden cache directly and adds no guest
+bus cycles.  Windows' reconstructed error buffer reads "caused a General
+Protection Fault in module KRNL286.EXE at 0001:58C8"; this confirms the generic
+fatal reporter and is not a failed KRNL286 load.  Do not treat the teardown
+closes as the initiating error.
+
+The same run also verifies the privilege-changing #NP frame and the host's
+stack walk.  The CPU pushes old SS=027Fh, old SP=0DC4h, FLAGS=3246h,
+CS=0B47h, IP=09EFh, then error code 0B6Ch onto ring 0.  The vector-11 handler
+copies those six architectural words plus its own return address to the client
+stack and deliberately forwards the exception to Windows' registered callback.
+That ordering is correct and must not be weakened or special-cased.
+
+Diagnostic follow-up added 2026-08-22: the CPU now retains an allocation-free,
+512-entry circular history containing only writes that overlap the active LDT.
+At the first #NP it emits that pre-fault history into the binary forensic trace,
+including writer CS:IP, descriptor selector/byte, write size/value, registers,
+and the contemporaneous LDT base/limit.  Remove the LDT-write ring and emission
+when CPU-015 is resolved.  The next run should identify the instruction that
+created selector 0B6F with access 7Bh or cleared its P bit.
+
+This may still be a CPU descriptor/return semantic error, but it could also be
+a DOS/file-service failure while Windows attempts to load the movable segment.
+Do not patch around selector 0B6F or force the descriptor present.  Extend the
+forensic capture across the loader's DOS/file calls and descriptor writes, then
+prove whether the expected module bytes were read and whether the LDT entry was
+made present before changing CPU behavior.
+
+Verification required before deletion: the #NP handler must successfully load
+and retry selector 0B6F, or a focused trace must identify and correct the exact
+architectural or storage-service failure; Windows Setup must continue rather
+than intentionally return to DOS.

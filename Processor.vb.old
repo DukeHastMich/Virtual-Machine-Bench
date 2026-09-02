@@ -1,0 +1,2044 @@
+﻿Public Class Processor286
+    ' Segment Registers
+    Public Property CS As UInt16
+    Public Property DS As UInt16
+    Public Property SS As UInt16
+    Public Property ES As UInt16
+
+    ' Pointer Registers
+    Public Property IP As UInt16
+    Public Property SP As UInt16
+    Public Property BP As UInt16
+    Public Property SI As UInt16
+    Public Property DI As UInt16
+
+    ' General Purpose Registers (16-bit)
+    Public Property AX As UInt16
+    Public Property BX As UInt16
+    Public Property CX As UInt16
+    Public Property DX As UInt16
+
+    Public Property AL As Byte
+        Get
+            Return CByte(AX And &HFF)
+        End Get
+        Set(value As Byte)
+            AX = CUShort((AX And &HFF00) Or value)
+        End Set
+    End Property
+
+    Public Property AH As Byte
+        Get
+            Return CByte((AX >> 8) And &HFF)
+        End Get
+        Set(value As Byte)
+            AX = CUShort((AX And &HFF) Or (CUShort(value) << 8))
+        End Set
+    End Property
+
+    Public Property BL As Byte
+        Get
+            Return CByte(BX And &HFF)
+        End Get
+        Set(value As Byte)
+            BX = CUShort((BX And &HFF00) Or value)
+        End Set
+    End Property
+
+    Public Property BH As Byte
+        Get
+            Return CByte((BX >> 8) And &HFF)
+        End Get
+        Set(value As Byte)
+            BX = CUShort((BX And &HFF) Or (CUShort(value) << 8))
+        End Set
+    End Property
+
+    Public Property CL As Byte
+        Get
+            Return CByte(CX And &HFF)
+        End Get
+        Set(value As Byte)
+            CX = CUShort((CX And &HFF00) Or value)
+        End Set
+    End Property
+
+    Public Property CH As Byte
+        Get
+            Return CByte((CX >> 8) And &HFF)
+        End Get
+        Set(value As Byte)
+            CX = CUShort((CX And &HFF) Or (CUShort(value) << 8))
+        End Set
+    End Property
+
+    Public Property DL As Byte
+        Get
+            Return CByte(DX And &HFF)
+        End Get
+        Set(value As Byte)
+            DX = CUShort((DX And &HFF00) Or value)
+        End Set
+    End Property
+
+    Public Property DH As Byte
+        Get
+            Return CByte((DX >> 8) And &HFF)
+        End Get
+        Set(value As Byte)
+            DX = CUShort((DX And &HFF) Or (CUShort(value) << 8))
+        End Set
+    End Property
+
+    ' Flags Register
+    Public Property FLAGS As UInt16
+
+
+
+    ' Internal State
+    Private Memory(1048575) As Byte ' 1MB addressable space for real mode
+
+    ' Decode and execute logic
+    Public Sub pStep()
+        Dim opcode As Byte = FetchByte()
+        Select Case opcode
+            Case &HB8 To &HBF ' MOV reg, imm16
+                Dim regIndex As Integer = opcode And &H7
+                Dim value As UInt16 = FetchWord()
+                SetRegister16(regIndex, value)
+            Case &H50 To &H57 ' PUSH reg16
+                Push(GetRegister16(opcode And &H7))
+            Case &H58 To &H5F ' POP reg16
+                SetRegister16(opcode And &H7, Pop())
+            Case &H9C ' PUSHF
+                Push(FLAGS)
+            Case &H9D ' POPF
+                FLAGS = Pop()
+            Case &HCD ' INT imm8
+                Dim intnum As Byte = FetchByte()
+                RaiseInterrupt(intnum)
+            Case &HF4 ' HLT
+                Debug.Print("HLT: CPU halted")
+
+        ' Extended opcodes
+            Case &H89 ' MOV r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    SetRegister16(rm, GetRegister16(reg))
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), GetRegister16(reg))
+                End If
+
+            Case &H8B ' MOV r16, r/m16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    SetRegister16(reg, GetRegister16(rm))
+                Else
+                    SetRegister16(reg, ReadWord(GetEffectiveAddress(modVal, rm)))
+                End If
+
+            Case &H5 ' ADD AX, imm16
+                AX = Add16(AX, FetchWord())
+
+            Case &H2D ' SUB AX, imm16
+                AX = Sub16(AX, FetchWord())
+
+            Case &H3D ' CMP AX, imm16
+                Cmp16(AX, FetchWord())
+
+            Case &H80, &H81
+                HandleALUImmediateToRM(opcode)
+
+            Case &HC7
+                Dim modrm As Byte = FetchByte()
+                Dim modVal As Byte = (modrm >> 6) And &H3
+                Dim regOp As Byte = (modrm >> 3) And &H7
+                Dim rm As Byte = modrm And &H7
+                If regOp = 0 Then ' /0 means MOV
+                    Dim imm As UInt16 = FetchWord()
+                    If modVal = 3 Then
+                        SetRegister16(rm, imm)
+                    Else
+                        WriteWord(GetEffectiveAddress(modVal, rm), imm)
+                    End If
+                Else
+                    Debug.Print("Unhandled C7 opcode with /" & regOp)
+                End If
+
+            Case &H83
+                HandleALUImmediateToRM(&H83)
+
+            Case &HE8
+                Dim rel As Int16 = CShort(FetchWord())
+                Push(IP)
+                IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &HE9
+                Dim rel As Int16 = CShort(FetchWord())
+                IP = CUShort((IP + rel) And &HFFFF)
+            Case &HEB
+                Dim rel As SByte = CSByte(FetchByte())
+                IP = CUShort((IP + rel) And &HFFFF)
+            Case &HC3
+                IP = Pop()
+
+            Case &H74 ' JZ rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H40) <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H75 ' JNZ rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H40) = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H72 ' JC rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H1) <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H73 ' JNC rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H1) = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H78 ' JS rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H80) <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H79 ' JNS rel8
+                Dim rel As SByte = CSByte(FetchByte())
+                If (FLAGS And &H80) = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H7C ' JL rel8 (SF <> OF)
+                Dim rel As SByte = CSByte(FetchByte())
+                If ((FLAGS Xor (FLAGS >> 11)) And &H80) <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H7D ' JGE rel8 (SF = OF)
+                Dim rel As SByte = CSByte(FetchByte())
+                If ((FLAGS Xor (FLAGS >> 11)) And &H80) = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &H7E ' JLE rel8 (ZF=1 or SF<>OF)
+                Dim rel As SByte = CSByte(FetchByte())
+                If ((FLAGS And &H40) <> 0) OrElse (((FLAGS Xor (FLAGS >> 11)) And &H80) <> 0) Then
+                    IP = CUShort((IP + rel) And &HFFFF)
+                End If
+
+            Case &H7F ' JG rel8 (ZF=0 and SF=OF)
+                Dim rel As SByte = CSByte(FetchByte())
+                If ((FLAGS And &H40) = 0) AndAlso (((FLAGS Xor (FLAGS >> 11)) And &H80) = 0) Then
+                    IP = CUShort((IP + rel) And &HFFFF)
+                End If
+            ' === LOOP Family ===
+            Case &HE2 ' LOOP
+                Dim rel As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &HE1 ' LOOPE / LOOPZ
+                Dim rel As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 AndAlso (FLAGS And &H40) <> 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &HE0 ' LOOPNE / LOOPNZ
+                Dim rel As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 AndAlso (FLAGS And &H40) = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            Case &HE3 ' JCXZ
+                Dim rel As SByte = CSByte(FetchByte())
+                If CX = 0 Then IP = CUShort((IP + rel) And &HFFFF)
+
+            ' === INC / DEC reg16 ===
+            Case &H40 To &H47 ' INC reg16
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Inc16(GetRegister16(regIndex)))
+
+            Case &H48 To &H4F ' DEC reg16
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Dec16(GetRegister16(regIndex)))
+
+            ' === Logic Immediate to AX ===
+            Case &HA9 ' TEST AX, imm16
+                Cmp16(AX, FetchWord()) ' Performs logical AND and updates flags
+
+            Case &H25 ' AND AX, imm16
+                AX = And16(AX, FetchWord())
+
+            Case &HD ' OR AX, imm16
+                AX = Or16(AX, FetchWord())
+
+            Case &H35 ' XOR AX, imm16
+                AX = Xor16(AX, FetchWord())
+
+            ' === REP-prefixed string ops (manual handling here) ===
+            Case &HF3 ' REP
+                Dim nextOp As Byte = FetchByte()
+                Select Case nextOp
+                    Case &HA4 : ExecuteMOVSB(True)
+                    Case &HAA : ExecuteSTOSB(True)
+                    Case &HA6 : ExecuteCMPSB(True)
+                    Case Else : Debug.Print("Unhandled REP opcode: " & Hex(nextOp))
+                End Select
+
+            ' === No-Op ===
+            Case &H90 ' NOP
+                ' Do nothing
+            Case &H8C ' MOV Sreg, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim sreg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    Dim value = GetRegister16(rm)
+                    Select Case sreg
+                        Case 0 : ES = value
+                        Case 1 : CS = value ' Rare; usually invalid
+                        Case 2 : SS = value
+                        Case 3 : DS = value
+                        Case Else : Debug.Print("Invalid Sreg index in 8C")
+                    End Select
+                End If
+
+            Case &H8E ' MOV r16, Sreg
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim sreg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim value As UInt16 = 0
+                Select Case sreg
+                    Case 0 : value = ES
+                    Case 1 : value = CS
+                    Case 2 : value = SS
+                    Case 3 : value = DS
+                    Case Else : Debug.Print("Invalid Sreg index in 8E")
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, value)
+                End If
+
+            Case &H8D ' LEA reg, m16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal <> 3 Then
+                    SetRegister16(reg, CUShort(GetEffectiveAddress(modVal, rm)))
+                Else
+                    Debug.Print("LEA used with mod=3 (invalid)")
+                End If
+
+            Case &HA4 : ExecuteMOVSB(False)
+            Case &HAA : ExecuteSTOSB(False)
+            Case &HA6 : ExecuteCMPSB(False)
+
+            Case &HF7 ' Group 3 fullword ops
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim op = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim operand As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Select Case op
+                    Case 0 ' TEST
+                        Cmp16(AX, operand)
+                    Case 2 ' NOT
+                        operand = Not16(operand)
+                        If modVal = 3 Then SetRegister16(rm, operand) Else WriteWord(GetEffectiveAddress(modVal, rm), operand)
+                    Case 3 ' NEG
+                        operand = Neg16(operand)
+                        If modVal = 3 Then SetRegister16(rm, operand) Else WriteWord(GetEffectiveAddress(modVal, rm), operand)
+                    Case 4 ' MUL AX = AX * operand -> DX:AX
+                        Dim result As UInt32 = CUInt(AX) * operand
+                        AX = CUShort(result And &HFFFF)
+                        DX = CUShort((result >> 16) And &HFFFF)
+                        ' Set flags (partial)
+                    Case Else
+                        Debug.Print("Unhandled F7 /" & op)
+                End Select
+
+            Case &HFF ' Group 5
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim op = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim addr As UInt32 = If(modVal = 3, 0, GetEffectiveAddress(modVal, rm))
+                Select Case op
+                    Case 2 ' CALL near
+                        Dim target As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(addr))
+                        Push(IP)
+                        IP = target
+                    Case 3 ' CALL FAR
+                        Dim offset = ReadWord(addr)
+                        Dim seg = ReadWord(addr + 2)
+                        CallFar(seg, offset)
+                    Case 4 ' JMP near
+                        Dim target As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(addr))
+                        IP = target
+                    Case 5 ' JMP FAR
+                        Dim offset = ReadWord(addr)
+                        Dim seg = ReadWord(addr + 2)
+                        JmpFar(seg, offset)
+                    Case Else
+                        Debug.Print("Unhandled FF /" & op)
+                End Select
+        ' --- ALU/Bitwise/Shift Group ---
+            Case &HD1 ' Group 2: SHL/SAL, SHR, SAR r/m16 by 1
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim val As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Dim result As UInt16
+                Select Case regOp
+                    Case 0, 1 : result = Shl16(val, 1) ' SHL/SAL
+                    Case 2 : result = Shr16(val, 1)
+                    Case 3 : result = Sar16(val, 1)
+                    Case Else : Debug.Print("Unhandled D1 group opcode: " & regOp)
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, result)
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), result)
+                End If
+
+            Case &HD3 ' Group 2 with CL: SHL/SAL, SHR, SAR r/m16 by CL
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim count As Integer = CL And &H1F
+                Dim val As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Dim result As UInt16
+                Select Case regOp
+                    Case 0, 1 : result = Shl16(val, count) ' SHL/SAL
+                    Case 2 : result = Shr16(val, count)
+                    Case 3 : result = Sar16(val, count)
+                    Case Else : Debug.Print("Unhandled D3 group opcode: " & regOp)
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, result)
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), result)
+                End If
+
+            Case &HF7 ' Group 3 (TEST/NOT/NEG/MUL/IMUL/DIV/IDIV)
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim operand As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Select Case regOp
+                    Case 0 ' TEST r/m16, imm16
+                        Dim imm = FetchWord()
+                        Cmp16(operand, imm)
+                    Case 2 ' NOT
+                        operand = Not16(operand)
+                    Case 3 ' NEG
+                        operand = Neg16(operand)
+                    Case 4, 5 ' MUL, IMUL
+                        Debug.Print("MUL/IMUL placeholder")
+                    Case 6, 7 ' DIV, IDIV
+                        Debug.Print("DIV/IDIV placeholder")
+                End Select
+                If regOp = 2 Or regOp = 3 Then
+                    If modVal = 3 Then
+                        SetRegister16(rm, operand)
+                    Else
+                        WriteWord(GetEffectiveAddress(modVal, rm), operand)
+                    End If
+                End If
+
+            Case &H98 ' CBW
+                AX = CUShort(CShort(AL))
+            Case &H99 ' CWD
+                DX = CUShort(If((AX And &H8000) <> 0, &HFFFF, 0))
+
+            Case &H90 ' NOP
+                Debug.Print("NOP")
+
+            Case &H91 To &H97 ' XCHG AX, r16
+                Dim reg = opcode And &H7
+                Dim tmp = GetRegister16(reg)
+                SetRegister16(reg, AX)
+                AX = tmp
+        ' --- Arithmetic & Logic Instructions ---
+            Case &H4 ' ADD AL, imm8
+                AL = CByte(Add16(AL, FetchByte()) And &HFF)
+            Case &H5 ' ADD AX, imm16
+                AX = Add16(AX, FetchWord())
+            Case &HC ' OR AL, imm8
+                AL = CByte(Or16(AL, FetchByte()) And &HFF)
+            Case &HD ' OR AX, imm16
+                AX = Or16(AX, FetchWord())
+            Case &H14 ' ADC AL, imm8
+                AL = CByte((Add16(AL, FetchByte()) + (FLAGS And &H1)) And &HFF)
+            Case &H15 ' ADC AX, imm16
+                AX = Add16(AX, CUShort(FetchWord() + (FLAGS And &H1)))
+            Case &H1C ' SBB AL, imm8
+                AL = CByte((Sub16(AL, FetchByte() + (FLAGS And &H1))) And &HFF)
+            Case &H1D ' SBB AX, imm16
+                AX = Sub16(AX, CUShort(FetchWord() + (FLAGS And &H1)))
+            Case &H24 ' AND AL, imm8
+                AL = CByte(And16(AL, FetchByte()) And &HFF)
+            Case &H25 ' AND AX, imm16
+                AX = And16(AX, FetchWord())
+            Case &H2C ' SUB AL, imm8
+                AL = CByte(Sub16(AL, FetchByte()) And &HFF)
+            Case &H2D ' SUB AX, imm16
+                AX = Sub16(AX, FetchWord())
+            Case &H34 ' XOR AL, imm8
+                AL = CByte(Xor16(AL, FetchByte()) And &HFF)
+            Case &H35 ' XOR AX, imm16
+                AX = Xor16(AX, FetchWord())
+            Case &H3C ' CMP AL, imm8
+                Cmp16(AL, FetchByte())
+            Case &H3D ' CMP AX, imm16
+                Cmp16(AX, FetchWord())
+
+        ' --- REP-prefixed string operations ---
+            Case &HF3 ' REP prefix (check next opcode)
+                Dim repOp As Byte = FetchByte()
+                Select Case repOp
+                    Case &HA4 ' REP MOVSB
+                        ExecuteMOVSB(True)
+                    Case &HAA ' REP STOSB
+                        ExecuteSTOSB(True)
+                    Case &HA6 ' REP CMPSB
+                        ExecuteCMPSB(True)
+                    Case Else
+                        Debug.Print("Unhandled REP-prefixed opcode: " & Hex(repOp))
+                End Select
+
+        ' --- Shifts & Rotates (simplified version) ---
+            Case &HC0, &HC1 ' ROL/SHL/SHR etc. r/m16, imm8
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim count As Byte = FetchByte()
+                Dim value As UInt16
+                If modVal = 3 Then
+                    value = GetRegister16(rm)
+                Else
+                    value = ReadWord(GetEffectiveAddress(modVal, rm))
+                End If
+                Dim result As UInt16 = value
+                Select Case regOp
+                    Case 0 : result = Rol16(value, count)
+                    Case 1 : result = Ror16(value, count)
+                    Case 4 : result = Shl16(value, count)
+                    Case 5 : result = Shr16(value, count)
+                    Case 7 : result = Sar16(value, count)
+                    Case Else : Debug.Print("Unhandled shift/rotate opcode /" & regOp)
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, result)
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), result)
+                End If
+
+        ' --- TEST and NOT ---
+            Case &HF6, &HF7
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim addr = If(modVal = 3, -1, GetEffectiveAddress(modVal, rm))
+                Dim value As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(addr))
+                Select Case regOp
+                    Case 0 ' TEST
+                        Dim imm As UInt16 = If(opcode = &HF6, FetchByte(), FetchWord())
+                        Cmp16(value, imm)
+                    Case 2 ' NOT
+                        Dim result = Not16(value)
+                        If modVal = 3 Then SetRegister16(rm, result) Else WriteWord(addr, result)
+                    Case 3 ' NEG
+                        Dim result = Neg16(value)
+                        If modVal = 3 Then SetRegister16(rm, result) Else WriteWord(addr, result)
+                    Case Else
+                        Debug.Print("Unhandled F6/F7 regOp: " & regOp)
+                End Select
+            Case &H40 To &H47 ' INC reg16
+                Dim reg = opcode And &H7
+                SetRegister16(reg, Inc16(GetRegister16(reg)))
+
+            Case &H48 To &H4F ' DEC reg16
+                Dim reg = opcode And &H7
+                SetRegister16(reg, Dec16(GetRegister16(reg)))
+
+            Case &HF6 ' NOT/NEG/MUL/DIV/IMUL (byte form, partial)
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                ' This sample only covers NOT and NEG
+                If modVal = 3 Then
+                    Dim val As UInt16 = GetRegister16(rm)
+                    Dim result As UInt16
+                    Select Case regOp
+                        Case 2 : result = Not16(val)
+                        Case 3 : result = Neg16(val)
+                        Case Else : Debug.Print("Unhandled F6 /" & regOp) : Exit Select
+                    End Select
+                    SetRegister16(rm, result)
+                Else
+                    Debug.Print("F6 memory form not fully implemented")
+                End If
+
+            Case &HF7 ' NOT/NEG/MUL/DIV/IMUL (word form, partial)
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    Dim val As UInt16 = GetRegister16(rm)
+                    Dim result As UInt16
+                    Select Case regOp
+                        Case 2 : result = Not16(val)
+                        Case 3 : result = Neg16(val)
+                        Case Else : Debug.Print("Unhandled F7 /" & regOp) : Exit Select
+                    End Select
+                    SetRegister16(rm, result)
+                Else
+                    Debug.Print("F7 memory form not fully implemented")
+                End If
+
+            Case &HA4 ' MOVSB
+                ExecuteMOVSB(False)
+            Case &HA5 ' MOVSW
+                ' Not implemented yet
+                Debug.Print("MOVSW not yet implemented")
+
+            Case &HA6 ' CMPSB
+                ExecuteCMPSB(False)
+            Case &HA7 ' CMPSW
+                Debug.Print("CMPSW not yet implemented")
+
+            Case &HAA ' STOSB
+                ExecuteSTOSB(False)
+            Case &HAB ' STOSW
+                Debug.Print("STOSW not yet implemented")
+
+            Case &HAC ' LODSB
+                AL = Memory((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+
+            Case &HAD ' LODSW
+                ' Not implemented yet
+                Debug.Print("LODSW not yet implemented")
+
+            Case &HAE ' SCASB
+                Dim cmpVal As Integer = AL - Memory((CUInt(ES) << 4) + DI)
+                UpdateFlagsForCompare(cmpVal)
+                DI = CUShort((DI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+
+            Case &HAF ' SCASW
+                Debug.Print("SCASW not yet implemented")
+
+            Case &HF2 ' REPNE/REPNZ prefix
+                Dim prefixOpcode As Byte = FetchByte()
+                If prefixOpcode = &HA4 Then ExecuteMOVSB(True)
+                If prefixOpcode = &HA6 Then ExecuteCMPSB(True)
+                If prefixOpcode = &HAA Then ExecuteSTOSB(True)
+
+            Case &HF3 ' REP/REPE/REPZ prefix
+                Dim prefixOpcode As Byte = FetchByte()
+                If prefixOpcode = &HA4 Then ExecuteMOVSB(True)
+                If prefixOpcode = &HA6 Then ExecuteCMPSB(True)
+                If prefixOpcode = &HAA Then ExecuteSTOSB(True)
+            Case &H60 ' PUSHA
+                Push(AX) : Push(CX) : Push(DX) : Push(BX)
+                Push(SP) : Push(BP) : Push(SI) : Push(DI)
+
+            Case &H61 ' POPA
+                DI = Pop() : SI = Pop() : BP = Pop() : SP = Pop()
+                BX = Pop() : DX = Pop() : CX = Pop() : AX = Pop()
+
+            Case &H98 ' CBW (Convert byte to word)
+                If (AL And &H80) <> 0 Then
+                    AX = CUShort(AL Or &HFF00)
+                Else
+                    AX = CUShort(AL)
+                End If
+
+            Case &H99 ' CWD (Convert word to doubleword)
+                ' 80286 doesn’t support 32-bit ops, so just sign extend AX into DX
+                If (AX And &H8000) <> 0 Then
+                    DX = &HFFFF
+                Else
+                    DX = 0
+                End If
+
+            Case &H90 ' NOP
+                ' No operation
+
+            Case &H9E ' SAHF
+                FLAGS = (FLAGS And &HFF00) Or AH
+
+            Case &H9F ' LAHF
+                AH = CByte(FLAGS And &HFF)
+
+            Case &HCC ' INT 3
+                RaiseInterrupt(3)
+
+            Case &HCE ' INTO
+                If (FLAGS And &H800) <> 0 Then ' OF flag
+                    RaiseInterrupt(4)
+                End If
+
+            Case &HCF ' IRET
+                IRet()
+
+            Case &H6 ' PUSH ES
+                Push(ES)
+            Case &HE ' PUSH CS
+                Push(CS)
+            Case &H16 ' PUSH SS
+                Push(SS)
+            Case &H1E ' PUSH DS
+                Push(DS)
+
+            Case &H7 ' POP ES
+                ES = Pop()
+            Case &H17 ' POP SS
+                SS = Pop()
+            Case &H1F ' POP DS
+                DS = Pop()
+
+            Case &HEA ' JMP FAR ptr16:16
+                Dim newIP As UInt16 = FetchWord()
+                Dim newCS As UInt16 = FetchWord()
+                JmpFar(newCS, newIP)
+
+            Case &H9B ' WAIT
+                ' 80287 wait (NOP for now)
+
+            Case &HFA ' CLI
+                FLAGS = FLAGS And Not &H200 ' Clear IF
+            Case &HFB ' STI
+                FLAGS = FLAGS Or &H200      ' Set IF
+
+            Case &HFC ' CLD
+                FLAGS = FLAGS And Not &H400 ' Clear DF
+            Case &HFD ' STD
+                FLAGS = FLAGS Or &H400      ' Set DF
+            Case &H60 ' PUSHA
+                Push(AX)
+                Push(CX)
+                Push(DX)
+                Push(BX)
+                Push(SP)
+                Push(BP)
+                Push(SI)
+                Push(DI)
+
+            Case &H61 ' POPA
+                DI = Pop()
+                SI = Pop()
+                BP = Pop()
+                SP = Pop() ' Discarded
+                BX = Pop()
+                DX = Pop()
+                CX = Pop()
+                AX = Pop()
+
+            Case &H98 ' CBW
+                AL = If((AL And &H80) <> 0, &HFF, 0)
+                Debug.Print("CBW executed")
+
+            Case &H99 ' CWD
+                DX = If((AX And &H8000) <> 0, &HFFFF, 0)
+                Debug.Print("CWD executed")
+
+            Case &H90 ' NOP
+                Debug.Print("NOP executed")
+
+            Case &H9E ' SAHF
+                FLAGS = (FLAGS And &HFF00) Or AH
+
+            Case &H9F ' LAHF
+                AH = CByte(FLAGS And &HFF)
+
+            Case &HCC ' INT 3
+                RaiseInterrupt(3)
+
+            Case &HCE ' INTO
+                If (FLAGS And &H800) <> 0 Then RaiseInterrupt(4)
+
+            Case &HCF ' IRET
+                IRet()
+
+            Case &HE ' PUSH CS
+                Push(CS)
+
+            Case &H16 ' PUSH SS
+                Push(SS)
+
+            Case &H6 ' PUSH ES
+                Push(ES)
+
+            Case &H1E ' PUSH DS
+                Push(DS)
+
+            Case &H17 ' POP SS
+                SS = Pop()
+
+            Case &H7 ' POP ES
+                ES = Pop()
+
+            Case &H1F ' POP DS
+                DS = Pop()
+
+            Case &HEA ' JMP FAR ptr16:16
+                Dim newIP As UInt16 = FetchWord()
+                Dim newCS As UInt16 = FetchWord()
+                JmpFar(newCS, newIP)
+
+            Case &H9B ' WAIT
+                Debug.Print("WAIT (FWAIT) executed (no FPU stall)")
+
+            Case &HFA ' CLI
+                FLAGS = FLAGS And Not &H200
+                Debug.Print("CLI: Interrupts disabled")
+
+            Case &HFB ' STI
+                FLAGS = FLAGS Or &H200
+                Debug.Print("STI: Interrupts enabled")
+
+            Case &HFC ' CLD
+                FLAGS = FLAGS And Not &H400
+                Debug.Print("CLD: Direction flag cleared")
+
+            Case &HFD ' STD
+                FLAGS = FLAGS Or &H400
+                Debug.Print("STD: Direction flag set")
+            Case &HA4 ' MOVSB
+                ExecuteMOVSB(False)
+
+            Case &HA5 ' MOVSW
+                Dim direction As Integer = If((FLAGS And &H400) <> 0, -2, 2)
+                Memory((CUInt(ES) << 4) + DI) = Memory((CUInt(DS) << 4) + SI)
+                Memory((CUInt(ES) << 4) + DI + 1) = Memory((CUInt(DS) << 4) + SI + 1)
+                SI = CUShort((SI + direction) And &HFFFF)
+                DI = CUShort((DI + direction) And &HFFFF)
+                Debug.Print("MOVSW executed")
+
+            Case &HA6 ' CMPSB
+                ExecuteCMPSB(False)
+
+            Case &HA7 ' CMPSW
+                Dim direction As Integer = If((FLAGS And &H400) <> 0, -2, 2)
+                Dim srcAddr As UInt32 = (CUInt(DS) << 4) + SI
+                Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+                Dim srcWord As UInt16 = ReadWord(srcAddr)
+                Dim dstWord As UInt16 = ReadWord(dstAddr)
+                UpdateFlagsForCompare(srcWord - dstWord)
+                SI = CUShort((SI + direction) And &HFFFF)
+                DI = CUShort((DI + direction) And &HFFFF)
+                Debug.Print("CMPSW executed")
+
+            Case &HAA ' STOSB
+                ExecuteSTOSB(False)
+
+            Case &HAB ' STOSW
+                Dim direction As Integer = If((FLAGS And &H400) <> 0, -2, 2)
+                WriteWord((CUInt(ES) << 4) + DI, AX)
+                DI = CUShort((DI + direction) And &HFFFF)
+                Debug.Print("STOSW executed")
+
+            Case &HAC ' LODSB
+                AL = Memory((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+                Debug.Print("LODSB executed")
+
+            Case &HAD ' LODSW
+                AX = ReadWord((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) <> 0, -2, 2)) And &HFFFF)
+                Debug.Print("LODSW executed")
+
+            Case &HAE ' SCASB
+                Dim cmp As Integer = AL - Memory((CUInt(ES) << 4) + DI)
+                UpdateFlagsForCompare(cmp)
+                DI = CUShort((DI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+                Debug.Print("SCASB executed")
+
+            Case &HAF ' SCASW
+                Dim cmp As Integer = AX - ReadWord((CUInt(ES) << 4) + DI)
+                UpdateFlagsForCompare(cmp)
+                DI = CUShort((DI + If((FLAGS And &H400) <> 0, -2, 2)) And &HFFFF)
+                Debug.Print("SCASW executed")
+
+            Case &HF3 ' REP prefix (e.g., REP MOVSB)
+                Dim nextOp As Byte = FetchByte()
+                Select Case nextOp
+                    Case &HA4 : ExecuteMOVSB(True)
+                    Case &HA6 : ExecuteCMPSB(True)
+                    Case &HAA : ExecuteSTOSB(True)
+                    Case &HAC : For i = 1 To CX : AL = Memory((CUInt(DS) << 4) + SI) : SI += 1 : Next : CX = 0
+                    Case &HAE : For i = 1 To CX : UpdateFlagsForCompare(AL - Memory((CUInt(ES) << 4) + DI)) : DI += 1 : Next : CX = 0
+                    Case Else : Debug.Print("Unhandled REP opcode " & Hex(nextOp))
+                End Select
+            Case &H8D ' LEA r16, m
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                SetRegister16(reg, CUShort(GetEffectiveAddress(modVal, rm) And &HFFFF))
+
+            Case &HC4 ' LES r16, m16:16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim addr As UInt32 = GetEffectiveAddress(modVal, rm)
+                SetRegister16(reg, ReadWord(addr))
+                ES = ReadWord(addr + 2)
+
+            Case &HC5 ' LDS r16, m16:16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim addr As UInt32 = GetEffectiveAddress(modVal, rm)
+                SetRegister16(reg, ReadWord(addr))
+                DS = ReadWord(addr + 2)
+
+            Case &H90 ' NOP
+                ' Do nothing
+
+            Case &HA4 ' MOVSB
+                ExecuteMOVSB(False)
+            Case &HA5 ' MOVSW
+                For i = 1 To CX
+                    Dim srcAddr As UInt32 = (CUInt(DS) << 4) + SI
+                    Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+                    WriteWord(dstAddr, ReadWord(srcAddr))
+                    Dim dir = If((FLAGS And &H400) <> 0, -2, 2)
+                    SI = CUShort((SI + dir) And &HFFFF)
+                    DI = CUShort((DI + dir) And &HFFFF)
+                    If (FLAGS And &HF000) = 0 Then Exit For ' Allow non-REP versions
+                Next
+
+            Case &HA6 ' CMPSB
+                ExecuteCMPSB(False)
+
+            Case &HA7 ' CMPSW
+                For i = 1 To CX
+                    Dim srcAddr As UInt32 = (CUInt(DS) << 4) + SI
+                    Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+                    Dim result As Integer = ReadWord(srcAddr) - ReadWord(dstAddr)
+                    UpdateFlagsForCompare(result)
+                    Dim dir = If((FLAGS And &H400) <> 0, -2, 2)
+                    SI = CUShort((SI + dir) And &HFFFF)
+                    DI = CUShort((DI + dir) And &HFFFF)
+                    If (FLAGS And &HF000) = 0 Then Exit For
+                Next
+
+            Case &HAA ' STOSB
+                ExecuteSTOSB(False)
+            Case &HAB ' STOSW
+                For i = 1 To CX
+                    Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+                    WriteWord(dstAddr, AX)
+                    Dim dir = If((FLAGS And &H400) <> 0, -2, 2)
+                    DI = CUShort((DI + dir) And &HFFFF)
+                    If (FLAGS And &HF000) = 0 Then Exit For
+                Next
+
+            Case &HAC ' LODSB
+                AL = Memory((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+
+            Case &HAD ' LODSW
+                AX = ReadWord((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) <> 0, -2, 2)) And &HFFFF)
+
+            Case &HAE ' SCASB
+                Dim dst As Byte = Memory((CUInt(ES) << 4) + DI)
+                UpdateFlagsForCompare(AL - dst)
+                DI = CUShort((DI + If((FLAGS And &H400) <> 0, -1, 1)) And &HFFFF)
+
+            Case &HAF ' SCASW
+                Dim dst As UInt16 = ReadWord((CUInt(ES) << 4) + DI)
+                UpdateFlagsForCompare(AX - dst)
+                DI = CUShort((DI + If((FLAGS And &H400) <> 0, -2, 2)) And &HFFFF)
+
+            Case &HD0, &HD1, &HD2, &HD3 ' Group 2: SHL, SHR, SAR, ROL, ROR, etc.
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim count As Integer = If((opcode And 1) = 0, 1, CL)
+                Dim value As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Dim result As UInt16
+                Select Case regOp
+                    Case 0 : result = Rol16(value, count)
+                    Case 1 : result = Ror16(value, count)
+                    Case 4 : result = Shl16(value, count)
+                    Case 5 : result = Shr16(value, count)
+                    Case 7 : result = Sar16(value, count)
+                    Case Else
+                        Debug.Print("Unhandled shift/rotate op: /" & regOp)
+                        Return
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, result)
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), result)
+                End If
+        ' --- Arithmetic/Logic Group: INC, DEC, PUSH, POP, and NOP ---
+            Case &H40 To &H47 ' INC reg16
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Inc16(GetRegister16(regIndex)))
+
+            Case &H48 To &H4F ' DEC reg16
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Dec16(GetRegister16(regIndex)))
+
+            Case &H90 ' NOP
+                ' Do nothing
+                Debug.Print("NOP")
+
+            Case &H98 ' CBW (Convert byte to word)
+                AX = CUShort(CShort(AL))
+
+            Case &H99 ' CWD (Convert word to doubleword)
+                If (AX And &H8000) <> 0 Then
+                    DX = &HFFFF
+                Else
+                    DX = 0
+                End If
+
+            Case &H9E ' SAHF (Store AH into FLAGS[SF,ZF,AF,PF,CF])
+                FLAGS = (FLAGS And &HFF00) Or (AH And &HDF)
+
+            Case &H9F ' LAHF (Load AH from FLAGS[SF,ZF,AF,PF,CF])
+                AH = CByte(FLAGS And &HFF)
+
+            Case &HC9 ' LEAVE
+                SP = BP
+                BP = Pop()
+
+            Case &HCC ' INT 3
+                RaiseInterrupt(3)
+
+            Case &HCE ' INTO (Interrupt on overflow)
+                If (FLAGS And &H800) <> 0 Then RaiseInterrupt(4)
+
+            Case &HCF ' IRET
+                IRet()
+
+            Case &HD7 ' XLAT
+                Dim tableBase As UInt32 = (CUInt(DS) << 4) + BX
+                AL = Memory(tableBase + AL)
+
+            Case &HF5 ' CMC (Complement Carry Flag)
+                FLAGS = FLAGS Xor &H1
+
+            Case &HF8 ' CLC (Clear Carry)
+                FLAGS = FLAGS And Not &H1
+
+            Case &HF9 ' STC (Set Carry)
+                FLAGS = FLAGS Or &H1
+
+            Case &HFA ' CLI (Clear Interrupt flag)
+                FLAGS = FLAGS And Not &H200
+
+            Case &HFB ' STI (Set Interrupt flag)
+                FLAGS = FLAGS Or &H200
+
+            Case &HFC ' CLD (Clear Direction)
+                FLAGS = FLAGS And Not &H400
+
+            Case &HFD ' STD (Set Direction)
+                FLAGS = FLAGS Or &H400
+        ' INC reg16
+            Case &H40 To &H47
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Inc16(GetRegister16(regIndex)))
+
+        ' DEC reg16
+            Case &H48 To &H4F
+                Dim regIndex As Integer = opcode And &H7
+                SetRegister16(regIndex, Dec16(GetRegister16(regIndex)))
+
+        ' NEG r/m16
+            Case &HF7
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If regOp = 3 Then ' NEG
+                    If modVal = 3 Then
+                        SetRegister16(rm, Neg16(GetRegister16(rm)))
+                    Else
+                        Dim addr = GetEffectiveAddress(modVal, rm)
+                        WriteWord(addr, Neg16(ReadWord(addr)))
+                    End If
+                Else
+                    Debug.Print("Unhandled F7 opcode /" & regOp)
+                End If
+
+        ' NOT r/m16
+            Case &HF6
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim regOp = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If regOp = 2 Then ' NOT
+                    If modVal = 3 Then
+                        SetRegister16(rm, Not16(GetRegister16(rm)))
+                    Else
+                        Dim addr = GetEffectiveAddress(modVal, rm)
+                        WriteWord(addr, Not16(ReadWord(addr)))
+                    End If
+                Else
+                    Debug.Print("Unhandled F6 opcode /" & regOp)
+                End If
+
+        ' TEST AX, imm16
+            Case &HA9
+                Dim imm As UInt16 = FetchWord()
+                Dim result = AX And imm
+                UpdateFlagsForCompare(result)
+
+        ' NOP
+            Case &H90
+            ' Do nothing
+
+        ' LEA r16, m
+            Case &H8D
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    Debug.Print("Invalid LEA with mod=3")
+                Else
+                    SetRegister16(reg, CUShort(GetEffectiveAddress(modVal, rm)))
+                End If
+
+        ' XCHG AX, reg16
+            Case &H90 To &H97
+                If opcode <> &H90 Then
+                    Dim regIndex As Integer = opcode And &H7
+                    Dim tmp = AX
+                    AX = GetRegister16(regIndex)
+                    SetRegister16(regIndex, tmp)
+                End If
+
+        ' XCHG r/m16, r16
+            Case &H87
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                If modVal = 3 Then
+                    Dim tmp = GetRegister16(rm)
+                    SetRegister16(rm, GetRegister16(reg))
+                    SetRegister16(reg, tmp)
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim tmp = ReadWord(addr)
+                    WriteWord(addr, GetRegister16(reg))
+                    SetRegister16(reg, tmp)
+                End If
+        ' Arithmetic and logic operations (register/memory and register)
+            Case &H1 ' ADD r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    SetRegister16(rm, Add16(GetRegister16(rm), src))
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim val = ReadWord(addr)
+                    WriteWord(addr, Add16(val, src))
+                End If
+
+            Case &H29 ' SUB r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    SetRegister16(rm, Sub16(GetRegister16(rm), src))
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim val = ReadWord(addr)
+                    WriteWord(addr, Sub16(val, src))
+                End If
+
+            Case &H9 ' OR r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    SetRegister16(rm, Or16(GetRegister16(rm), src))
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim val = ReadWord(addr)
+                    WriteWord(addr, Or16(val, src))
+                End If
+
+            Case &H21 ' AND r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    SetRegister16(rm, And16(GetRegister16(rm), src))
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim val = ReadWord(addr)
+                    WriteWord(addr, And16(val, src))
+                End If
+
+            Case &H31 ' XOR r/m16, r16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    SetRegister16(rm, Xor16(GetRegister16(rm), src))
+                Else
+                    Dim addr = GetEffectiveAddress(modVal, rm)
+                    Dim val = ReadWord(addr)
+                    WriteWord(addr, Xor16(val, src))
+                End If
+
+            Case &H3B ' CMP r16, r/m16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                'Dim src = GetRegister16(reg)
+                If modVal = 3 Then
+                    Cmp16(GetRegister16(reg), GetRegister16(rm))
+                Else
+                    Cmp16(GetRegister16(reg), ReadWord(GetEffectiveAddress(modVal, rm)))
+                End If
+
+            Case &H40 To &H47 ' INC reg16
+                SetRegister16(opcode And &H7, Inc16(GetRegister16(opcode And &H7)))
+
+            Case &H48 To &H4F ' DEC reg16
+                SetRegister16(opcode And &H7, Dec16(GetRegister16(opcode And &H7)))
+
+            Case &HF6, &HF7 ' TEST, NOT, NEG, MUL, IMUL, DIV, IDIV r/m16
+                Dim modrm As Byte = FetchByte()
+                Dim modVal = (modrm >> 6) And &H3
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                'Dim src = GetRegister16(reg)
+                Dim val As UInt16 = If(modVal = 3, GetRegister16(rm), ReadWord(GetEffectiveAddress(modVal, rm)))
+                Select Case reg
+                    Case 0 ' TEST
+                        Dim imm As UInt16 = If(opcode = &HF6, FetchByte(), FetchWord())
+                        And16(val, imm) ' Update flags, no result
+                    Case 2 ' NOT
+                        val = Not16(val)
+                    Case 3 ' NEG
+                        val = Neg16(val)
+                    Case 4 ' MUL (AX *= val)
+                        Dim result = CUInt(AL) * CUInt(val)
+                        AX = CUShort(result And &HFFFF)
+                    Case 5 ' IMUL
+                        Dim result = CInt(CShort(AL)) * CInt(CShort(val))
+                        AX = CUShort(result And &HFFFF)
+                    Case 6 ' DIV (AX / val)
+                        If val = 0 Then TriggerFault("#DE", 0) Else AX = CUShort(AX \ val)
+                    Case 7 ' IDIV (AX / val, signed)
+                        If val = 0 Then TriggerFault("#DE", 0) Else AX = CUShort(CShort(AX) \ CShort(val))
+                End Select
+                If modVal = 3 Then
+                    SetRegister16(rm, val)
+                Else
+                    WriteWord(GetEffectiveAddress(modVal, rm), val)
+                End If
+
+            ' --- Group: Extended Arithmetic, Bitwise, and Logic ---
+
+ ' --- Group: Extended Arithmetic, Bitwise, and Logic ---
+
+            Case &H90 ' NOP
+                ' No operation
+
+            Case &H91 To &H97 ' XCHG AX, r16
+                Dim regXchg As Integer = opcode And &H7
+                Dim temp As UInt16 = GetRegister16(regXchg)
+                SetRegister16(regXchg, AX)
+                AX = temp
+
+            Case &H86 ' XCHG r/m8, r8
+                Dim modrmX8 As Byte = FetchByte()
+                Dim modX8 = (modrmX8 >> 6) And &H3
+                Dim regX8 = (modrmX8 >> 3) And &H7
+                Dim rmX8 = modrmX8 And &H7
+                ' 8-bit support stubbed
+                Debug.Print("XCHG r/m8, r8 not yet implemented")
+
+            Case &H87 ' XCHG r/m16, r16
+                Dim modrmX As Byte = FetchByte()
+                Dim modX = (modrmX >> 6) And &H3
+                Dim regX = (modrmX >> 3) And &H7
+                Dim rmX = modrmX And &H7
+                If modX = 3 Then
+                    Dim temp As UInt16 = GetRegister16(rmX)
+                    SetRegister16(rmX, GetRegister16(regX))
+                    SetRegister16(regX, temp)
+                Else
+                    Dim addr As UInt32 = GetEffectiveAddress(modX, rmX)
+                    Dim temp As UInt16 = ReadWord(addr)
+                    WriteWord(addr, GetRegister16(regX))
+                    SetRegister16(regX, temp)
+                End If
+
+            Case &HF6, &HF7 ' MUL/DIV/NEG/NOT (byte/word)
+                Dim modrmF As Byte = FetchByte()
+                Dim modF = (modrmF >> 6) And &H3
+                Dim regF = (modrmF >> 3) And &H7
+                Dim rmF = modrmF And &H7
+                Dim operand As UInt16 = If(modF = 3, GetRegister16(rmF), ReadWord(GetEffectiveAddress(modF, rmF)))
+                Select Case regF
+                    Case 0 ' TEST
+                        Debug.Print("TEST instruction (stub)")
+                    Case 2 ' NOT
+                        operand = Not16(operand)
+                    Case 3 ' NEG
+                        operand = Neg16(operand)
+                    Case 4 ' MUL AX, operand -> DX:AX
+                        Dim result As UInt32 = CUInt(AX) * operand
+                        AX = CUShort(result And &HFFFF)
+                        DX = CUShort((result >> 16) And &HFFFF)
+                    Case 5 ' IMUL AX, operand -> DX:AX
+                        Dim result As Int32 = CInt(CShort(AX)) * CInt(CShort(operand))
+                        AX = CUShort(result And &HFFFF)
+                        DX = CUShort((result >> 16) And &HFFFF)
+                    Case 6 ' DIV operand -> AX=quot, DX=rem
+                        If operand = 0 Then
+                            TriggerFault("#DE", 0)
+                        Else
+                            Dim dividend As UInt32 = (CUInt(DX) << 16) Or AX
+                            AX = CUShort(dividend \ operand)
+                            DX = CUShort(dividend Mod operand)
+                        End If
+                    Case 7 ' IDIV operand
+                        If operand = 0 Then
+                            TriggerFault("#DE", 0)
+                        Else
+                            Dim dividend As Int32 = (CInt(DX) << 16) Or AX
+                            AX = CUShort(dividend \ CShort(operand))
+                            DX = CUShort(dividend Mod CShort(operand))
+                        End If
+                    Case Else
+                        Debug.Print("Unhandled F6/F7 /" & regF)
+                End Select
+                If modF = 3 Then
+                    SetRegister16(rmF, operand)
+                Else
+                    WriteWord(GetEffectiveAddress(modF, rmF), operand)
+                End If
+
+            Case &H98 ' CBW
+                AX = CUShort(CShort(CByte(AL)))
+            Case &H99 ' CWD
+                DX = If((AX And &H8000) <> 0, &HFFFF, 0)
+
+            Case &HA0 ' MOV AL, moffs8 (stubbed)
+                Debug.Print("MOV AL, moffs8 (stub)")
+            Case &HA1 ' MOV AX, moffs16
+                Dim offset As UInt16 = FetchWord()
+                AX = ReadWord(offset)
+            Case &HA2 ' MOV moffs8, AL (stubbed)
+                Debug.Print("MOV moffs8, AL (stub)")
+            Case &HA3 ' MOV moffs16, AX
+                Dim offsetW As UInt16 = FetchWord()
+                WriteWord(offsetW, AX)
+
+            Case &HC9 ' LEAVE
+                SP = BP
+                BP = Pop()
+
+            Case &HCC ' INT 3
+                RaiseInterrupt(3)
+
+            Case &HCE ' INTO
+                If (FLAGS And &H800) <> 0 Then RaiseInterrupt(4)
+
+            Case &HCF ' IRET
+                IRet()
+
+            Case &H6 ' PUSH ES
+                Push(ES)
+            Case &H7 ' POP ES
+                ES = Pop()
+            Case &HE ' PUSH CS
+                Push(CS)
+            Case &H16 ' PUSH SS
+                Push(SS)
+            Case &H17 ' POP SS
+                SS = Pop()
+            Case &H1E ' PUSH DS
+                Push(DS)
+            Case &H1F ' POP DS
+                DS = Pop()
+
+            Case &H2E ' CS prefix (handled by DecodePrefix)
+            Case &H3E ' DS prefix (handled by DecodePrefix)
+
+            Case &HA4 ' MOVSB
+                ExecuteMOVSB(False)
+            Case &HA5 ' MOVSW
+                Debug.Print("MOVSW (stubbed)")
+            Case &HA6 ' CMPSB
+                ExecuteCMPSB(False)
+            Case &HA7 ' CMPSW
+                Debug.Print("CMPSW (stubbed)")
+            Case &HAA ' STOSB
+                ExecuteSTOSB(False)
+            Case &HAB ' STOSW
+                Debug.Print("STOSW (stubbed)")
+
+            Case &HF3 ' REP prefix (decode next opcode)
+                Dim nextOp As Byte = FetchByte()
+                Select Case nextOp
+                    Case &HA4 : ExecuteMOVSB(True)
+                    Case &HA6 : ExecuteCMPSB(True)
+                    Case &HAA : ExecuteSTOSB(True)
+                    Case Else : Debug.Print("Unhandled REP prefix for " & Hex(nextOp))
+                End Select
+
+            Case &HFA ' CLI
+                Debug.Print("Interrupts disabled (stub)")
+            Case &HFB ' STI
+                Debug.Print("Interrupts enabled (stub)")
+
+            Case &H9E ' SAHF
+                FLAGS = (FLAGS And &HFF00) Or AH
+            Case &H9F ' LAHF
+                AH = CByte(FLAGS And &HFF)
+
+            Case &HFA ' LOCK prefix (ignored for now)
+                Debug.Print("LOCK prefix ignored")
+
+            Case &HEA ' JMP FAR ptr16:16
+                Dim newIP As UInt16 = FetchWord()
+                Dim newCS As UInt16 = FetchWord()
+                JmpFar(newCS, newIP)
+
+            Case &H9A ' CALL FAR ptr16:16
+                Dim ipFar As UInt16 = FetchWord()
+                Dim csFar As UInt16 = FetchWord()
+                CallFar(csFar, ipFar)
+' --- Group: Looping, String, and Segment Pointer Instructions ---
+
+            Case &HAC ' LODSB
+                AL = Memory((CUInt(DS) << 4) + SI)
+                SI = CUShort((SI + If((FLAGS And &H400) = 0, 1, -1)) And &HFFFF)
+
+            Case &HAD ' LODSW
+                Debug.Print("LODSW (stubbed)")
+
+            Case &HAE ' SCASB
+                Debug.Print("SCASB (stubbed)")
+
+            Case &HAF ' SCASW
+                Debug.Print("SCASW (stubbed)")
+
+            Case &HC0, &HC1 ' ROL/SHL/SAR etc (Group 2 opcodes)
+                Debug.Print("Shift Group (C0/C1) not implemented")
+
+            Case &HC4 ' LES r16, m16:16
+                Debug.Print("LES (stubbed)")
+            Case &HC5 ' LDS r16, m16:16
+                Debug.Print("LDS (stubbed)")
+
+            Case &H60 ' PUSHA (80286+)
+                Push(AX) : Push(CX) : Push(DX) : Push(BX)
+                Push(SP) : Push(BP) : Push(SI) : Push(DI)
+
+            Case &H61 ' POPA (80286+)
+                DI = Pop() : SI = Pop() : BP = Pop() : SP = Pop()
+                BX = Pop() : DX = Pop() : CX = Pop() : AX = Pop()
+
+            Case &HE0 ' LOOPNZ/LOOPNE rel8
+                Dim relE0 As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 AndAlso (FLAGS And &H40) = 0 Then IP = CUShort((IP + relE0) And &HFFFF)
+
+            Case &HE1 ' LOOPZ/LOOPE rel8
+                Dim relE1 As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 AndAlso (FLAGS And &H40) <> 0 Then IP = CUShort((IP + relE1) And &HFFFF)
+
+            Case &HE2 ' LOOP rel8
+                Dim relE2 As SByte = CSByte(FetchByte())
+                CX = CUShort((CX - 1) And &HFFFF)
+                If CX <> 0 Then IP = CUShort((IP + relE2) And &HFFFF)
+
+            Case &HE3 ' JCXZ rel8
+                Dim relE3 As SByte = CSByte(FetchByte())
+                If CX = 0 Then IP = CUShort((IP + relE3) And &HFFFF)
+
+            Case &H8C ' MOV r/m16, Sreg
+                Debug.Print("MOV r/m16, Sreg (stubbed)")
+            Case &H8E ' MOV Sreg, r/m16
+                Debug.Print("MOV Sreg, r/m16 (stubbed)")
+
+
+            Case Else
+                Debug.Print("Unhandled opcode: " & Hex(opcode))
+        End Select
+    End Sub
+
+    Private Sub HandleALUImmediateToRM(opcode As Byte)
+        Dim imm As UInt16 = If(opcode = &H80, FetchByte(), If(opcode = &H83, CShort(CByte(FetchByte())), FetchWord()))
+        Dim modrm As Byte = FetchByte()
+        Dim modVal = (modrm >> 6) And &H3
+        Dim regOp = (modrm >> 3) And &H7
+        Dim rm = modrm And &H7
+        Dim val As UInt16
+        If modVal = 3 Then
+            val = GetRegister16(rm)
+        Else
+            val = ReadWord(GetEffectiveAddress(modVal, rm))
+        End If
+
+        Dim result As UInt16
+        Select Case regOp
+            Case 0 : result = Add16(val, imm)
+            Case 1 : result = Or16(val, imm)
+            Case 2 : result = And16(val, Not imm) ' ADC (placeholder)
+            Case 3 : result = Sub16(val, imm)
+            Case 4 : result = And16(val, imm)
+            Case 5 : result = Sub16(val, imm) ' SBB (placeholder)
+            Case 6 : result = Xor16(val, imm)
+            Case 7 : Cmp16(val, imm) : Return
+        End Select
+
+        If modVal = 3 Then
+            SetRegister16(rm, result)
+        Else
+            WriteWord(GetEffectiveAddress(modVal, rm), result)
+        End If
+    End Sub
+    ' Stack operations
+    Private Sub Push(value As UInt16)
+        SP = CUShort((SP - 2) And &HFFFF)
+        WriteWord((CUInt(SS) << 4) + SP, value)
+    End Sub
+
+    Private Function Pop() As UInt16
+        Dim value = ReadWord((CUInt(SS) << 4) + SP)
+        SP = CUShort((SP + 2) And &HFFFF)
+        Return value
+    End Function
+
+    ' Memory operations
+    Private Sub WriteWord(addr As UInt32, value As UInt16)
+        Memory(addr) = CByte(value And &HFF)
+        Memory(addr + 1) = CByte((value >> 8) And &HFF)
+    End Sub
+
+    Private Function ReadWord(addr As UInt32) As UInt16
+        Return CUShort(Memory(addr) Or (Memory(addr + 1) << 8))
+    End Function
+
+    ' Fetch operations
+    Public Function FetchByte() As Byte
+        Dim linear As UInt32 = (CUInt(CS) << 4) + IP
+        Dim b As Byte = Memory(linear)
+        IP = CUShort((IP + 1) And &HFFFF)
+        Return b
+    End Function
+
+    Public Function FetchWord() As UInt16
+        Dim lo As Byte = FetchByte()
+        Dim hi As Byte = FetchByte()
+        Return CUShort(lo Or (hi << 8))
+    End Function
+
+    ' Register access helpers
+    Private Sub SetRegister16(index As Integer, value As UInt16)
+        Select Case index
+            Case 0 : AX = value
+            Case 1 : CX = value
+            Case 2 : DX = value
+            Case 3 : BX = value
+            Case 4 : SP = value
+            Case 5 : BP = value
+            Case 6 : SI = value
+            Case 7 : DI = value
+        End Select
+    End Sub
+
+    Private Function GetRegister16(index As Integer) As UInt16
+        Select Case index
+            Case 0 : Return AX
+            Case 1 : Return CX
+            Case 2 : Return DX
+            Case 3 : Return BX
+            Case 4 : Return SP
+            Case 5 : Return BP
+            Case 6 : Return SI
+            Case 7 : Return DI
+            Case Else : Return 0
+        End Select
+    End Function
+
+    ' Interrupt support
+    Private Sub RaiseInterrupt(intnum As Byte)
+        Debug.Print("INT " & Hex(intnum) & "h triggered")
+        ' Save state and jump to vector (not fully implemented)
+        Push(FLAGS)
+        Push(CS)
+        Push(IP)
+        Dim vectorAddr As UInt32 = intnum * 4
+        IP = ReadWord(vectorAddr)
+        CS = ReadWord(vectorAddr + 2)
+    End Sub
+
+    ' CPU Reset
+    Public Sub Reset()
+        CS = &HF000
+        IP = &HFFF0
+        FLAGS = &H2
+        AX = 0 : BX = 0 : CX = 0 : DX = 0
+        SI = 0 : DI = 0 : SP = &HFFFE : BP = 0
+        DS = 0 : SS = 0 : ES = 0
+        Debug.Print("CPU Reset. CS:IP=" & Hex(CS) & ":" & Hex(IP))
+    End Sub
+    ' Arithmetic operations (partial)
+    Private Function Add16(a As UInt16, b As UInt16) As UInt16
+        Dim result As UInt32 = CUInt(a) + CUInt(b)
+        FLAGS = FLAGS And Not &H1 ' Clear CF
+        If result > &HFFFF Then FLAGS = FLAGS Or &H1 ' Set CF if overflow
+        Return CUShort(result And &HFFFF)
+    End Function
+
+    Private Function Sub16(a As UInt16, b As UInt16) As UInt16
+        Dim result As Int32 = CInt(a) - CInt(b)
+        FLAGS = FLAGS And Not &H1 ' Clear CF
+        If result < 0 Then FLAGS = FLAGS Or &H1 ' Set CF if borrow
+        Return CUShort(result And &HFFFF)
+    End Function
+
+    ' Logic operations
+    Private Function And16(a As UInt16, b As UInt16) As UInt16
+        Return CUShort(a And b)
+    End Function
+
+    Private Function Or16(a As UInt16, b As UInt16) As UInt16
+        Return CUShort(a Or b)
+    End Function
+
+    Private Function Xor16(a As UInt16, b As UInt16) As UInt16
+        Return CUShort(a Xor b)
+    End Function
+
+    ' Basic modrm decode (not fully implemented)
+    Private Sub DecodeModRM()
+        Dim modrm As Byte = FetchByte()
+        Dim modVal As Byte = (modrm >> 6) And &H3
+        Dim reg As Byte = (modrm >> 3) And &H7
+        Dim rm As Byte = modrm And &H7
+        Debug.Print("MODRM: mod=" & modVal & " reg=" & reg & " rm=" & rm)
+    End Sub
+
+    ' FPU expanded stub
+    Public Sub FPU_DoMath()
+        Debug.Print("80287: Performing floating point operation (stub)")
+    End Sub
+
+    ' Instruction pre-decode extension
+    Public Sub DecodePrefix()
+        Dim prefixFound As Boolean = True
+        Do While prefixFound
+            Dim prefix As Byte = Memory((CUInt(CS) << 4) + IP)
+            Select Case prefix
+                Case &H26, &H2E, &H36, &H3E ' segment override
+                    FetchByte() ' Skip prefix
+                    Debug.Print("Segment override prefix: " & Hex(prefix))
+                Case &HF0, &HF2, &HF3 ' LOCK, REPNE, REP
+                    FetchByte()
+                    Debug.Print("Prefix found: " & Hex(prefix))
+                Case Else
+                    prefixFound = False
+            End Select
+        Loop
+    End Sub
+    ' Addressing mode resolution
+    Private Function GetEffectiveAddress(modVal As Byte, rm As Byte) As Int32
+        Select Case modVal
+            Case 0
+                Select Case rm
+                    Case 0 : Return CUInt(BX + SI)
+                    Case 1 : Return CUInt(BX + DI)
+                    Case 2 : Return CUInt(BP + SI)
+                    Case 3 : Return CUInt(BP + DI)
+                    Case 4 : Return CUInt(SI)
+                    Case 5 : Return CUInt(DI)
+                    Case 6 : Return ReadWord((CUInt(CS) << 4) + IP) : IP = CUShort(IP + 2)
+                    Case 7 : Return CUInt(BX)
+                End Select
+            Case 1 ' 8-bit displacement
+                Dim disp As SByte = CInt(FetchByte())
+                Return GetEffectiveAddress(0, rm) + CUInt(disp)
+            Case 2 ' 16-bit displacement
+                Dim disp As Int16 = CShort(FetchWord())
+                Return GetEffectiveAddress(0, rm) + CUInt(disp)
+            Case 3 ' Register-direct mode
+                Return &HFFFFFFFF ' Invalid for memory addressing
+        End Select
+        Return 0
+    End Function
+
+    ' Cycle emulation
+    Public Sub RunCycle(maxCycles As Integer)
+        For i = 1 To maxCycles
+            pStep()
+        Next
+    End Sub
+    ' Extended ALU operations
+    Private Function Cmp16(a As UInt16, b As UInt16) As UInt16
+        Dim dummy = Sub16(a, b)
+        Return dummy ' flags set, but result discarded
+    End Function
+
+    Private Function Inc16(value As UInt16) As UInt16
+        Return Add16(value, 1)
+    End Function
+
+    Private Function Dec16(value As UInt16) As UInt16
+        Return Sub16(value, 1)
+    End Function
+
+    Private Function Neg16(value As UInt16) As UInt16
+        Return Sub16(0, value)
+    End Function
+
+    Private Function Not16(value As UInt16) As UInt16
+        Return CUShort(Not value)
+    End Function
+
+    ' Shift operations
+    Private Function Shl16(value As UInt16, count As Integer) As UInt16
+        Return CUShort((CUInt(value) << count) And &HFFFF)
+    End Function
+
+    Private Function Shr16(value As UInt16, count As Integer) As UInt16
+        Return CUShort(CUInt(value) >> count)
+    End Function
+
+    Private Function Sar16(value As UInt16, count As Integer) As UInt16
+        Return CUShort(CShort(value) >> count)
+    End Function
+
+    ' Rotate operations (basic)
+    Private Function Rol16(value As UInt16, count As Integer) As UInt16
+        count = count Mod 16
+        Return CUShort(((value << count) Or (value >> (16 - count))) And &HFFFF)
+    End Function
+
+    Private Function Ror16(value As UInt16, count As Integer) As UInt16
+        count = count Mod 16
+        Return CUShort(((value >> count) Or (value << (16 - count))) And &HFFFF)
+    End Function
+
+    ' Placeholder for FPU execution (ESC opcodes)
+    Public Sub ExecuteFPUOpcode(opcode As Byte)
+        Select Case opcode
+            Case &HD8 To &HDF ' ESC codes for 80287
+                Dim modrm As Byte = FetchByte()
+                Dim reg = (modrm >> 3) And &H7
+                Dim rm = modrm And &H7
+                ' Simplified placeholder FPU operations:
+                Select Case reg
+                    Case 0 ' FADD ST(0), ST(i)
+                        FPUStack(0) += FPUStack(rm)
+                        Debug.Print("FADD ST(0), ST(" & rm & ")")
+                    Case 1 ' FMUL ST(0), ST(i)
+                        FPUStack(0) *= FPUStack(rm)
+                        Debug.Print("FMUL ST(0), ST(" & rm & ")")
+                    Case 2 ' FCMP ST(0), ST(i)
+                        Debug.Print("FCMP ST(0), ST(" & rm & ") => " & FPUStack(0).CompareTo(FPUStack(rm)))
+                    Case 3 ' FST ST(i)
+                        FPUStack(rm) = FPUStack(0)
+                        Debug.Print("FST ST(" & rm & ")")
+                    Case 4 ' FLD ST(i)
+                        FPUStack(0) = FPUStack(rm)
+                        Debug.Print("FLD ST(" & rm & ")")
+                    Case Else
+                        Debug.Print("Unimplemented FPU op: " & Hex(opcode) & " reg=" & reg & " rm=" & rm)
+                End Select
+            Case Else
+                Debug.Print("Unhandled FPU opcode " & Hex(opcode))
+        End Select
+    End Sub
+
+    ' System instructions stubs
+    Public Sub LoadGDT()
+        Debug.Print("LGDT: Load Global Descriptor Table (stub)")
+    End Sub
+    Public Sub HandleIN(port As UInt16)
+        Debug.Print("IN from port " & Hex(port) & " (stub)")
+    End Sub
+
+    Public Sub HandleOUT(port As UInt16, value As Byte)
+        Debug.Print("OUT to port " & Hex(port) & ", value: " & Hex(value))
+    End Sub
+    ' Protected Mode Structures
+    Private Structure Descriptor
+        Public LimitLow As UInt16
+        Public BaseLow As UInt16
+        Public BaseMid As Byte
+        Public Access As Byte
+        Public Granularity As Byte
+        Public BaseHigh As Byte
+    End Structure
+
+    Private GDT(255) As Descriptor
+    Private GDTR_Limit As UInt16
+    Private GDTR_Base As UInt32
+
+    ' Load Global Descriptor Table Register (LGDT)
+    Public Sub LGDT(limit As UInt16, base As UInt32)
+        GDTR_Limit = limit
+        GDTR_Base = base
+        Debug.Print("LGDT loaded. Limit=" & limit & " Base=" & Hex(base))
+    End Sub
+
+    ' Segment Selector Loading (simplified)
+    Public Sub LoadSegmentSelector(selector As UInt16, ByRef segBase As UInt16)
+        Dim index As Integer = (selector >> 3)
+        If index * 8 > GDTR_Limit Then
+            Debug.Print("GP Fault: selector index out of GDT limit")
+            Return
+        End If
+        Dim addr As UInt32 = GDTR_Base + CUInt(index * 8)
+        Dim desc As Descriptor
+        desc.LimitLow = ReadWord(addr)
+        desc.BaseLow = ReadWord(addr + 2)
+        desc.BaseMid = Memory(addr + 4)
+        desc.Access = Memory(addr + 5)
+        desc.Granularity = Memory(addr + 6)
+        desc.BaseHigh = Memory(addr + 7)
+        Dim fullBase As UInt32 = CUInt(desc.BaseLow) Or (CUInt(desc.BaseMid) << 16) Or (CUInt(desc.BaseHigh) << 24)
+        segBase = CUShort((fullBase >> 4) And &HFFFF) ' segment base to selector for real-mode comp.
+        Debug.Print("Segment loaded: Base=" & Hex(fullBase))
+    End Sub
+
+    ' Enable protected mode (sets PE bit in MSW simulated)
+    Public Sub EnterProtectedMode()
+        FLAGS = FLAGS Or &H1 ' PE = bit 0 of CR0 (simulated)
+        Debug.Print("Protected mode enabled.")
+    End Sub
+
+    ' Placeholder for IDT / interrupt gates
+    Public Sub LIDT(limit As UInt16, base As UInt32)
+        Debug.Print("LIDT loaded. Limit=" & limit & " Base=" & Hex(base))
+    End Sub
+
+    ' Control register stubs
+    Private CR0 As UInt32 = 0
+    Public Sub SetCR0(value As UInt32)
+        CR0 = value
+        Debug.Print("CR0 set to " & Hex(CR0))
+    End Sub
+
+    Public Function GetCR0() As UInt32
+        Return CR0
+    End Function
+    ' Segment Descriptor Translation and Privilege Checking
+    Private Function TranslateSegment(selector As UInt16, offset As UInt16) As UInt32
+        Dim index As Integer = (selector >> 3)
+        If index * 8 > GDTR_Limit Then
+            Throw New Exception("#GP: Selector index out of bounds")
+        End If
+
+        Dim addr As UInt32 = GDTR_Base + CUInt(index * 8)
+        Dim desc As Descriptor
+        desc.LimitLow = ReadWord(addr)
+        desc.BaseLow = ReadWord(addr + 2)
+        desc.BaseMid = Memory(addr + 4)
+        desc.Access = Memory(addr + 5)
+        desc.Granularity = Memory(addr + 6)
+        desc.BaseHigh = Memory(addr + 7)
+
+        Dim fullBase As UInt32 = CUInt(desc.BaseLow) Or (CUInt(desc.BaseMid) << 16) Or (CUInt(desc.BaseHigh) << 24)
+        Dim limit As UInt32 = CUInt(desc.LimitLow) Or (CUInt(desc.Granularity And &HF) << 16)
+        If (desc.Granularity And &H80) <> 0 Then limit = (limit << 12) Or &HFFF
+
+        If offset > limit Then
+            Throw New Exception("#GP: Offset beyond segment limit")
+        End If
+
+        Return fullBase + offset
+    End Function
+
+    ' Privilege Check (stubbed)
+    Private Function CheckPrivilege(currentCPL As Byte, dpl As Byte, rpl As Byte) As Boolean
+        ' For now, permit all
+        Return True
+    End Function
+    ' FAR CALL, JMP, and IRET support
+    Public Sub CallFar(newCS As UInt16, newIP As UInt16)
+        Push(CS)
+        Push(IP)
+        CS = newCS
+        IP = newIP
+        Debug.Print("CALL FAR to " & Hex(newCS) & ":" & Hex(newIP))
+    End Sub
+
+    Public Sub JmpFar(newCS As UInt16, newIP As UInt16)
+        CS = newCS
+        IP = newIP
+        Debug.Print("JMP FAR to " & Hex(newCS) & ":" & Hex(newIP))
+    End Sub
+
+    Public Sub IRet()
+        IP = Pop()
+        CS = Pop()
+        FLAGS = Pop()
+        Debug.Print("IRET to " & Hex(CS) & ":" & Hex(IP))
+    End Sub
+
+    ' Exception/Trap Trigger (stub)
+    Public Sub TriggerFault(faultType As String, code As Integer)
+        Debug.Print("Exception: " & faultType & " Code=" & code)
+        ' In real implementation: push CS:IP, FLAGS, and transfer to IDT vector
+    End Sub
+
+    ' Paging stubs (80286 has no paging but prep for 80386+)
+    Public Sub SetCR3(value As UInt32)
+        Debug.Print("CR3 (Page Directory Base) set to: " & Hex(value))
+    End Sub
+
+    Public Function GetCR3() As UInt32
+        Return 0 ' Not used on 80286
+    End Function
+    ' String instruction support (basic REP MOVSB)
+    Public Sub ExecuteMOVSB(repPrefix As Boolean)
+        Dim count As Integer = If(repPrefix, CX, 1)
+        Dim direction As Integer = If((FLAGS And &H400) <> 0, -1, 1)
+        For i = 1 To count
+            Dim srcAddr As UInt32 = (CUInt(DS) << 4) + SI
+            Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+            Memory(dstAddr) = Memory(srcAddr)
+            SI = CUShort((SI + direction) And &HFFFF)
+            DI = CUShort((DI + direction) And &HFFFF)
+            If Not repPrefix Then Exit For
+        Next
+        If repPrefix Then CX = CUShort((CX - count) And &HFFFF)
+        Debug.Print("MOVSB " & If(repPrefix, "(REP) ", "") & "completed")
+    End Sub
+
+    ' IDT vector parsing stub
+    Public Sub LoadIDTEntry(vector As Byte)
+        Dim addr As UInt32 = vector * 4 ' 80286 real-mode style
+        Dim offset As UInt16 = ReadWord(addr)
+        Dim seg As UInt16 = ReadWord(addr + 2)
+        Debug.Print("IDT Vector " & vector & " -> " & Hex(seg) & ":" & Hex(offset))
+    End Sub
+    ' Additional string instructions
+    Public Sub ExecuteSTOSB(repPrefix As Boolean)
+        Dim count As Integer = If(repPrefix, CX, 1)
+        Dim direction As Integer = If((FLAGS And &H400) <> 0, -1, 1)
+        For i = 1 To count
+            Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+            Memory(dstAddr) = CByte(AL)
+            DI = CUShort((DI + direction) And &HFFFF)
+            If Not repPrefix Then Exit For
+        Next
+        If repPrefix Then CX = CUShort((CX - count) And &HFFFF)
+        Debug.Print("STOSB " & If(repPrefix, "(REP) ", "") & "completed")
+    End Sub
+
+    Public Sub ExecuteCMPSB(repPrefix As Boolean)
+        Dim count As Integer = If(repPrefix, CX, 1)
+        Dim direction As Integer = If((FLAGS And &H400) <> 0, -1, 1)
+        For i = 1 To count
+            Dim srcAddr As UInt32 = (CUInt(DS) << 4) + SI
+            Dim dstAddr As UInt32 = (CUInt(ES) << 4) + DI
+            Dim result As Integer = Memory(srcAddr) - Memory(dstAddr)
+            UpdateFlagsForCompare(result)
+            SI = CUShort((SI + direction) And &HFFFF)
+            DI = CUShort((DI + direction) And &HFFFF)
+            If Not repPrefix Then Exit For
+        Next
+        If repPrefix Then CX = CUShort((CX - count) And &HFFFF)
+        Debug.Print("CMPSB " & If(repPrefix, "(REP) ", "") & "completed")
+    End Sub
+
+    Private Sub UpdateFlagsForCompare(result As Integer)
+        FLAGS = FLAGS And Not (&H40 Or &H80 Or &H1 Or &H400) ' Clear ZF, SF, CF, DF
+        If result = 0 Then FLAGS = FLAGS Or &H40 ' ZF
+        If (result And &H80) <> 0 Then FLAGS = FLAGS Or &H80 ' SF
+        If result < 0 Then FLAGS = FLAGS Or &H1 ' CF
+    End Sub
+    ' --- Hardware Emulation Stubs ---
+
+    ' PIT (Programmable Interval Timer) Channel 0 Stub
+    Public Sub PIT_Tick()
+        ' Trigger timer IRQ (usually IRQ0 / INT 08h)
+        RaiseInterrupt(&H8)
+        Debug.Print("PIT Tick: INT 08h signaled")
+    End Sub
+
+    ' Programmable Interrupt Controller (PIC) IRQ Routing Stub
+    Public Sub RaiseIRQ(irqNum As Byte)
+        Dim intVec As Byte = irqNum + 8 ' PIC remapped offset
+        RaiseInterrupt(intVec)
+        Debug.Print("PIC IRQ" & irqNum & " routed to INT " & Hex(intVec) & "h")
+    End Sub
+
+    ' Keyboard Controller Stub
+    Private KeyboardBuffer As New Queue(Of Byte)
+
+    Public Sub KeyboardSendScanCode(scanCode As Byte)
+        KeyboardBuffer.Enqueue(scanCode)
+        RaiseIRQ(1) ' IRQ1 -> INT 09h
+        Debug.Print("Keyboard scan code " & Hex(scanCode) & " enqueued")
+    End Sub
+
+    Public Function KeyboardRead() As Byte
+        If KeyboardBuffer.Count > 0 Then
+            Return KeyboardBuffer.Dequeue()
+        Else
+            Return 0
+        End If
+    End Function
+
+    Public Function KeyboardHasKey() As Boolean
+        Return KeyboardBuffer.Count > 0
+    End Function
+
+
+    ' FPU Stack and helpers
+    Private FPUStack(7) As Double
+    Private FPUPointer As Integer = 0
+
+    Public Sub FPU_PUSH(value As Double)
+        FPUPointer = (FPUPointer - 1) And 7
+        FPUStack(FPUPointer) = value
+        Debug.Print("FPU_PUSH " & value)
+    End Sub
+
+    Public Function FPU_POP() As Double
+        Dim value As Double = FPUStack(FPUPointer)
+        FPUPointer = (FPUPointer + 1) And 7
+        Debug.Print("FPU_POP => " & value)
+        Return value
+    End Function
+
+End Class

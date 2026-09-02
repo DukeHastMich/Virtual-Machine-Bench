@@ -1,0 +1,452 @@
+Host Refit and Physical Machine-Construction Suggestions
+=========================================================
+
+Purpose
+-------
+
+The host is not merely a settings screen for a fixed emulator. It is the
+construction and inspection environment for a virtual retro computer assembled
+from modeled physical components.
+
+The system should allow an operator to mix and match real historical hardware
+models as closely as possible. It may later include Cromwell-branded hybrid and
+novel devices, but those devices must remain explicit pieces of hardware with
+documented behavior. They must not silently bypass electrical, mechanical, or
+protocol constraints.
+
+The intended result is:
+
+* From inside the virtual machine, the installed hardware behaves like the
+  asserted physical build.
+* From the operator's chair, the host clearly communicates what machine has
+  been constructed and how its components are connected.
+* Every functioning connection is physically plausible or is made plausible by
+  an explicit adapter or converter that could exist as real electronics.
+
+
+Streamlined Hardware Changes
+----------------------------
+
+The final host may use dropdowns to make hardware installation and replacement
+fast. This is a user-interface convenience only. Selecting an item must perform
+the equivalent of a real hardware change and update the complete machine model.
+
+A dropdown selection should therefore resolve and validate:
+
+* The exact component model and revision.
+* The physical slot, socket, bay, or mounting point.
+* Bus and connector compatibility.
+* Cable type, connector position, and orientation.
+* Electrical signaling and voltage compatibility.
+* Power requirements and available supply capacity.
+* Jumper, switch, and termination settings.
+* IRQ, DMA, I/O-port, ROM-address, and memory-window assignments.
+* Firmware, option-ROM, driver, and CMOS support.
+* Required adapters, brackets, converters, and auxiliary hardware.
+* Conflicts or behavioral consequences introduced by the change.
+
+The streamlined interface must never conceal a required physical component or
+silently reinterpret an incompatible connection as compatible.
+
+
+Machine Build Information Side Panel
+------------------------------------
+
+The host currently lacks a sufficiently clear informational side panel for the
+active machine build. This panel is essential. It should act as a live build
+sheet, inventory, wiring summary, and diagnostic reference.
+
+At minimum, it should identify:
+
+* Chassis manufacturer, model, revision, and form factor.
+* Power supply model, rail capacities, connectors, and current load.
+* Motherboard manufacturer, model, revision, and jumper configuration.
+* Chipset and supporting motherboard logic.
+* BIOS vendor, version, date, and installed option ROMs.
+* CPU model, package, socket, clock speed, and turbo state.
+* Numeric coprocessor model and clocking arrangement.
+* Installed memory modules, organization, speed, parity, and bank layout.
+* Every expansion card and its occupied ISA slot.
+* Storage controllers and all attached drives.
+* Inserted removable media and physical write-protect state.
+* Video card, monitor, signal standard, cable, and conversion hardware.
+* Keyboard, keyboard controller, protocol, cable, and adapter chain.
+* Speaker, motherboard driver circuit, connector, and chassis mounting.
+* Serial, parallel, network, and other external peripherals.
+* IRQ, DMA, I/O-port, ROM-address, and memory-window allocation.
+* Active jumpers, DIP switches, cable-select positions, and termination.
+* Detected resource conflicts, unsupported combinations, and unsafe states.
+
+Each component should also carry a visible classification:
+
+* Historical original component.
+* Historical compatible or third-party component.
+* Cromwell reproduction.
+* Cromwell hybrid.
+* Cromwell novel or experimental device.
+
+The operator should never have to infer the active machine from scattered menu
+checkmarks. The panel must state exactly what physical machine the emulator is
+asserting at that moment.
+
+
+Core Physical-Connection Rule
+-----------------------------
+
+No logical compatibility should exist without a physically plausible
+connection path.
+
+Every connection should be represented as:
+
+    source device
+        -> source electrical and protocol interface
+        -> source connector
+        -> cable or backplane path
+        -> optional adapter or converter
+        -> destination connector
+        -> destination electrical and protocol interface
+        -> destination device
+
+A shared informal name is not enough to establish compatibility. Two devices
+described as RGB, IDE, serial, floppy, keyboard, or audio devices may use
+different connectors, voltage levels, timing, synchronization, encoding, or
+protocols.
+
+
+Adapters and Converters Are Hardware
+------------------------------------
+
+An adapter must be a first-class component in the machine construction model.
+It must not be reduced to a hidden compatibility flag.
+
+The model should distinguish between:
+
+* Passive pin or mechanical adapters.
+* Cable wiring adapters.
+* Voltage-level translators.
+* Impedance or termination networks.
+* Protocol converters.
+* Active scan or timing converters.
+* Intelligent bridges with firmware or buffering.
+* Mounting brackets and enclosure modifications.
+
+Each adapter should declare:
+
+* Its real or Cromwell model identity.
+* Input and output connectors.
+* Supported electrical levels and protocols.
+* Directionality.
+* Power source and consumption.
+* Timing limits, bandwidth, and latency.
+* Resolution, color, frequency, or data-rate restrictions.
+* Signal loss, distortion, or conversion artifacts.
+* Required configuration and firmware.
+* Historical availability or Cromwell classification.
+
+For example, a digital RGB output must not silently connect to an incompatible
+analog RGB display simply because both are called RGB. The construction must
+include the appropriate real or plausible active conversion device. That device
+must expose its physical connector chain, supported scan rates, voltage levels,
+color conversion, synchronization behavior, latency, artifacts, and power
+requirements. Conceptually, this is like requiring the correct barrel connector
+and conversion electronics instead of treating unlike interfaces as identical.
+
+
+Compatibility and Failure States
+--------------------------------
+
+The construction validator should report more than compatible or incompatible.
+Useful states include:
+
+Physically direct
+    The devices have a documented native connection and can be connected with
+    the selected cable or backplane path.
+
+Adapted
+    The connection is valid only through the explicitly listed adapter,
+    converter, bridge, bracket, or cable.
+
+Resource conflict
+    The hardware can connect physically, but IRQ, DMA, I/O, ROM, memory, or bus
+    ownership conflicts prevent correct operation.
+
+Firmware unsupported
+    The hardware is electrically connected, but the selected BIOS, option ROM,
+    CMOS implementation, or device firmware cannot configure or operate it.
+
+Driver unsupported
+    The machine can enumerate or electrically access the hardware, but the
+    selected guest software lacks the required driver.
+
+Electrically unsafe
+    Connectors may fit or be adaptable, but voltage, current, impedance, signal
+    direction, or power requirements are incompatible.
+
+Mechanically incompatible
+    A bracket, mounting adapter, enclosure modification, cable clearance, or
+    different chassis is required.
+
+Historically unavailable
+    The connection is physically plausible but the component or adapter falls
+    outside the selected historical date or provenance constraints.
+
+Cromwell experimental
+    The device is intentionally hybrid or novel. Its invented circuitry and
+    deviations from historical hardware are explicitly documented.
+
+An invalid build may be allowed as an educational experiment where safe, but it
+must not function as though the missing electronics existed. The host must show
+the failure state and the guest must observe the resulting authentic absence,
+conflict, malfunction, or inability to initialize.
+
+
+Connection Rules Across Major Subsystems
+----------------------------------------
+
+Floppy storage
+    Drive type, controller capability, data rate, cable position, twist, drive
+    select, density support, BIOS support, CMOS type, power connector, and media
+    type must agree. A 2.88 MB drive requires the asserted controller, drive,
+    firmware support, data rate, and physical connection path.
+
+IDE storage
+    Controller channel, cable type and length, connector position, master/slave
+    or cable-select jumpers, BIOS capacity support, power, and device timing must
+    be represented.
+
+ISA expansion cards
+    Bus width, keying, slot position, clock tolerance, IRQ, DMA, I/O ports, ROM
+    address, memory aperture, jumpers, and option-ROM requirements must be
+    validated.
+
+Video and displays
+    Connector, analog or digital signaling, voltage levels, sync polarity,
+    horizontal and vertical scan ranges, pixel clock, color encoding, cable,
+    termination, and adapters must form a valid chain.
+
+Keyboard and pointing devices
+    Connector shape alone is insufficient. Protocol, voltage, clock/data
+    behavior, controller support, passive adapters, and active converters must
+    be distinguished.
+
+Audio and PC speaker
+    Logic source, motherboard driver circuit, voltage, impedance, connector,
+    speaker part, enclosure mounting, and any external amplification or adapter
+    should be explicit.
+
+Memory
+    Package, socket, data width, parity organization, speed, voltage, bank
+    population rules, chipset addressing, and motherboard limits must agree.
+
+Power
+    Connector type, pinout, rail voltage, current demand, sequencing, and total
+    supply capacity should be validated. A mechanical fit does not imply safe
+    electrical compatibility.
+
+
+Inspecting a Connection Chain
+-----------------------------
+
+The operator should be able to select any component in the side panel and see
+its complete connection path. For example:
+
+    Drive B:
+      Toshiba 2.88 MB ED drive
+        -> 34-pin drive interface
+        -> ribbon cable, second connector
+        -> period-compatible or Cromwell ISA floppy controller
+        -> 16-bit ISA slot 4
+        -> I/O 03F0h-03F7h, IRQ 6, DMA 2
+        -> 1 Mbps ED transfer capability
+        -> BIOS extension enabled
+        -> CMOS drive type: 2.88 MB
+        -> power connector and rail load shown
+
+The display should make missing links and conflicts visually obvious. It should
+also explain why a proposed device cannot be installed or what additional part
+is required.
+
+
+Sneaker Net Boundary
+--------------------
+
+Sneaker Net is a host-side media preparation and transport system. It is
+analogous to preparing a disk on another computer and carrying it to the
+virtual machine. Its host interface does not need to resemble software running
+inside the selected retro machine.
+
+The archaeological boundary begins when the operator asserts or inserts the
+created medium into the machine build.
+
+Sneaker Net may therefore create any supported external medium, including a
+2.88 MB disk. The receiving build determines whether that medium can actually be
+inserted, detected, read, written, or rejected. A valid 2.88 MB configuration is
+possible when the operator has explicitly installed a suitable drive,
+controller, cabling, firmware support, CMOS configuration, and other required
+hardware.
+
+The receiving drive model should govern:
+
+* Whether the medium physically fits.
+* Density and media sensing.
+* Supported controller data rates.
+* Disk-change behavior.
+* Write-protect state.
+* Motor, readiness, seek, and rotational timing.
+* Errors caused by unsupported or mismatched media.
+
+Sneaker Net must not silently upgrade the receiving machine merely because the
+operator created a higher-capacity image.
+
+
+Machine Manifest and Connection Graph
+-------------------------------------
+
+The active build should be stored as a structured machine manifest plus a
+connection graph. This should become the single source of truth for:
+
+* Hardware construction and dropdown choices.
+* Host side-panel presentation.
+* Emulator device creation and wiring.
+* Resource and compatibility validation.
+* Jumpers, switches, CMOS values, and option-ROM loading.
+* Save states and reproducible machine builds.
+* Diagnostics and guest-visible hardware reports.
+* Historical provenance and documentation.
+* Cromwell hybrid and novel-device specifications.
+
+The manifest should identify exact component models and revisions rather than
+only broad device classes. The connection graph should identify every slot,
+socket, port, cable, connector, adapter, converter, and power path.
+
+A saved build should be reproducible. Reloading it should reconstruct the same
+hardware inventory, wiring, resource allocation, firmware, adapter chain, and
+guest-visible behavior.
+
+
+Recommended Host Refit Order
+----------------------------
+
+1. Add the machine build informational side panel.
+2. Define stable component identities and classifications.
+3. Create the structured machine manifest.
+4. Represent slots, ports, connectors, cables, and power paths explicitly.
+5. Add the connection and compatibility graph.
+6. Make adapters and converters first-class components.
+7. Route dropdown hardware changes through the manifest and validator.
+8. Display conflicts, missing adapters, and unsupported firmware clearly.
+9. Make emulator device construction derive from the validated manifest.
+10. Extend the same framework to documented Cromwell hybrid and novel devices.
+
+The side panel should arrive early because it makes every subsequent hardware
+change visible and auditable. It is not cosmetic. Without it, a streamlined
+dropdown can change the asserted machine without leaving a clear physical
+account of what machine now exists.
+
+
+Guiding Principle
+-----------------
+
+Convenient host controls are encouraged, but convenience must operate by
+constructing a valid machine rather than bypassing one.
+
+If two components cannot communicate through real connectors, signaling,
+protocols, power, firmware, and any required adapters, they must not communicate
+inside the virtual machine. When Cromwell invents a new bridge or hybrid device,
+that bridge must be documented and modeled as actual electronics occupying a
+real place in the build.
+
+
+Addendum: Socketed and Flashable OEM Firmware
+---------------------------------------------
+
+The construction system must support authentic OEM BIOS images, including
+firmware that can be programmed or updated through the mechanisms provided by
+the asserted motherboard or adapter. BIOS contents must not be treated as a
+permanent emulator resource selected independently of the physical machine.
+
+Firmware storage should be represented as real hardware components, such as:
+
+* Mask ROM.
+* Socketed EPROM or EEPROM.
+* Flash EEPROM.
+* Separate even/odd ROM pairs where used.
+* Motherboard system BIOS devices.
+* Video, storage-controller, network, and other option ROMs.
+* Auxiliary keyboard-controller, microcontroller, or device firmware where it
+  is replaceable or programmable on the reference hardware.
+
+Each firmware device or socket should specify:
+
+* Manufacturer and exact device type.
+* Capacity, organization, data width, and number of chips.
+* Pinout, package, socket, and required adapter where applicable.
+* Address decoding and guest-visible mapping.
+* Erase-block and programming granularity.
+* Programming voltage and write-enable requirements.
+* Read, program, and erase timing.
+* Hardware and software write-protection mechanisms.
+* Boot-block or recovery-region protection.
+* Supported OEM image sizes, interleaving, checksums, and signatures.
+* Compatibility with the selected motherboard or expansion-card revision.
+* Persistent contents and provenance.
+
+If the selected motherboard supports in-system flashing, authentic OEM flash
+utilities running inside the guest should be able to identify, erase, program,
+verify, and protect the emulated flash device through the original chipset and
+firmware interfaces. The host must not intercept a recognized update and simply
+replace a file. Guest software should exercise the same command sequences,
+write-enables, chipset gates, and reset requirements used by the real hardware.
+
+Programming must reproduce relevant physical behavior and failure conditions:
+
+* Writes fail while hardware or chipset protection is active.
+* Unsupported device-identification commands return authentic values or fail.
+* Incorrect programming voltage or incompatible algorithms do not succeed.
+* Erase and programming operations require modeled time.
+* Reads during programming follow the selected flash device's documented
+  status-polling behavior.
+* Reset or power interruption during an update can leave incomplete contents.
+* A corrupted main BIOS can prevent POST or boot.
+* A protected boot block or documented recovery mechanism works only when the
+  asserted hardware actually provides it.
+* Recovery may require a jumper, switch, recovery disk, external programmer, or
+  replacement ROM, just as on the physical machine.
+
+Firmware contents must persist across power cycles as part of the component's
+nonvolatile state. Save states must not accidentally roll flash contents backward
+unless the selected preservation policy explicitly snapshots nonvolatile media.
+The host should keep recoverable backups for operator safety, but those backups
+must remain outside guest-visible hardware and must not silently repair a failed
+flash operation.
+
+The machine build side panel should display:
+
+* Installed BIOS and option-ROM device models.
+* OEM, product, version, date, size, and image hash.
+* Socket or board location and address range.
+* Original, replacement, modified, or Cromwell firmware classification.
+* Current write-protect, recovery-jumper, and boot-block state.
+* Whether in-system programming is physically supported.
+* Unsaved or changed nonvolatile contents.
+* Compatibility or checksum warnings without concealing the installed image.
+
+The connection validator must treat an OEM BIOS image as compatible only when
+its electrical organization, capacity, mapping, chipset expectations, board
+revision, and required peripheral hardware agree with the selected build. If an
+image requires two physical ROMs, an interposer, a larger decoder, or a flash
+upgrade module, those parts must appear explicitly in the connection graph.
+
+Host-side installation should support operations analogous to real service work:
+
+* Insert or replace a socketed ROM while power is off.
+* Install an approved flash-upgrade module or adapter.
+* Load an image into an external programmer and then install the programmed
+  device.
+* Operate a physical recovery or write-enable jumper.
+* Preserve and restore ROM dumps as external archival actions.
+
+Cromwell hybrid or novel firmware devices may offer new capabilities, but the
+device, programming interface, adapter, and deviations from original hardware
+must be documented. They must not cause an original OEM motherboard to acquire
+flash support without an asserted physical modification that could implement it.

@@ -1,0 +1,121 @@
+Card: Novell NE2000 (or NE2000-compatible clone)Era: 1988–1992 (peak popularity on 286 and early 386 systems)
+Bus: 16-bit ISA
+Form factor: Full-length or half-length 16-bit ISA cardHardware OverviewController: National Semiconductor DP8390 (or compatible – Realtek, Winbond, etc. clones later)
+Media: 10BASE-T (RJ45) + 10BASE2 (BNC) on most versions; some early ones were BNC + AUI only
+RAM: 8 KB or 16 KB dual-ported packet buffer RAM on the card
+I/O: Programmed I/O (PIO) with optional shared-memory window on some clones
+IRQ: Software-configurable or jumper-selectable (typically 2/9, 3, 4, 5, 10, 11, 12, 15)
+I/O Base: Commonly 0x300, 0x320, 0x340, or 0x360 (jumper or soft-configurable)
+
+Key Registers / Behavior (for authentic emulation)DP8390 Command Register, Page registers, Boundary/Current pointers
+Remote DMA for packet transfer
+Local DMA for buffer management
+Interrupt status and mask registers
+Proper handling of the NE2000-specific reset and PROM signature at I/O base + 0x00–0x0F
+16-byte station address PROM (the classic NE2000 “signature” that drivers check)
+
+Typical Jumpers / Configuration (1989–1991 style)I/O base address
+IRQ
+Memory address (if shared-memory mode is present)
+BNC / Twisted-pair / AUI selection
+Boot ROM enable/disable (optional 8 KB or 16 KB socket)
+
+Software Reality of the EraPrimary drivers: Novell ODI, NDIS 2.0, packet drivers (Crynwr), and early NDIS 3
+Extremely common in DOS networking, early Windows for Workgroups, and NetWare clients
+Many 286 industrial / embedded systems used NE2000 clones because they were cheap and well-supported
+
+Card: Novell NE2000 (or NE2000-compatible clone)Era: 1988–1992 (peak popularity on 286 and early 386 systems)
+Bus: 16-bit ISA
+Form factor: Full-length or half-length 16-bit ISA cardHardware OverviewController: National Semiconductor DP8390 (or compatible – Realtek, Winbond, etc. clones later)
+Media: 10BASE-T (RJ45) + 10BASE2 (BNC) on most versions; some early ones were BNC + AUI only
+RAM: 8 KB or 16 KB dual-ported packet buffer RAM on the card
+I/O: Programmed I/O (PIO) with optional shared-memory window on some clones
+IRQ: Software-configurable or jumper-selectable (typically 2/9, 3, 4, 5, 10, 11, 12, 15)
+I/O Base: Commonly 0x300, 0x320, 0x340, or 0x360 (jumper or soft-configurable)
+
+Key Registers / Behavior (for authentic emulation)DP8390 Command Register, Page registers, Boundary/Current pointers
+Remote DMA for packet transfer
+Local DMA for buffer management
+Interrupt status and mask registers
+Proper handling of the NE2000-specific reset and PROM signature at I/O base + 0x00–0x0F
+16-byte station address PROM (the classic NE2000 “signature” that drivers check)
+
+Typical Jumpers / Configuration (1989–1991 style)I/O base address
+IRQ
+Memory address (if shared-memory mode is present)
+BNC / Twisted-pair / AUI selection
+Boot ROM enable/disable (optional 8 KB or 16 KB socket)
+
+Software Reality of the EraPrimary drivers: Novell ODI, NDIS 2.0, packet drivers (Crynwr), and early NDIS 3
+Extremely common in DOS networking, early Windows for Workgroups, and NetWare clients
+Many 286 industrial / embedded systems used NE2000 clones because they were cheap and well-supported
+
+Would you like me to expand this into a full modular “board” description (port map, reset behavior, interrupt generation, PROM contents, etc.) so it can be built the same way as your 8042 and other devices?
+
+Describe DP8390 controller registers
+
+Explain 10BASE2 coaxial cabling
+
+Expand into full modular board description
+
+OK draw up a function map of the systems on the card and any eproms roms components that need emulation etc
+
+Here’s a clean function map of a classic late-1980s / early-1990s NE2000-class Ethernet card, broken into the systems/components that need emulation:1. DP8390 (or compatible) Network Interface ControllerCore of the cardCommand Register (CR)
+Page Select (Page 0 / 1 / 2)
+Interrupt Status & Mask registers
+Data Configuration, Transmit Configuration, Receive Configuration
+Boundary Pointer, Current Page, Next Page
+Remote DMA logic (read/write packet data)
+Local DMA (internal buffer management)
+Transmit and Receive state machines
+Collision detection / backoff
+CRC generation / checking
+FIFO (internal to the chip)
+
+This is the largest and most important block.2. Packet Buffer RAMUsually 8 KB or 16 KB of dual-ported SRAM
+Mapped as ring buffer (transmit and receive pages)
+Accessed via the DP8390’s remote DMA
+Needs correct page wrapping and boundary pointer behavior
+
+3. Station Address PROM / EEPROM16-byte (or 32-byte on some clones) PROM at I/O base + 0x00
+Contains:6-byte MAC address (repeated)
+NE2000 signature bytes (0x57, 0x57)
+Checksum
+
+Many drivers read this PROM to identify the card and get the MAC
+Must be emulated accurately (including the odd “double MAC” layout)
+
+4. I/O Decoding & Configuration LogicAddress decode for the chosen I/O base (0x300, 0x320, 0x340, 0x360, etc.)
+Optional shared-memory window decode (some clones)
+Jumper or soft-configurable IRQ and I/O base
+Reset logic (NE2000 has a specific reset sequence)
+
+5. Interrupt GenerationIRQ line driven by the DP8390’s interrupt output
+Must correctly raise/lower the chosen IRQ (usually 3, 5, 10, 11, 12, or 15)
+Edge-triggered behavior matching ISA
+
+6. Boot ROM Socket (optional but common)8 KB or 16 KB EPROM/ROM socket
+Mapped into the ISA memory space (commonly C800h, D000h, etc.)
+Contains network boot code (RPL, PXE precursor, or vendor-specific)
+Needs a simple ROM image + decode logic if you want boot-from-network support
+
+7. Media Interface (less critical for basic emulation)10BASE-T / 10BASE2 / AUI selection logic
+Link status / activity LEDs (can be simple status bits)
+Most pure software emulators ignore the actual PHY and just deliver frames
+
+8. Bus Interface GlueISA 16-bit data path
+I/O and memory cycle timing
+Ready / wait-state generation (some cards inserted waits)
+
+Recommended Emulation Priority OrderDP8390 core + registers + remote DMA  
+Packet buffer RAM  
+Station Address PROM  
+I/O decode + IRQ  
+Reset behavior  
+Boot ROM (if desired)  
+Media / LED niceties
+
+Would you like me to expand any of these blocks into register-level detail, or draw up the exact I/O map and PROM layout next?
+
+
+

@@ -1,0 +1,127 @@
+Diamond Stealth Pro / S3 86C928 / Bt485 implementation audit
+Updated: 2026-08-22
+
+Maintenance rule: remove an entry when its implementation is completed and
+verified against the cited hardware programming documentation.  Do not turn a
+guest-specific workaround into card behavior.
+
+PENDING LIVE VERIFICATION — allocation-free always-on VGA recorder (2026-08-22)
+  QuickBASIC BALL exposed more than 225,000 VGA indexed-register writes in a
+  small SCREEN 2 drawing run.  The previous always-enabled recorder formatted
+  and discarded a String for every transaction even though its queue retained
+  only 8,192 entries, producing severe host allocation pressure that looked
+  like a guest lock.  The always-on path is now a fixed 8,192-entry numeric
+  port-write ring; verbose formatted tracing is opt-in, and 3BAh/3DAh read
+  totals remain continuously counted.  No guest register, timing, or memory
+  behavior changed.  Remove this entry after BALL runs responsively and Dump
+  All retains the final exact port-write sequence.
+
+PENDING LIVE VERIFICATION — atomic visible mode transition (2026-08-22)
+  The option ROM formerly asserted Attribute Controller PAS at the end of its
+  register-table load, before loading the font/palette, updating the BDA,
+  clearing the selected page, and initializing the cursor.  This exposed stale
+  VRAM through partially initialized mode state as a brief garbage screen during
+  reset.  Mode programming now clears PAS before the first clock/register write
+  and asserts it only after the complete visible mode state is coherent.  Remove
+  this entry after repeated front-panel reset and graphics/text transitions show
+  only the prior stable frame followed by the completed new mode (or black).
+
+PENDING LIVE VERIFICATION — INT 10h AX=1010h DAC red component (2026-08-22)
+  The option-ROM single-DAC-register service used DX for the 03C8h/03C9h port
+  before consuming its caller-supplied DH red component.  Consequently every
+  BIOS-programmed color received red=03h, the high byte of port 03C9h; the
+  dedicated DAC flight recorder exposed this in Scorched Earth's green sun and
+  entries 6Eh-78h.  DH is now preserved before DX becomes the port register, as
+  required by the IBM VGA INT 10h AX=1010h interface.  Remove this entry after
+  Scorched Earth shows the expected sun/palette in a fresh power-on session.
+
+PENDING LIVE VERIFICATION — 2026-08-22 VGA/S3/Bt485 substrate correction
+  Corrected separate VGA odd/even read/write routing, GR4 plane-pair selection,
+  SR2-masked write pairs, GR6 address chaining, and read-mode-1 ordering.
+  Enhanced scan-out now takes precedence when Advanced Function Control selects
+  it and derives 4/8/15/16/24-bit formatting, nibble/byte order, true-color
+  palette bypass/indexing, and VGA/pixel-port selection from the Bt485 rather
+  than S3 graphics-engine CR50.
+  Native S3 cursor operation is enhanced-mode-only; its alternating AND/XOR
+  word storage, indexed colors, stretch colors/width, coordinate latch, and
+  Bt485 CDE/ODF gates are modeled.  Bt485 X/Y display coordinates latch only on
+  CYHR while MPU reads retain the staged values.
+  Sequencer reset/screen-off, Attribute PAS, Bt485 power-down, CRTC blanking and
+  display skew now gate scan-out/status while sync timing continues. Input
+  Status 0/1 and palette-register access follow the documented hardware gates.
+  CR33/CR34/CR35 compatibility locks now protect the documented DAC, palette,
+  overscan, clock-select, 8/9-dot, and bit-granular CRTC fields without wrongly
+  freezing unrelated bits in the same register.
+  Remove this entry after DOS text/graphics transitions, EDIT exit, Scorched
+  Earth, and the Windows 3.1 driver transition all pass live testing.
+
+OPEN — Brooktree Bt485 extended register interface
+  Implemented the documented S3 CR55/CR43-to-Bt485 RS3:RS2 wiring, command
+  registers 0-4, overlay palette, cursor RAM/address/position registers, and
+  command-0-selected 6/8-bit palette component width.  Status/revision identity,
+  component phase, signature registers, cursor-address side effects, and the
+  documented 32/64-pixel three-color/Windows/X cursor composition are present.
+  Power-down now blanks DAC output while palette/register MPU access survives.
+  Still implement overlay composition, model the internal-clock-disable hold
+  behavior, and verify the remaining command-bit and overscan interactions.
+
+OPEN — ICD2061A clock generator serial programming
+  The clock source currently accepts a host-supplied frequency but does not
+  implement the board's serial programming protocol.  Unsupported VGA clock
+  selections therefore fall back to a fixed oscillator.
+
+OPEN — 86C928 pixel-transfer stream
+  CPU-to-screen and screen-to-CPU streaming, WAIT handshaking, byte/word units,
+  command byte order, row padding, through/across-plane data, and GP_STAT data
+  availability are implemented.  Through-plane transfers now assemble and
+  disassemble pixels across ISA units, including two 16-bit words per 32-bpp
+  pixel.  Still complete packed 4-bpp transfers and verify MMIO aliases.
+
+OPEN — remaining 86C928 drawing command classes
+  The engine implements line, rectangle fill, bitblt/pattern, and short stroke
+  subsets.  Short-stroke DRAW=0 movement, both-vector execution, and command
+  byte ordering are now modeled.  Audit every command direction/last-pixel/
+  data-source bit; unsupported command types must not silently complete.
+
+OPEN — verified packed-pixel and extended timing decode
+  CR50 pixel size and documented 640/800/1024-or-2048/1280 engine widths are
+  decoded, and engine pitch is no longer conflated with the CR13 display-fetch
+  pitch.  CR51/CR43 extended display pitch is modeled.  Finish auditing the S3
+  display-start and vertical/horizontal timing extensions.
+
+OPEN — hardware cursor modes
+  Bt485 planar cursor RAM, 32/64 sizing, X/Y origin semantics, three-color,
+  Windows highlight, X11, transparent, and complement pixels are rendered.
+  The native S3 cursor is enabled only in Enhanced mode, uses alternating
+  AND/XOR words, latches position at CR48, uses CR0E/CR0F indexed colors, and
+  implements CR45 x2/x3 stretch with the true-color stacks.  Complete CR45
+  right-storage mode, interlace field behavior, and overscan interaction.
+
+PENDING LIVE VERIFICATION — VGA substrate scan-out (2026-08-22)
+  Implemented SEQ1 divided-dot-clock timing; correct SEQ3 font-map A/B decode;
+  attribute-bit-3 font selection; AC12 color-plane enable; AC13 planar and
+  256-color panning; AC10 split-screen panning compatibility; CRTC line-compare
+  address restart in planar, 256-color, and enhanced modes; and double-scan
+  source-line accounting in every graphics renderer.  The planar renderer
+  caches each eight-pixel plane fetch so this accuracy does not impose four
+  VRAM calls per host pixel.  Remove this entry after live VGA diagnostics and
+  the Scorched Earth/Windows transition tests confirm the behavior.
+
+PENDING LIVE VERIFICATION — option-ROM-owned text-font architecture (2026-08-22)
+  The resident VGA option ROM now contains the complete board-default 8x16
+  CP437 payload.  Modes 02h/03h load it through the documented Sequencer,
+  Graphics Controller, and A0000h plane-2 path.  INT 10h/AH=11h implements
+  built-in 8x16 alpha loading (AL=04h/14h), graphics-font selection (AL=24h),
+  and the BH=06h font-information query.  INT 43h points into the option ROM.
+  Removed normal host startup font injection and the GC06 transition heuristic;
+  the card no longer guesses that a graphics-to-text register write means it
+  should overwrite guest font memory.  EDIT graphics/text exit and its DAC
+  save/restore path passed twice consecutively on 2026-08-22 after the option
+  ROM gained the missing IBM VGA INT 10h AX=1015h/1017h single/block DAC read
+  services.  Verify custom-font preservation, then remove this entry.
+
+IMPLEMENTED — persistent VGA/DAC forensic capture (2026-08-19)
+  The card now keeps an always-armed bounded register flight recorder, records
+  every 3C9h component write with palette index and phase, dumps the complete
+  current DAC table, and preserves the complete pre-text palette/state when a
+  graphics-to-text GC06 transition occurs.  Pending live-run verification.
