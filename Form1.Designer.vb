@@ -26,9 +26,6 @@ Partial Class Form1
         Dim resources As System.ComponentModel.ComponentResourceManager = New System.ComponentModel.ComponentResourceManager(GetType(Form1))
         PictureBox1 = New PictureBox()
         SystemLoop = New Timer(components)
-        Mode2 = New Timer(components)
-        Mode4 = New Timer(components)
-        Mode3 = New Timer(components)
         GPU = New Timer(components)
         Label4 = New Label()
         Label1 = New Label()
@@ -79,18 +76,6 @@ Partial Class Form1
         ' SystemLoop
         ' 
         SystemLoop.Interval = 20
-        ' 
-        ' Mode2
-        ' 
-        Mode2.Interval = 13
-        ' 
-        ' Mode4
-        ' 
-        Mode4.Interval = 300
-        ' 
-        ' Mode3
-        ' 
-        Mode3.Interval = 13
         ' 
         ' GPU
         ' 
@@ -410,9 +395,6 @@ Partial Class Form1
     End Sub
     Friend WithEvents PictureBox1 As System.Windows.Forms.PictureBox
     Friend WithEvents SystemLoop As System.Windows.Forms.Timer
-    Friend WithEvents Mode2 As System.Windows.Forms.Timer
-    Friend WithEvents Mode4 As System.Windows.Forms.Timer
-    Friend WithEvents Mode3 As System.Windows.Forms.Timer
     Friend WithEvents GPU As System.Windows.Forms.Timer
     Friend WithEvents Label4 As Label
     Friend WithEvents Label1 As Label

@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Began the `working-beta` boundary cleanup by removing the disabled WinForms CGA/text rendering timers and their unreachable `VrMem`/bitmap/font-cache subsystem. The active Diamond Stealth Pro/S3 presentation path is unchanged. Host diagnostic viewers were moved from the main form implementation into `Form1.Diagnostics.vb` as the first behavior-preserving responsibility split.
 - Lowered the host-only Diamond Stealth Pro 928 CRT raster worker to below-normal scheduling priority. Under host saturation, cosmetic presentation now yields to the coordinated CPU/bus/device timeline; guest VRAM, CRTC, ISA and interrupt behavior are unchanged.
 - Corrected ATAPI media-change handling so `UNIT ATTENTION 06/28/00` is consumed when first reported as CHECK CONDITION while the sense tuple remains available for `REQUEST SENSE`. Legacy DOS drivers that retry `READ TOC` directly no longer receive the media-change failure forever.
 - Corrected ATA/ATAPI ready-state status from `40h` to `50h` by including the device-seek-complete bit. VIDE-CDD's `DIR D:` path explicitly waits for this hardware status before issuing its next packet.

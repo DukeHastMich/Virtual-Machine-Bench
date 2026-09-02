@@ -3,10 +3,6 @@ Imports System.IO
 Module Declares
     'Hardware
     Public VrMem(15, 65535) As Byte 'System Ram
-    Public vmem(4, 640, 480) As Byte 'X Y coordinate video memory
-    Public ScreenBuffer As New Bitmap(640, 480)
-    Public DispBuff As New Bitmap(640, 400) ' textmode screen buffer
-    Public Buffer_W As Graphics = Graphics.FromImage(DispBuff) 'Drawing to Text Mode buffer
     Public SystemBus As New HardwareBus
     ' CROMWELL PCB REFIT PHASE 2 BRICK 8C - shared motherboard bridge.
     Public MotherboardMemory As New NeatMemoryController286 With {
@@ -53,9 +49,6 @@ Public FrontPanel As New FrontPanelState
     Public NmiGate As New AtNmiGate
     Public Chipset As New NeatCs8221Chipset(Function() MachineClock.CpuClockHz)
     Public VideoCard As New DiamondStealthPro928
-    ' Compatibility alias for untouched legacy renderer code.  The old timers
-    ' are disabled; all guest-visible video state belongs to VideoCard.
-    Public CgaController As DiamondStealthPro928 = VideoCard
     Public FloppyController As New FloppyController765(MasterPic, DmaController)
     Public IdeController As New IdeController(SlavePic)
     Public Com1 As New Uart16550A(&H3F8US, 4, MasterPic)
@@ -80,104 +73,6 @@ Public FrontPanel As New FrontPanelState
     Private HardwareInitialized As Boolean
     Private KeyboardA20Enabled As Boolean
     Private ChipsetForcesA20Low As Boolean
-    Public ElectronGun(1) As Image
-
-    'Firmware
-    Public CharTable(2054) As Byte ' stores byte data in linear array to be made into bits
-    Public KeyByte(7) As Int16, MyBits(7, 7) As Boolean
-
-
-    'control variables
-    Public GraphicsWorker As New Bitmap(32, 32)
-    Public Mode As Byte = 0, Page As Byte = 0
-    Public OffSet As Int32
-     Public CursorX As Byte = 1
-    Public Cursory As Byte = 1
-    Public TextForecolor As Color
-    Public TextBackcolor As Color
-    Public CodePager(8, 255) As Byte
-    Public BGColors(15) As Image
-    Public PaletteColor(16) As Color
-    'Public UsingColor As Byte = 15
-    Public AlphaGen(15, 255) As Bitmap
-    Private HalfLife As Byte = 128, bitts(7, 7) As Byte, mybyte(7) As Single
-    Public Pixel(3, 256) As Bitmap
-
-
-    Public Sub Initialize_Constants()
-        InitializeHardware()
-        'set 80x25 textmode background tiles
-        BGColors(0) = My.Resources._0 : BGColors(1) = My.Resources._1
-        BGColors(2) = My.Resources._2 : BGColors(3) = My.Resources._3
-        BGColors(4) = My.Resources._4 : BGColors(5) = My.Resources._5
-        BGColors(6) = My.Resources._6 : BGColors(7) = My.Resources._7
-        BGColors(8) = My.Resources._8 : BGColors(9) = My.Resources._9
-        BGColors(10) = My.Resources._10 : BGColors(11) = My.Resources._11
-        BGColors(12) = My.Resources._12 : BGColors(13) = My.Resources._13
-        BGColors(14) = My.Resources._14 : BGColors(15) = My.Resources._15
-
-        'set mask for crt noise emulation
-        ElectronGun(0) = My.Resources.pixelmask
-        ElectronGun(1) = My.Resources.pixelmask2
-
-        'set 16 color pixels
-        Pixel(0, 0) = My.Resources.p0 : Pixel(0, 1) = My.Resources.p1
-        Pixel(0, 2) = My.Resources.p2 : Pixel(0, 3) = My.Resources.p3
-        Pixel(0, 4) = My.Resources.p4 : Pixel(0, 5) = My.Resources.p5
-        Pixel(0, 6) = My.Resources.p6 : Pixel(0, 7) = My.Resources.p7
-        Pixel(0, 8) = My.Resources.p8 : Pixel(0, 9) = My.Resources.p9
-        Pixel(0, 10) = My.Resources.p10 : Pixel(0, 11) = My.Resources.p11
-        Pixel(0, 12) = My.Resources.p12 : Pixel(0, 13) = My.Resources.p13
-        Pixel(0, 14) = My.Resources.p14 : Pixel(0, 15) = My.Resources.p15
-
-
-        'Dim TileMaker As New Bitmap(32, 32)
-        GraphicsWorker = ElectronGun(0)
-        GraphicsWorker.MakeTransparent(Color.FromArgb(200, 0, 200))
-        For lc2 = 0 To 31
-            For lc = 0 To 31
-                If GraphicsWorker.GetPixel(lc, lc2).A <> 0 Then _
-               GraphicsWorker.SetPixel(lc, lc2, Color.FromArgb(30, _
-                    GraphicsWorker.GetPixel(lc, lc2).R, _
-                     GraphicsWorker.GetPixel(lc, lc2).G, _
-                   GraphicsWorker.GetPixel(lc, lc2).B))
-            Next
-        Next
-        ElectronGun(0) = GraphicsWorker
-        GraphicsWorker = ElectronGun(1)
-        GraphicsWorker.MakeTransparent(Color.FromArgb(200, 0, 200))
-        For lc2 = 0 To 31
-            For lc = 0 To 31
-                If GraphicsWorker.GetPixel(lc, lc2).A <> 0 Then _
-               GraphicsWorker.SetPixel(lc, lc2, Color.FromArgb(30, _
-                    GraphicsWorker.GetPixel(lc, lc2).R, _
-                     GraphicsWorker.GetPixel(lc, lc2).G, _
-                   GraphicsWorker.GetPixel(lc, lc2).B))
-            Next
-        Next
-        ElectronGun(1) = GraphicsWorker
-
-        'set default bgcolors for textmode
-        PaletteColor(0) = Color.Black
-        PaletteColor(1) = Color.Blue
-        PaletteColor(2) = Color.Green
-        PaletteColor(3) = Color.Cyan
-        PaletteColor(4) = Color.Red
-        PaletteColor(5) = Color.Magenta
-        PaletteColor(6) = Color.Brown
-        PaletteColor(7) = Color.LightGray
-        PaletteColor(8) = Color.Gray
-        PaletteColor(9) = Color.LightBlue
-        PaletteColor(10) = Color.LightGreen
-        PaletteColor(11) = Color.LightCyan
-        PaletteColor(12) = Color.FromArgb(255, 83, 83)
-        PaletteColor(13) = Color.FromArgb(255, 83, 255)
-        PaletteColor(14) = Color.Yellow
-        PaletteColor(15) = Color.White
-        TextBackcolor = PaletteColor(1)
-        TextForecolor = PaletteColor(7)
-
-    End Sub
 
     Public Sub InitializeHardware()
         If HardwareInitialized Then Return
