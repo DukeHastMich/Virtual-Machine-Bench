@@ -939,6 +939,11 @@ Public NotInheritable Class MicrosoftSerialMouse
     Private Const MouseParityMode As Integer = 0
     Private Const MouseStopBits As Double = 1.0R
     Private Const SampleIntervalPicoseconds As Long = 25000000000L
+    ' A powered/reset Microsoft serial mouse announces itself after the supply
+    ' rails have stabilized, typically about 10-20 ms after DTR/RTS assertion.
+    ' Do not put the M byte on RXD in the same instant as the modem-control edge;
+    ' detection software deliberately waits for this physical startup interval.
+    Private Const IdentificationDelayPicoseconds As Long = 14000000000L
 
     Private _uart As Uart16550A
     Private _dtr As Boolean
@@ -1003,7 +1008,7 @@ Public NotInheritable Class MicrosoftSerialMouse
         If Not wasPowered AndAlso _identifyArmed Then
             _identifyArmed = False
             _identificationPending = True
-            ArmSampleClock(1)
+            ArmSampleClock(IdentificationDelayPicoseconds)
         End If
     End Sub
 

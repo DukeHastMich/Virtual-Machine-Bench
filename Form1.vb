@@ -275,7 +275,21 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseCaptureChanged(sender As Object, e As EventArgs) Handles PictureBox1.MouseCaptureChanged
-        If _serialMouseCapturedInBed AndAlso Not PictureBox1.Capture Then ReleaseSerialMouseCaptureInBed()
+        If Not _serialMouseCapturedInBed OrElse PictureBox1.Capture OrElse
+           _closingInBed OrElse Not _machinePoweredInBed OrElse Not ContainsFocus Then Return
+
+        ' WinForms may release a control's native mouse capture as part of the
+        ' ordinary left/right button-up lifecycle.  That is not an operator
+        ' request to disconnect the guest mouse.  Reacquire after the current
+        ' message unwinds; explicit release paths clear the logical flag first.
+        BeginInvoke(
+            New Action(
+                Sub()
+                    If _serialMouseCapturedInBed AndAlso Not _closingInBed AndAlso
+                       _machinePoweredInBed AndAlso ContainsFocus Then
+                        PictureBox1.Capture = True
+                    End If
+                End Sub))
     End Sub
 
     Private Sub CaptureSerialMouseInBed()
