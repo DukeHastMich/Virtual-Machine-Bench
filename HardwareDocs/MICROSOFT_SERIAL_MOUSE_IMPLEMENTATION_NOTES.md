@@ -23,6 +23,13 @@ Host pointer motion is accumulated without blocking the WinForms UI and drained 
 
 The accumulator only decouples host event frequency from the machine thread. It does not write guest coordinates or bypass UART timing and interrupts.
 
+While captured, the host cursor is repeatedly centered so movement can continue
+past the form edges. Movement is measured from the current physical
+`Cursor.Position`, not from queued `MouseEventArgs` coordinates: a queued
+`WM_MOUSEMOVE` may predate the most recent center warp and must not be converted
+into a second, artificial movement. Host positive X/right and positive Y/down
+counts are passed unchanged into the Microsoft packet encoder.
+
 ## Diagnostic interpretation
 
 The complete diagnostic dump contains two complementary lines:

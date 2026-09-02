@@ -1019,11 +1019,12 @@ Public NotInheritable Class MicrosoftSerialMouse
 
     Public Sub AddHostMovement(deltaX As Integer, deltaY As Integer)
         If Not _powered Then Return
-        ' The fitted Windows 3.1 serial-mouse driver interprets the device's
-        ' quadrature count polarity opposite to WinForms client coordinates on
-        ' both axes. Convert the host deltas once here, before packet framing.
-        _pendingX = SaturatingAdd(_pendingX, -CLng(deltaX))
-        _pendingY = SaturatingAdd(_pendingY, -CLng(deltaY))
+        ' Microsoft serial-mouse deltas use the same screen-space polarity as
+        ' WinForms client coordinates: positive X is right and positive Y is
+        ' down.  Packet framing below carries the signed counts; the guest
+        ' driver performs no extra host-coordinate conversion.
+        _pendingX = SaturatingAdd(_pendingX, CLng(deltaX))
+        _pendingY = SaturatingAdd(_pendingY, CLng(deltaY))
         _hostMovementEvents += 1
 
         ' Motion is itself a report-triggering physical event.  Waiting a full

@@ -243,13 +243,20 @@ Public Class Form1
         End If
         Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
                                      Math.Max(0, PictureBox1.ClientSize.Height \ 2))
-        If _serialMouseRecenteringInBed AndAlso e.X = centerInBed.X AndAlso e.Y = centerInBed.Y Then
+
+        ' Cursor.Position is the current physical host pointer.  MouseEventArgs
+        ' can describe a WM_MOUSEMOVE which was already queued before our last
+        ' center warp.  Treating those stale coordinates as new motion creates
+        ' an artificial reverse delta, another warp, and a self-sustaining
+        ' crawl even while the operator is not touching the mouse.
+        Dim capturedPointInBed As Point = PictureBox1.PointToClient(Cursor.Position)
+        If capturedPointInBed.X = centerInBed.X AndAlso capturedPointInBed.Y = centerInBed.Y Then
             _serialMouseRecenteringInBed = False
             Return
         End If
         _serialMouseRecenteringInBed = False
-        Dim deltaXInBed As Integer = e.X - centerInBed.X
-        Dim deltaYInBed As Integer = e.Y - centerInBed.Y
+        Dim deltaXInBed As Integer = capturedPointInBed.X - centerInBed.X
+        Dim deltaYInBed As Integer = capturedPointInBed.Y - centerInBed.Y
         If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
         QueueSerialMouseHostMovementInBed(deltaXInBed, deltaYInBed)
         _serialMouseRecenteringInBed = True
