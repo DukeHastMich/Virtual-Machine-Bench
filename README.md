@@ -113,6 +113,18 @@ The host-side Sneaker Net workbench builds and manages guest media without bypas
 
 ![Virtual Machine Bench media menu and Sneaker Net workbench showing floppy, IDE, and CD-ROM controls](docs/screenshots/media-workbench.png)
 
+### Persistent Disk Box
+
+![Media menu selecting saved floppy images from the persistent Disk Box](docs/screenshots/disk-box-media-library.png)
+
+Frequently used floppy images can be retained in the Disk Box and mounted into either emulated drive. The screenshot shows installation media, utilities, and a game disk exposed as removable-media choices.
+
+### DOS software compatibility
+
+![Scorched Earth running inside Virtual Machine Bench](docs/screenshots/scorched-earth.png)
+
+Scorched Earth 1.00 is shown running from guest media, exercising DOS execution, keyboard input, timing, and VGA graphics. Guest software pictured here is not distributed with the emulator.
+
 ### Windows 3.1 Setup
 
 ![Windows 3.1 Setup running inside the emulator](docs/screenshots/windows-31-setup.png)
