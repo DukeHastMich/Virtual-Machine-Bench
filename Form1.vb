@@ -23,6 +23,15 @@ Public Class Form1
     Private _serialMouseLeftInBed As Boolean
     Private _serialMouseRightInBed As Boolean
     Private _serialMouseMenuItemInBed As ToolStripMenuItem
+    ' Host pointer messages can arrive much faster than the emulated 1200-baud
+    ' Microsoft mouse can report them.  Do not make the UI thread wait for the
+    ' machine ownership gate once per WM_MOUSEMOVE.  Coalesce raw host counts
+    ' here and transfer them to the physical mouse at the next machine boundary.
+    Private _serialMousePendingHostXInBed As Long
+    Private _serialMousePendingHostYInBed As Long
+    Private _serialMouseRecenteringInBed As Boolean
+    Private _serialMouseHostMoveMessagesInBed As Long
+    Private _serialMouseBoundaryTransfersInBed As Long
     Private floppyAStatus As ToolStripMenuItem
     Private floppyBStatus As ToolStripMenuItem
     Private hardDiskStatus As ToolStripMenuItem
@@ -217,27 +226,35 @@ Public Class Form1
             Dim hoverDeltaYInBed As Integer = currentPointInBed.Y - _serialMouseLastHoverPointInBed.Y
             _serialMouseLastHoverPointInBed = currentPointInBed
             If hoverDeltaXInBed <> 0 OrElse hoverDeltaYInBed <> 0 Then
-                WithMachineInBed(Sub() SerialMouse.AddHostMovement(hoverDeltaXInBed, hoverDeltaYInBed))
+                QueueSerialMouseHostMovementInBed(hoverDeltaXInBed, hoverDeltaYInBed)
             End If
             Return
         End If
         Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
                                      Math.Max(0, PictureBox1.ClientSize.Height \ 2))
+        If _serialMouseRecenteringInBed AndAlso e.X = centerInBed.X AndAlso e.Y = centerInBed.Y Then
+            _serialMouseRecenteringInBed = False
+            Return
+        End If
+        _serialMouseRecenteringInBed = False
         Dim deltaXInBed As Integer = e.X - centerInBed.X
         Dim deltaYInBed As Integer = e.Y - centerInBed.Y
         If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
-        WithMachineInBed(Sub() SerialMouse.AddHostMovement(deltaXInBed, deltaYInBed))
+        QueueSerialMouseHostMovementInBed(deltaXInBed, deltaYInBed)
+        _serialMouseRecenteringInBed = True
         Cursor.Position = PictureBox1.PointToScreen(centerInBed)
     End Sub
 
     Private Sub PictureBox1_MouseEnter(sender As Object, e As EventArgs) Handles PictureBox1.MouseEnter
         _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
         SetSerialMouseHostCursorHiddenInBed(True)
     End Sub
 
     Private Sub PictureBox1_MouseLeave(sender As Object, e As EventArgs) Handles PictureBox1.MouseLeave
         If _serialMouseCapturedInBed Then Return
         _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
         SetSerialMouseHostCursorHiddenInBed(False)
         If _serialMouseLeftInBed OrElse _serialMouseRightInBed Then
             _serialMouseLeftInBed = False
@@ -260,8 +277,10 @@ Public Class Form1
         Focus()
         _serialMouseCapturedInBed = True
         _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
         PictureBox1.Capture = True
         SetSerialMouseHostCursorHiddenInBed(True)
+        _serialMouseRecenteringInBed = True
         Cursor.Position = PictureBox1.PointToScreen(New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
                                                                Math.Max(0, PictureBox1.ClientSize.Height \ 2)))
         If _serialMouseMenuItemInBed IsNot Nothing Then _serialMouseMenuItemInBed.Checked = True
@@ -274,6 +293,8 @@ Public Class Form1
         End If
         _serialMouseCapturedInBed = False
         _serialMouseHoverPointValidInBed = False
+        _serialMouseRecenteringInBed = False
+        ClearSerialMouseHostMovementInBed()
         _serialMouseLeftInBed = False
         _serialMouseRightInBed = False
         If Not _closingInBed Then
@@ -310,6 +331,33 @@ Public Class Form1
         Dim leftInBed As Boolean = _serialMouseLeftInBed
         Dim rightInBed As Boolean = _serialMouseRightInBed
         WithMachineInBed(Sub() SerialMouse.SetHostButtons(leftInBed, rightInBed))
+    End Sub
+
+    Private Sub QueueSerialMouseHostMovementInBed(deltaXInBed As Integer, deltaYInBed As Integer)
+        Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        If deltaXInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostXInBed, CLng(deltaXInBed))
+        If deltaYInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostYInBed, CLng(deltaYInBed))
+    End Sub
+
+    Private Sub ClearSerialMouseHostMovementInBed()
+        Threading.Interlocked.Exchange(_serialMousePendingHostXInBed, 0L)
+        Threading.Interlocked.Exchange(_serialMousePendingHostYInBed, 0L)
+    End Sub
+
+    ' Called only by MachineRuntime286 while it owns the complete guest.  The
+    ' host accumulator is transport decoupling, not a virtual-input shortcut:
+    ' after this handoff the counts still obey mouse sampling, 1200-baud serial
+    ' framing, the 16550 receive path, PIC IRQ4, and the guest mouse driver.
+    Private Sub DrainSerialMouseHostMovementAtBoundaryInBed()
+        Dim deltaXInBed As Long = Threading.Interlocked.Exchange(_serialMousePendingHostXInBed, 0L)
+        Dim deltaYInBed As Long = Threading.Interlocked.Exchange(_serialMousePendingHostYInBed, 0L)
+        If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
+
+        Const MaximumTransferInBed As Long = Integer.MaxValue
+        Dim boundedXInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaXInBed)))
+        Dim boundedYInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaYInBed)))
+        SerialMouse.AddHostMovement(boundedXInBed, boundedYInBed)
+        Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
     End Sub
 
     Friend Shared Function HostPhysicalKey(scan As Byte, extended As Boolean, virtualKey As Keys) As AtPhysicalKey
@@ -553,6 +601,11 @@ Public Class Form1
                         reportInBed.AppendLine(SoundBlaster16.DiagnosticText())
                         reportInBed.AppendLine(Ne2000.DiagnosticText())
                         reportInBed.AppendLine(SerialMouse.DiagnosticText())
+                        reportInBed.AppendLine(
+                            $"Serial mouse host frontend: captured={_serialMouseCapturedInBed} " &
+                            $"raw-move-messages={Threading.Interlocked.Read(_serialMouseHostMoveMessagesInBed)} " &
+                            $"boundary-transfers={Threading.Interlocked.Read(_serialMouseBoundaryTransfersInBed)} " &
+                            $"pending-raw={Threading.Interlocked.Read(_serialMousePendingHostXInBed)}/{Threading.Interlocked.Read(_serialMousePendingHostYInBed)}")
                         reportInBed.AppendLine($"COM1 pins DTR/RTS/OUT1/OUT2/BREAK: {Com1DiagnosticPeripheral.Dtr}/{Com1DiagnosticPeripheral.Rts}/{Com1DiagnosticPeripheral.Out1}/{Com1DiagnosticPeripheral.Out2}/{Com1DiagnosticPeripheral.BreakAsserted}")
                         reportInBed.AppendLine($"COM2 pins DTR/RTS/OUT1/OUT2/BREAK: {Com2DiagnosticPeripheral.Dtr}/{Com2DiagnosticPeripheral.Rts}/{Com2DiagnosticPeripheral.Out1}/{Com2DiagnosticPeripheral.Out2}/{Com2DiagnosticPeripheral.BreakAsserted}")
                         reportInBed.AppendLine($"LPT1 functions SELECTIN/INIT/AUTOFEED: {Lpt1Printer.SelectInAsserted}/{Lpt1Printer.InitializeAsserted}/{Lpt1Printer.AutoFeedAsserted}")
@@ -915,6 +968,7 @@ Public Class Form1
         _videoPresentation.Start()
         _machineRuntime.SetBoundaryService(
             Sub()
+                DrainSerialMouseHostMovementAtBoundaryInBed()
                 Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
                 If presentationInBed IsNot Nothing Then
                     presentationInBed.ServiceCaptureAtMachineBoundary(VideoCard)
