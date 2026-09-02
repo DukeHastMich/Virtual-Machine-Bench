@@ -2298,13 +2298,33 @@ Public Class Form1
         }
         _driveBayToolTipInBed.SetToolTip(
             faceInBed,
-            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — click to open its Disk Box")
+            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — click for media choices")
         AddHandler faceInBed.Click,
-            Sub()
-                OpenFloppyBox()
-            End Sub
+            Sub() ShowFloppyBayMenuInBed(faceInBed, driveInBed)
         Return faceInBed
     End Function
+
+    Private Sub ShowFloppyBayMenuInBed(faceInBed As PictureBox, driveInBed As Integer)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+
+        ' Build from the same routine used by the Media menu, then transfer the
+        ' live items (including their handlers) into a short-lived context menu.
+        ' This keeps the chassis shortcut and top-level menu behavior identical.
+        Dim sourceInBed As New ToolStripMenuItem()
+        RebuildFloppyBoxMountMenu(sourceInBed, driveInBed)
+        Dim popupInBed As New ContextMenuStrip()
+        While sourceInBed.DropDownItems.Count > 0
+            Dim itemInBed As ToolStripItem = sourceInBed.DropDownItems(0)
+            sourceInBed.DropDownItems.RemoveAt(0)
+            popupInBed.Items.Add(itemInBed)
+        End While
+        AddHandler popupInBed.Closed,
+            Sub(senderInBed As Object, eInBed As ToolStripDropDownClosedEventArgs)
+                popupInBed.Dispose()
+                sourceInBed.Dispose()
+            End Sub
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
 
     Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
         UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
@@ -2325,7 +2345,7 @@ Public Class Form1
         _driveBayToolTipInBed.SetToolTip(
             faceInBed,
             "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — " & formatInBed &
-            " face; click to open its Disk Box")
+            " face; click for Disk Box and drive actions")
     End Sub
 
     Private Sub RebuildFloppyBoxMountMenu(menuInBed As ToolStripMenuItem,
