@@ -47,6 +47,13 @@ Public Class Form1
     ' CROMWELL TECHNOLOGIES SNEAKER NET / FLOPPY BOX BRICK 1
     Private _floppyBox As FloppyBox
     Private _sneakerNetForm As SneakerNetForm
+    Private _driveBayPanelInBed As Panel
+    Private _floppyBayAInBed As PictureBox
+    Private _floppyBayBInBed As PictureBox
+    Private _driveBayToolTipInBed As ToolTip
+    Private _threeAndHalfDriveFaceInBed As Bitmap
+    Private _fiveAndQuarterDriveFaceInBed As Bitmap
+    Private _emptyDriveFaceInBed As Bitmap
     Private floppyAMountMenu As ToolStripMenuItem
     Private floppyBMountMenu As ToolStripMenuItem
     ' CROMWELL KEYBOARD REALITY BRICK 3 FIELDS
@@ -1003,6 +1010,7 @@ Public Class Form1
         InitializeIdeDriveShelf()
         InitializeFloppyBox()
         CreateMediaMenu()
+        InitializeDriveBayPanelInBed()
         InitializeSystemConfigurationInBed()
         BeginInvoke(New Action(AddressOf InitializeChassisPanel))
 
@@ -2040,6 +2048,8 @@ Public Class Form1
         Dim floppyBPresentInBed As Boolean
         Dim floppyATextInBed As String = String.Empty
         Dim floppyBTextInBed As String = String.Empty
+        Dim floppyAGeometryInBed As Integer() = Nothing
+        Dim floppyBGeometryInBed As Integer() = Nothing
         Dim hardDiskPresentInBed As Boolean
         Dim cdPresentInBed As Boolean
 
@@ -2049,6 +2059,8 @@ Public Class Form1
                 floppyBPresentInBed = FloppyController.IsMediaPresent(1)
                 floppyATextInBed = FloppyController.GetAttachmentStatus(0)
                 floppyBTextInBed = FloppyController.GetAttachmentStatus(1)
+                floppyAGeometryInBed = FloppyController.GetGeometry(0)
+                floppyBGeometryInBed = FloppyController.GetGeometry(1)
                 hardDiskPresentInBed = Declares.IdeController.HardDiskSectorCount > 0
                 cdPresentInBed = Declares.IdeController.CdRomMounted
             End Sub)
@@ -2074,6 +2086,7 @@ Public Class Form1
             End If
         End If
         If cdRomStatus IsNot Nothing Then cdRomStatus.Checked = cdPresentInBed
+        UpdateDriveBayFacesInBed(floppyAGeometryInBed, floppyBGeometryInBed)
     End Sub
 
     Private Sub EjectFloppy(drive As Integer)
@@ -2227,6 +2240,95 @@ Public Class Form1
     Private Sub InitializeFloppyBox()
         _floppyBox = New FloppyBox(AppContext.BaseDirectory)
         _floppyBox.EnsureExists()
+    End Sub
+
+    Private Sub InitializeDriveBayPanelInBed()
+        If _driveBayPanelInBed IsNot Nothing Then Return
+
+        Dim artworkDirectoryInBed As String =
+            Path.Combine(AppContext.BaseDirectory, "Resources", "System Images")
+        _threeAndHalfDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "Teac-Floppy.png"))
+        _fiveAndQuarterDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "five and a quarter floppy.png"))
+        _emptyDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "five and a quarter face plate.png"))
+
+        Const bayRailWidthInBed As Integer = 210
+        Const displayGapInBed As Integer = 10
+        Dim originalDisplayLeftInBed As Integer = PictureBox1.Left
+        _driveBayPanelInBed = New Panel() With {
+            .Location = New Point(originalDisplayLeftInBed, PictureBox1.Top),
+            .Size = New Size(bayRailWidthInBed, PictureBox1.Height),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .BorderStyle = BorderStyle.FixedSingle
+        }
+        _driveBayToolTipInBed = New ToolTip()
+        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, 8)
+        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, 76)
+        _driveBayPanelInBed.Controls.Add(_floppyBayAInBed)
+        _driveBayPanelInBed.Controls.Add(_floppyBayBInBed)
+        Controls.Add(_driveBayPanelInBed)
+        _driveBayPanelInBed.BringToFront()
+
+        PictureBox1.Left = originalDisplayLeftInBed + bayRailWidthInBed + displayGapInBed
+        PictureBox1.Width = Math.Max(1, PictureBox1.Width - bayRailWidthInBed - displayGapInBed)
+        UpdateDriveBayFacesInBed(Nothing, Nothing)
+    End Sub
+
+    Private Shared Function LoadDriveFaceInBed(pathInBed As String) As Bitmap
+        Using streamInBed As New FileStream(pathInBed, FileMode.Open, FileAccess.Read, FileShare.Read)
+            Using sourceInBed As New Bitmap(streamInBed)
+                Return New Bitmap(sourceInBed)
+            End Using
+        End Using
+    End Function
+
+    Private Function CreateFloppyBayFaceInBed(driveInBed As Integer, topInBed As Integer) As PictureBox
+        Dim faceInBed As New PictureBox() With {
+            .Location = New Point(7, topInBed),
+            .Size = New Size(194, 58),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right,
+            .SizeMode = PictureBoxSizeMode.Zoom,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .Cursor = Cursors.Hand,
+            .Tag = driveInBed,
+            .TabStop = False
+        }
+        _driveBayToolTipInBed.SetToolTip(
+            faceInBed,
+            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — click to open its Disk Box")
+        AddHandler faceInBed.Click,
+            Sub()
+                RunSneakerNet()
+                If _sneakerNetForm IsNot Nothing AndAlso Not _sneakerNetForm.IsDisposed Then
+                    _sneakerNetForm.FocusFloppyDriveInBed(driveInBed)
+                End If
+            End Sub
+        Return faceInBed
+    End Function
+
+    Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
+        UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
+        UpdateDriveBayFaceInBed(_floppyBayBInBed, 1, geometryBInBed)
+    End Sub
+
+    Private Sub UpdateDriveBayFaceInBed(faceInBed As PictureBox,
+                                        driveInBed As Integer,
+                                        geometryInBed As Integer())
+        If faceInBed Is Nothing Then Return
+        Dim isFiveAndQuarterInBed As Boolean =
+            geometryInBed IsNot Nothing AndAlso geometryInBed.Length >= 3 AndAlso
+            (geometryInBed(0) <= 40 OrElse geometryInBed(2) = 15)
+        faceInBed.Image = If(isFiveAndQuarterInBed,
+                             _fiveAndQuarterDriveFaceInBed,
+                             _threeAndHalfDriveFaceInBed)
+        Dim formatInBed As String = If(isFiveAndQuarterInBed, "5.25-inch", "3.5-inch")
+        _driveBayToolTipInBed.SetToolTip(
+            faceInBed,
+            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — " & formatInBed &
+            " face; click to open its Disk Box")
     End Sub
 
     Private Sub RebuildFloppyBoxMountMenu(menuInBed As ToolStripMenuItem,

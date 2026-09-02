@@ -20,6 +20,9 @@
   <ItemGroup>
     <Content Include="Firmware\atbios.rom" Link="Firmware\atbios.rom" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="bin\Debug\Roms\*.ROM" Link="Roms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\Teac-Floppy.png" Link="Resources\System Images\Teac-Floppy.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\five and a quarter floppy.png" Link="Resources\System Images\five and a quarter floppy.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\five and a quarter face plate.png" Link="Resources\System Images\five and a quarter face plate.png" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="On-Screen-Keyboard.Designer.vb" />
@@ -110,4 +113,3 @@
     <Compile Include="MediaWorkbenchSupport.vb" />
   </ItemGroup>
 </Project>
-
