@@ -2301,10 +2301,7 @@ Public Class Form1
             "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — click to open its Disk Box")
         AddHandler faceInBed.Click,
             Sub()
-                RunSneakerNet()
-                If _sneakerNetForm IsNot Nothing AndAlso Not _sneakerNetForm.IsDisposed Then
-                    _sneakerNetForm.FocusFloppyDriveInBed(driveInBed)
-                End If
+                OpenFloppyBox()
             End Sub
         Return faceInBed
     End Function

@@ -2701,15 +2701,6 @@ Public NotInheritable Class SneakerNetForm
         RefreshBackupBrowserInBed()
     End Sub
 
-    Public Sub FocusFloppyDriveInBed(driveInBed As Integer)
-        If driveInBed < 0 OrElse driveInBed > 1 Then Throw New ArgumentOutOfRangeException(NameOf(driveInBed))
-        _mediaTabs.SelectedTab = _floppyWorkbenchPage
-        Dim targetInBed As ToolStripButton = If(driveInBed = 0, _mountAButton, _mountBButton)
-        _toolStrip.Focus()
-        targetInBed.Select()
-        SetStatus("Front-panel floppy " & ChrW(AscW("A"c) + driveInBed) & ": selected")
-    End Sub
-
     Private Sub BuildUi()
         Text = "Cromwell Technologies Sneaker Net"
         StartPosition = FormStartPosition.CenterParent
