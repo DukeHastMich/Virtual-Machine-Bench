@@ -56,8 +56,10 @@ Public Class IdeController
     ' ATA status register bits used by this implementation.
     Private Const StatusError As Byte = &H1
     Private Const StatusDataRequest As Byte = &H8
+    Private Const StatusSeekComplete As Byte = &H10
     Private Const StatusDriveReady As Byte = &H40
     Private Const StatusBusy As Byte = &H80
+    Private Const StatusReadyComplete As Byte = StatusDriveReady Or StatusSeekComplete
 
     ' Device Control register bits.
     Private Const DeviceControlDisableIrq As Byte = &H2
@@ -124,9 +126,9 @@ Public Class IdeController
         Public PacketResponse() As Byte
         Public PacketResponseOffset As Integer
 
-        ' SCSI sense state.  UnitAttentionPending is distinct because the pending
-        ' event must survive until a command reports CHECK CONDITION and REQUEST
-        ' SENSE consumes it.
+        ' SCSI sense state. UnitAttentionPending is distinct because the event is
+        ' consumed when CHECK CONDITION reports it, while the sense tuple remains
+        ' available for a later REQUEST SENSE.
         Public SenseKey As Byte
         Public AdditionalSenseCode As Byte
         Public AdditionalSenseQualifier As Byte
@@ -194,9 +196,9 @@ Public Class IdeController
         TraceAtaInBed("ATAPI media mounted sectors=" & image.SectorCount.ToString())
 
         ' A newly inserted medium is reported once as UNIT ATTENTION / 28h.
-        ' The next ordinary packet command therefore returns CHECK CONDITION;
-        ' REQUEST SENSE reports and clears the event, after which normal I/O can
-        ' proceed.  This is intentionally separate from simple "medium absent".
+        ' The next ordinary packet command returns CHECK CONDITION and consumes
+        ' the pending event. The sense tuple remains available to REQUEST SENSE,
+        ' but a legacy driver that retries directly can then proceed normally.
         SetUnitAttention(&H28, &H0)
     End Sub
 
@@ -499,7 +501,7 @@ Public Class IdeController
         Array.Copy(block, 0, state.Data, 0, 512)
         state.DataIndex = 0
         state.Transfer = TransferKind.AtaRead
-        state.Status = StatusDriveReady Or StatusDataRequest
+        state.Status = StatusReadyComplete Or StatusDataRequest
         _ataReadSectorPhasesInBed += 1UL
         TraceAtaInBed("READ DRQ lba=" & state.PendingLba.ToString() &
                       " remaining=" & state.PendingSectors.ToString())
@@ -510,7 +512,7 @@ Public Class IdeController
         ReDim state.Data(511)
         state.DataIndex = 0
         state.Transfer = TransferKind.AtaWrite
-        state.Status = StatusDriveReady Or StatusDataRequest
+        state.Status = StatusReadyComplete Or StatusDataRequest
         _ataWriteSectorPhasesInBed += 1UL
         TraceAtaInBed("WRITE DRQ lba=" & state.PendingLba.ToString() &
                       " remaining=" & state.PendingSectors.ToString())
@@ -647,7 +649,7 @@ Public Class IdeController
         End If
 
         state.DataIndex = 0
-        state.Status = StatusDriveReady Or StatusDataRequest
+        state.Status = StatusReadyComplete Or StatusDataRequest
         RaiseInterrupt()
     End Sub
 
@@ -682,7 +684,7 @@ Public Class IdeController
 
         ' Command-out phase: host writes the 12-byte CDB to 1F0h.
         state.SectorCount = AtapiReasonCommandOut
-        state.Status = StatusDriveReady Or StatusDataRequest
+        state.Status = StatusReadyComplete Or StatusDataRequest
 
         ' No IRQ is required to make progress here. OAKCDROM and many DOS drivers
         ' simply poll BSY/DRQ after writing A0h and then issue OUTSW.
@@ -699,6 +701,7 @@ Public Class IdeController
         ' to retrieve the pending condition. This prevents an endless sense loop.
         If state.UnitAttentionPending AndAlso opcode <> &H3 AndAlso opcode <> &H12 Then
             SetSense(SenseUnitAttention, state.AdditionalSenseCode, state.AdditionalSenseQualifier)
+            state.UnitAttentionPending = False
             FailPacket(state)
             Return
         End If
@@ -1049,7 +1052,7 @@ Public Class IdeController
         state.LbaMid = CByte(phaseLength And &HFF)
         state.LbaHigh = CByte((phaseLength >> 8) And &HFF)
         state.SectorCount = AtapiReasonDataIn
-        state.Status = StatusDriveReady Or StatusDataRequest
+        state.Status = StatusReadyComplete Or StatusDataRequest
         _atapiDataPhasesInBed += 1UL
         TraceAtaInBed("ATAPI data-in DRQ bytes=" & phaseLength.ToString() &
                       " response-offset=" & state.PacketResponseOffset.ToString() & "/" &
@@ -1070,7 +1073,7 @@ Public Class IdeController
         state.SectorCount = AtapiReasonComplete
         state.LbaMid = 0
         state.LbaHigh = 0
-        state.Status = StatusDriveReady
+        state.Status = StatusReadyComplete
         TraceAtaInBed("ATAPI complete reason=03 ST=" & state.Status.ToString("X2"))
         RaiseInterrupt()
     End Sub
@@ -1091,7 +1094,7 @@ Public Class IdeController
                 state.DataIndex = 0
                 state.Transfer = TransferKind.None
                 state.SectorCount = AtapiReasonComplete
-                state.Status = StatusDriveReady
+                state.Status = StatusReadyComplete
                 RaiseInterrupt()
 
             Case TransferKind.AtaRead, TransferKind.AtaIdentify
@@ -1105,7 +1108,7 @@ Public Class IdeController
                 state.Data = Nothing
                 state.DataIndex = 0
                 state.Transfer = TransferKind.None
-                state.Status = StatusDriveReady
+                state.Status = StatusReadyComplete
         End Select
     End Sub
 
@@ -1114,14 +1117,14 @@ Public Class IdeController
     ' -------------------------------------------------------------------------
     Private Sub FinishAtaCommand(state As IdeDeviceState)
         ClearTransfer(state)
-        state.Status = StatusDriveReady
+        state.Status = StatusReadyComplete
         RaiseInterrupt()
     End Sub
 
     Private Sub FailCommand(state As IdeDeviceState, errorCode As Byte)
         ClearTransfer(state)
         state.ErrorRegister = errorCode
-        state.Status = StatusDriveReady Or StatusError
+        state.Status = StatusReadyComplete Or StatusError
         RaiseInterrupt()
     End Sub
 
@@ -1138,7 +1141,7 @@ Public Class IdeController
         state.SectorCount = AtapiReasonComplete
         state.LbaMid = 0
         state.LbaHigh = 0
-        state.Status = StatusDriveReady Or StatusError
+        state.Status = StatusReadyComplete Or StatusError
         TraceAtaInBed("ATAPI CHECK CONDITION sense=" & state.SenseKey.ToString("X2") & "/" &
                       state.AdditionalSenseCode.ToString("X2") & "/" &
                       state.AdditionalSenseQualifier.ToString("X2") &
@@ -1286,7 +1289,7 @@ Public Class IdeController
         state.LbaLow = 1
         state.LbaMid = 0
         state.LbaHigh = 0
-        state.Status = StatusDriveReady
+        state.Status = StatusReadyComplete
         ClearTransfer(state)
     End Sub
 
@@ -1297,7 +1300,7 @@ Public Class IdeController
         state.LbaLow = 1
         state.LbaMid = &H14
         state.LbaHigh = &HEB
-        state.Status = StatusDriveReady
+        state.Status = StatusReadyComplete
         state.PacketByteLimit = 2048
         state.MediumRemovalPrevented = False
         ClearTransfer(state)

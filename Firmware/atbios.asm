@@ -153,6 +153,7 @@ start:
     mov word [0x19*4], int19
     mov word [0x1A*4], int1a
     mov word [0x70*4], int70
+    mov word [0x76*4], int76
 
     call cmos_validate_or_default
 
@@ -1024,6 +1025,23 @@ int70:
     mov al, 0x20
     out 0xA0, al
     out 0x20, al
+    pop ax
+    iret
+
+; IRQ14 / INT 76h fixed-disk completion handler.  The IBM AT BIOS contract
+; records completion in BDA byte 40:8Eh bit 7.  DOS IDE/ATAPI drivers such as
+; VIDE-CDD use that flag while waiting for the primary-channel interrupt.
+; A slave-PIC interrupt must be ended at both controllers, slave first.
+int76:
+    push ax
+    push ds
+    mov ax, BDA_SEG
+    mov ds, ax
+    or byte [0x8E], 0x80
+    mov al, 0x20
+    out 0xA0, al
+    out 0x20, al
+    pop ds
     pop ax
     iret
 

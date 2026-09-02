@@ -228,8 +228,8 @@ Partial Public Class Processor286
 
     Public Function DiagnosticDetailedExecutionHistoryText() As String
         Dim sbInBed As New System.Text.StringBuilder()
-        sbInBed.AppendLine("Bounded detailed execution samples (1 / 1,024; retained across AT shutdown resets)")
-        sbInBed.AppendLine("Direct DRAM peeks only: diagnostic capture adds no guest bus cycles.")
+        sbInBed.AppendLine("Bounded detailed execution events (fault/reset triggers; retained across AT shutdown resets)")
+        sbInBed.AppendLine("Direct DRAM peeks only: event capture adds no guest bus cycles.")
         If _diagnosticDetailedExecutionInBed.Count = 0 Then
             sbInBed.Append("  <warming up>")
             Return sbInBed.ToString()
@@ -1226,8 +1226,13 @@ Partial Public Class Processor286
     End Function
 
     Public Sub pStep()
-        TraceDiagnosticDosFileReturnInBed()
-        TraceDiagnosticQbStepEntryInBed()
+        ' Keep dormant forensic recorders off the ordinary instruction path.
+        ' Their full routines are entered only while the corresponding bounded
+        ' trace is armed and has work that can actually complete on this step.
+        If _diagnosticImportantIntTraceEnabled AndAlso _diagnosticDosFilePendingInBed.Count <> 0 Then
+            TraceDiagnosticDosFileReturnInBed()
+        End If
+        If _diagnosticQbExecTraceEnabledInBed Then TraceDiagnosticQbStepEntryInBed()
         _hotPathInstructionCounterInBed += 1UL
         Dim hotSampleInBed As Boolean =
             (_hotPathInstructionCounterInBed And HotPathSampleMaskInBed) = 0UL
@@ -1240,7 +1245,6 @@ Partial Public Class Processor286
             If _diagnosticExecutionSampleCountInBed < DiagnosticExecutionSampleCapacityInBed Then
                 _diagnosticExecutionSampleCountInBed += 1
             End If
-            CaptureDiagnosticDetailedExecutionInBed("SAMPLE")
         End If
 
         ' CROMWELL HOST-FIRMWARE FAST GATE BRICK 6A
@@ -1552,7 +1556,8 @@ Partial Public Class Processor286
         If relative < 0 OrElse (relative And 3) <> 0 Then Return False
         Dim vector As Integer = relative \ 4
         If vector < &H8 OrElse vector > &H1A Then Return False
-        If HostFirmwareHandler IsNot Nothing Then HostFirmwareHandler.Invoke(CByte(vector)) Else IRQ(CByte(vector))
+        If HostFirmwareHandler Is Nothing Then Return False
+        HostFirmwareHandler.Invoke(CByte(vector))
 
         ' INT and the conventional PUSHF/CALL FAR chaining sequence have the
         ' same three-word frame. Reflect BIOS result flags into that saved frame
@@ -4199,12 +4204,9 @@ Partial Public Class Processor286
             ReadWord(vectorAddress) <> 0 OrElse
             ReadWord(vectorAddress + 2UI) <> 0
 
-        If HostFirmwareInterrupts AndAlso vector >= &H10 AndAlso Not guestVectorInstalled Then
-            If HostFirmwareHandler IsNot Nothing Then
-                HostFirmwareHandler.Invoke(vector)
-            Else
-                IRQ(vector)
-            End If
+        If HostFirmwareInterrupts AndAlso HostFirmwareHandler IsNot Nothing AndAlso
+           vector >= &H10 AndAlso Not guestVectorInstalled Then
+            HostFirmwareHandler.Invoke(vector)
             Return
         End If
 

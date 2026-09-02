@@ -28,7 +28,6 @@
     <Compile Include="On-Screen-Keyboard.Designer.vb" />
     <Compile Include="On-Screen-Keyboard.vb" />
     <Compile Include="Program.vb" />
-    <Compile Include="BiosCalls.vb" />
     <Compile Include="CGAcard.vb" />
     <Compile Include="Declares.vb" />
     <Compile Include="FloppyMedia.vb" />

@@ -33,3 +33,16 @@ The recorder observes existing state transitions. It does not perform guest bus 
 ## 2026-09-01 boot-lock finding
 
 The pre-instrumentation dump that appeared to stop during CD-ROM-driver loading did not capture an active ATAPI packet phase. The immediate lock was a repeated 80286 invalid-opcode fault on byte `66h` at `0B22:0DFF`; the guest exception handler returned to the same instruction. Earlier port `64h` activity was accumulated keyboard-controller polling and was not the final CPU loop. A new reproduction with the ATAPI recorder is required to determine whether CD data loaded the bad byte or execution reached it for another reason.
+
+## 2026-09-02 VIDE-CDD IRQ14 finding and correction
+
+- `BTCDROM.SYS` is a BusLogic SCSI driver and correctly reported no compatible device; it does not exercise this IDE/ATAPI controller.
+- `VIDE-CDD.SYS` 2.14 detected the primary IDE/ATAPI CD-ROM, proving task-file discovery and PACKET command submission worked.
+- Live dumps captured completed `MODE SENSE(10)` and `TEST UNIT READY` device states while slave IRQ6 / system IRQ14 remained asserted and in service on both cascaded PICs.
+- A later `Not ready reading drive D:` dump showed mounted media and three consecutive packet commands receiving the same `UNIT ATTENTION 06/28/00`: one `TEST UNIT READY` followed by two `READ TOC` retries. The controller had incorrectly kept the unit-attention event pending until `REQUEST SENSE`. Unit attention is now consumed when first reported as CHECK CONDITION while its sense tuple remains available for REQUEST SENSE, allowing legacy drivers that retry the failed command directly to proceed.
+- The next `DIR D:` hang showed clear unit attention, no active transfer, idle PICs, and the driver polling status port `1F7h` at `0255:1324`. Its polling routine masked `BSY|DSC` and waited for `10h`, while the controller returned only `DRDY` (`40h`). Ready/reset, DRQ, successful completion, and error task-file states now include the ATA `DSC` bit, producing the expected idle status `50h`.
+- VIDE-CDD's decoded wait loop polls the IBM AT fixed-disk completion flag at BDA `40:8E`, bit 7.
+- The system BIOS had left INT `76h` at the generic bare-`IRET` handler. An early IRQ14 was therefore acknowledged but never issued EOI, wedging both the slave ISR bit and master cascade ISR bit.
+- `Firmware/atbios.asm` now installs an INT `76h` handler which sets `40:8E` bit 7 and sends EOI to the slave PIC followed by the master PIC. This is firmware behavior, not an IDE-controller shortcut.
+
+Validation: the rebuilt system ROM is exactly 65,536 bytes, the Debug output contains the same ROM hash as the source firmware, and the .NET solution builds with zero warnings and zero errors. Guest validation still required: cold boot with VIDE-CDD, MSCDEX installation, ISO root `DIR`, and file reads.
