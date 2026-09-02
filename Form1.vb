@@ -620,6 +620,7 @@ Public Class Form1
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== CPU CORE / PROTECTION =====")
                         reportInBed.AppendLine(CPU0.CoreRefitDiagnosticText())
+                        reportInBed.AppendLine(CPU0.HotPathDiagnosticText())
                         reportInBed.AppendLine(CPU0.DiagnosticExecutionHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticCpuFaultTraceText())
                         reportInBed.AppendLine(CPU0.DiagnosticProtectionGateText(13))
@@ -1020,7 +1021,12 @@ Public Class Form1
         Mode2.Enabled = False
         Mode3.Enabled = False
         Mode4.Enabled = False
-        GPU.Interval = 16
+        ' Host CRT presentation is deliberately capped at 20 Hz. The S3 worker
+        ' currently needs about 23 ms to rasterize a Windows frame; requesting
+        ' one every 16 ms wastes host time on frames the UI cannot consume and
+        ' starves the substantially more valuable guest CPU. Scan-out state and
+        ' all guest-visible VGA timing remain on the emulated card.
+        GPU.Interval = 50
         GPU.Enabled = False
 
         CPU0.Reset()
