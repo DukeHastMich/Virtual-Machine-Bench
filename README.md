@@ -54,7 +54,8 @@ Hardware configuration, I/O decoding, DMA, interrupt routing, memory transaction
 - Microsoft-compatible serial mouse connected through the emulated serial wire and UART rather than injected into guest memory
 - Two 16550A-compatible UARTs with baud framing, FIFOs, modem/control/status registers, interrupts, loopback, and diagnostic peripherals
 - Two IBM-compatible SPP/Centronics parallel ports with control/status lines and interrupt support
-- On-screen Keymaster keyboard with paste/type-to-VM support
+- Cromwell Keymaster “assault keyboard” with single-shot on-screen keys, semi-automatic hardware-timed typematic repeat, and fully automatic queued paste/plain-text-file typing
+- Keymaster automation still generates physical key strokes through the emulated keyboard, scan-set, serial-link, and controller path; it does not inject characters into guest memory
 
 ### Audio and game I/O
 
