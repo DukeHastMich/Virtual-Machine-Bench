@@ -1027,14 +1027,10 @@ Public NotInheritable Class MicrosoftSerialMouse
         _pendingY = SaturatingAdd(_pendingY, CLng(deltaY))
         _hostMovementEvents += 1
 
-        ' Motion is itself a report-triggering physical event.  Waiting a full
-        ' sample interval before starting an idle serial link makes host motion
-        ' wait on 25 ms of guest time; a later button edge then appears to make
-        ' the cursor jump because SetHostButtons correctly wakes the mouse at
-        ' once.  Start the first pending report immediately.  UART admission,
-        ' 1200-baud framing, IRQ4 and subsequent backlog pacing remain on the
-        ' real emulated serial path.
-        ArmSampleClock(1)
+        ' A physical mouse samples motion periodically; host event frequency
+        ' must not become serial report frequency. If the periodic sampler is
+        ' already armed, retain its deadline and coalesce these counts.
+        If _sampleRemainingPicoseconds <= 0 Then ArmSampleClock(1)
     End Sub
 
     Public Sub SetHostButtons(leftPressed As Boolean, rightPressed As Boolean)
@@ -1106,7 +1102,10 @@ Public NotInheritable Class MicrosoftSerialMouse
         _reportedLeftButton = _leftButton
         _reportedRightButton = _rightButton
         _packetsSent += 1
-        If HasPendingReport() Then ArmSampleClock(SampleIntervalPicoseconds)
+        ' Keep the sampler periodic even when this report drained all motion.
+        ' New host counts arriving before the next sample remain coalesced and
+        ' cannot overfill the UART's 1200-baud wire queue.
+        ArmSampleClock(SampleIntervalPicoseconds)
     End Sub
 
     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime

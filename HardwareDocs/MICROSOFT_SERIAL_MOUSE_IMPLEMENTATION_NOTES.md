@@ -23,12 +23,18 @@ Host pointer motion is accumulated without blocking the WinForms UI and drained 
 
 The accumulator only decouples host event frequency from the machine thread. It does not write guest coordinates or bypass UART timing and interrupts.
 
-While captured, the host cursor is repeatedly centered so movement can continue
-past the form edges. Movement is measured from the current physical
-`Cursor.Position`, not from queued `MouseEventArgs` coordinates: a queued
-`WM_MOUSEMOVE` may predate the most recent center warp and must not be converted
-into a second, artificial movement. Host positive X/right and positive Y/down
-counts are passed unchanged into the Microsoft packet encoder.
+While captured, host movement comes from Windows raw relative mouse input
+(`WM_INPUT`). The hidden host cursor is confined to the CRT center, but it is not
+repeatedly warped and ordinary absolute `MouseMove` coordinates are ignored.
+This prevents host pointer acceleration, screen edges, stale recenter messages,
+and desktop-coordinate scaling from becoming guest motion. Host positive
+X/right and positive Y/down counts are passed unchanged into the Microsoft
+packet encoder.
+
+Host motion events are accumulated between the mouse's 25 ms guest-time sample
+ticks. They do not individually wake a new serial report while the sampler is
+armed. This preserves the physical report cadence and prevents the host event
+rate from filling the UART wire queue with stale movement.
 
 The frontend converts four modern host-pointer pixels into one period mouse
 count. Signed remainders are retained independently on both axes, so this lower

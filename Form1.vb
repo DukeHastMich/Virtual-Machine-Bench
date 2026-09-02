@@ -1,6 +1,8 @@
 ﻿Imports System.IO 'for loading the ROM files
 Imports System.Collections.Generic
 Imports System.Math 'For advanced Math Functions
+Imports System.ComponentModel
+Imports System.Runtime.InteropServices
 Public Class Form1
     Public Shared Current As Form1
     ' CROMWELL HOST REFIT BRICK 9C - the complete guest machine executes on one
@@ -33,7 +35,7 @@ Public Class Form1
     Private Const SerialMouseHostPixelsPerCountInBed As Integer = 4
     Private _serialMouseHostRemainderXInBed As Integer
     Private _serialMouseHostRemainderYInBed As Integer
-    Private _serialMouseRecenteringInBed As Boolean
+    Private _serialMousePreviousClipInBed As Rectangle
     Private _serialMouseHostMoveMessagesInBed As Long
     Private _serialMouseBoundaryTransfersInBed As Long
     Private _serialMouseUncapturedTitleInBed As String
@@ -99,6 +101,58 @@ Public Class Form1
     Private Const WM_KEYUP As Integer = &H101
     Private Const WM_SYSKEYDOWN As Integer = &H104
     Private Const WM_SYSKEYUP As Integer = &H105
+    Private Const WM_INPUT As Integer = &HFF
+    Private Const RID_INPUT As UInteger = &H10000003UI
+    Private Const RIM_TYPEMOUSE As UInteger = 0UI
+    Private Const MOUSE_MOVE_ABSOLUTE As UShort = &H1US
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputDeviceInBed
+        Public UsagePage As UShort
+        Public Usage As UShort
+        Public Flags As UInteger
+        Public Target As IntPtr
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputHeaderInBed
+        Public Type As UInteger
+        Public Size As UInteger
+        Public Device As IntPtr
+        Public WParam As IntPtr
+    End Structure
+
+    <StructLayout(LayoutKind.Explicit, Size:=24)>
+    Private Structure RawMouseInBed
+        <FieldOffset(0)> Public Flags As UShort
+        <FieldOffset(4)> Public Buttons As UInteger
+        <FieldOffset(8)> Public RawButtons As UInteger
+        <FieldOffset(12)> Public LastX As Integer
+        <FieldOffset(16)> Public LastY As Integer
+        <FieldOffset(20)> Public ExtraInformation As UInteger
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputInBed
+        Public Header As RawInputHeaderInBed
+        Public Mouse As RawMouseInBed
+    End Structure
+
+    <DllImport("user32.dll", SetLastError:=True)>
+    Private Shared Function RegisterRawInputDevices(
+        devicesInBed As RawInputDeviceInBed(),
+        deviceCountInBed As UInteger,
+        structureSizeInBed As UInteger) As Boolean
+    End Function
+
+    <DllImport("user32.dll", SetLastError:=True)>
+    Private Shared Function GetRawInputData(
+        rawInputHandleInBed As IntPtr,
+        commandInBed As UInteger,
+        ByRef dataInBed As RawInputInBed,
+        ByRef sizeInBed As UInteger,
+        headerSizeInBed As UInteger) As UInteger
+    End Function
 
     ' Every host-side keyboard source reports physical key state through this
     ' event.  The Keymaster panel uses it only for key-cap animation; guest input
@@ -118,6 +172,7 @@ Public Class Form1
     ' from keypad Enter, dedicated navigation from keypad keys, and left/right
     ' modifiers.  No guest scan code is created in the UI layer.
     Protected Overrides Sub WndProc(ByRef m As Message)
+        If m.Msg = WM_INPUT Then RouteRawSerialMouseInputInBed(m.LParam)
         If _serialMouseCapturedInBed AndAlso
            (m.Msg = WM_KEYDOWN OrElse m.Msg = WM_SYSKEYDOWN) AndAlso
            CType(CInt(m.WParam.ToInt64() And &HFFFFL), Keys) = Keys.M Then
@@ -135,6 +190,43 @@ Public Class Form1
                 If RoutePhysicalKeyboardMessage(m, pressed:=False) Then Return
         End Select
         MyBase.WndProc(m)
+    End Sub
+
+    Private Sub RegisterRawSerialMouseInputInBed()
+        Dim devicesInBed As RawInputDeviceInBed() = {
+            New RawInputDeviceInBed With {
+                .UsagePage = &H1US,
+                .Usage = &H2US,
+                .Flags = 0UI,
+                .Target = Handle
+            }
+        }
+        If Not RegisterRawInputDevices(
+            devicesInBed,
+            CUInt(devicesInBed.Length),
+            CUInt(Marshal.SizeOf(Of RawInputDeviceInBed)())) Then
+            Throw New Win32Exception(Marshal.GetLastWin32Error(),
+                                     "Unable to register raw host mouse input.")
+        End If
+    End Sub
+
+    Private Sub RouteRawSerialMouseInputInBed(rawInputHandleInBed As IntPtr)
+        If Not _serialMouseCapturedInBed OrElse _closingInBed OrElse Not _machinePoweredInBed Then Return
+
+        Dim rawInBed As New RawInputInBed()
+        Dim rawSizeInBed As UInteger = CUInt(Marshal.SizeOf(Of RawInputInBed)())
+        Dim headerSizeInBed As UInteger = CUInt(Marshal.SizeOf(Of RawInputHeaderInBed)())
+        Dim resultInBed As UInteger =
+            GetRawInputData(rawInputHandleInBed,
+                            RID_INPUT,
+                            rawInBed,
+                            rawSizeInBed,
+                            headerSizeInBed)
+        If resultInBed = UInteger.MaxValue OrElse rawInBed.Header.Type <> RIM_TYPEMOUSE Then Return
+        If (rawInBed.Mouse.Flags And MOUSE_MOVE_ABSOLUTE) <> 0US Then Return
+        If rawInBed.Mouse.LastX <> 0 OrElse rawInBed.Mouse.LastY <> 0 Then
+            QueueSerialMouseHostMovementInBed(rawInBed.Mouse.LastX, rawInBed.Mouse.LastY)
+        End If
     End Sub
 
     ' KeyPreview causes keyboard messages addressed to a child HWND to visit the
@@ -242,28 +334,9 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseMove(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseMove
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
-        If Not _serialMouseCapturedInBed Then Return
-        Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
-                                     Math.Max(0, PictureBox1.ClientSize.Height \ 2))
-
-        ' Cursor.Position is the current physical host pointer.  MouseEventArgs
-        ' can describe a WM_MOUSEMOVE which was already queued before our last
-        ' center warp.  Treating those stale coordinates as new motion creates
-        ' an artificial reverse delta, another warp, and a self-sustaining
-        ' crawl even while the operator is not touching the mouse.
-        Dim capturedPointInBed As Point = PictureBox1.PointToClient(Cursor.Position)
-        If capturedPointInBed.X = centerInBed.X AndAlso capturedPointInBed.Y = centerInBed.Y Then
-            _serialMouseRecenteringInBed = False
-            Return
-        End If
-        _serialMouseRecenteringInBed = False
-        Dim deltaXInBed As Integer = capturedPointInBed.X - centerInBed.X
-        Dim deltaYInBed As Integer = capturedPointInBed.Y - centerInBed.Y
-        If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
-        QueueSerialMouseHostMovementInBed(deltaXInBed, deltaYInBed)
-        _serialMouseRecenteringInBed = True
-        Cursor.Position = PictureBox1.PointToScreen(centerInBed)
+        ' Captured motion is supplied exclusively by WM_INPUT. Absolute
+        ' MouseMove coordinates are ignored so cursor confinement and Windows
+        ' desktop acceleration cannot create guest motion or message feedback.
     End Sub
 
     Private Sub PictureBox1_MouseEnter(sender As Object, e As EventArgs) Handles PictureBox1.MouseEnter
@@ -312,9 +385,12 @@ Public Class Form1
         ClearSerialMouseHostMovementInBed()
         PictureBox1.Capture = True
         SetSerialMouseHostCursorHiddenInBed(True)
-        _serialMouseRecenteringInBed = True
-        Cursor.Position = PictureBox1.PointToScreen(New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
-                                                               Math.Max(0, PictureBox1.ClientSize.Height \ 2)))
+        Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
+                                     Math.Max(0, PictureBox1.ClientSize.Height \ 2))
+        Dim centerScreenInBed As Point = PictureBox1.PointToScreen(centerInBed)
+        _serialMousePreviousClipInBed = Cursor.Clip
+        Cursor.Position = centerScreenInBed
+        Cursor.Clip = New Rectangle(centerScreenInBed, New Size(1, 1))
         If String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then _serialMouseUncapturedTitleInBed = Text
         Text = _serialMouseUncapturedTitleInBed & " — Mouse captured (Ctrl+Alt+M or middle-click to release)"
         If _serialMouseMenuItemInBed IsNot Nothing Then
@@ -329,8 +405,8 @@ Public Class Form1
             Return
         End If
         _serialMouseCapturedInBed = False
-        _serialMouseRecenteringInBed = False
         ClearSerialMouseHostMovementInBed()
+        Cursor.Clip = _serialMousePreviousClipInBed
         _serialMouseLeftInBed = False
         _serialMouseRightInBed = False
         If Not _closingInBed Then
@@ -673,7 +749,7 @@ Public Class Form1
                         reportInBed.AppendLine(Ne2000.DiagnosticText())
                         reportInBed.AppendLine(SerialMouse.DiagnosticText())
                         reportInBed.AppendLine(
-                            $"Serial mouse host frontend: captured={_serialMouseCapturedInBed} " &
+                            $"Serial mouse host frontend: input=WM_INPUT captured={_serialMouseCapturedInBed} " &
                             $"raw-move-messages={Threading.Interlocked.Read(_serialMouseHostMoveMessagesInBed)} " &
                             $"boundary-transfers={Threading.Interlocked.Read(_serialMouseBoundaryTransfersInBed)} " &
                             $"pending-raw={Threading.Interlocked.Read(_serialMousePendingHostXInBed)}/{Threading.Interlocked.Read(_serialMousePendingHostYInBed)}")
@@ -982,6 +1058,7 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As System.Object, e As System.EventArgs) Handles MyBase.Load
         Current = Me
+        RegisterRawSerialMouseInputInBed()
         SystemLoop.Enabled = False
         ' Preserve the emulated CRT face geometry when the host window is resized.
         PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
