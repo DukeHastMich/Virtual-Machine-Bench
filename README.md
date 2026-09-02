@@ -97,6 +97,22 @@ Hardware configuration, I/O decoding, DMA, interrupt routing, memory transaction
 
 ## Screenshots
 
+### Phalanx BIOS POST
+
+![Custom Phalanx BIOS identifying the emulated 80286, 80287, NEAT chipset, S3 video card, memory, and I/O hardware](docs/screenshots/phalanx-bios-post.png)
+
+The custom system BIOS performs POST, reports the configured AT hardware, tests memory and motherboard peripherals, and discovers boot media through the emulated device interfaces.
+
+### MS-DOS and Sneaker Net
+
+![MS-DOS booted with the Microsoft mouse driver while the Sneaker Net media workbench is open](docs/screenshots/msdos-sneaker-net.png)
+
+The host-side Sneaker Net workbench builds and manages guest media without bypassing the emulated controllers. Files enter the guest through floppy, IDE, or ATAPI media attached to the corresponding hardware.
+
+### Media controls and workbench
+
+![Virtual Machine Bench media menu and Sneaker Net workbench showing floppy, IDE, and CD-ROM controls](docs/screenshots/media-workbench.png)
+
 ### Windows 3.1 Setup
 
 ![Windows 3.1 Setup running inside the emulator](docs/screenshots/windows-31-setup.png)
