@@ -156,6 +156,9 @@ Public Class IdeController
     Private _ataDiagnosticSequenceInBed As ULong
     Private _ataReadSectorPhasesInBed As ULong
     Private _ataWriteSectorPhasesInBed As ULong
+    Private _atapiPacketCommandsInBed As ULong
+    Private _atapiReadSectorsInBed As ULong
+    Private _atapiDataPhasesInBed As ULong
 
     Public Event Activity()
 
@@ -188,6 +191,7 @@ Public Class IdeController
     Public Sub MountCdRom(image As IsoImage)
         If _cdrom IsNot Nothing Then _cdrom.Dispose()
         _cdrom = image
+        TraceAtaInBed("ATAPI media mounted sectors=" & image.SectorCount.ToString())
 
         ' A newly inserted medium is reported once as UNIT ATTENTION / 28h.
         ' The next ordinary packet command therefore returns CHECK CONDITION;
@@ -204,6 +208,7 @@ Public Class IdeController
     Public Sub EjectCdRom()
         If _cdrom IsNot Nothing Then _cdrom.Dispose()
         _cdrom = Nothing
+        TraceAtaInBed("ATAPI media ejected")
         SetUnitAttention(&H28, &H0)
     End Sub
 
@@ -453,6 +458,9 @@ Public Class IdeController
     End Sub
 
     Private Sub ExecuteAtapiCommand(state As IdeDeviceState, command As Byte)
+        TraceAtaInBed("ATAPI ATA command=" & command.ToString("X2") &
+                      " features=" & state.Features.ToString("X2") &
+                      " limit=" & state.LbaHigh.ToString("X2") & state.LbaMid.ToString("X2"))
         Select Case command
             Case &HA0                         ' PACKET
                 BeginPacketCommand(state)
@@ -664,6 +672,7 @@ Public Class IdeController
         ' sized; an odd host limit is conservatively rounded down, never to zero.
         If requestedLimit > 1 AndAlso (requestedLimit And 1) <> 0 Then requestedLimit -= 1
         state.PacketByteLimit = Math.Max(2, Math.Min(AtapiMaximumPioPhase, requestedLimit))
+        TraceAtaInBed("ATAPI PACKET command-out DRQ limit=" & state.PacketByteLimit.ToString())
 
         ReDim state.Data(AtapiPacketBytes - 1)
         state.DataIndex = 0
@@ -682,6 +691,8 @@ Public Class IdeController
     Private Sub ExecutePacket(packet As Byte())
         Dim state As IdeDeviceState = _slave
         Dim opcode As Byte = packet(0)
+        _atapiPacketCommandsInBed += 1UL
+        TraceAtaInBed("ATAPI CDB " & BitConverter.ToString(packet).Replace("-", " "))
 
         ' UNIT ATTENTION is reported on the next media-dependent/ordinary command.
         ' INQUIRY is allowed during discovery, and REQUEST SENSE must always be able
@@ -809,6 +820,7 @@ Public Class IdeController
     End Sub
 
     Private Sub PrepareCdRead(state As IdeDeviceState, lba As UInteger, count As Long)
+        TraceAtaInBed("ATAPI READ lba=" & lba.ToString() & " sectors=" & count.ToString())
         If count = 0 Then
             FinishPacket(state, Array.Empty(Of Byte)())
             Return
@@ -831,6 +843,7 @@ Public Class IdeController
         For index As Long = 0 To count - 1
             Array.Copy(_cdrom.ReadSector(CLng(lba) + index), 0, response, CInt(index * 2048L), 2048)
         Next
+        _atapiReadSectorsInBed += CULng(count)
         FinishPacket(state, response)
     End Sub
 
@@ -1037,6 +1050,10 @@ Public Class IdeController
         state.LbaHigh = CByte((phaseLength >> 8) And &HFF)
         state.SectorCount = AtapiReasonDataIn
         state.Status = StatusDriveReady Or StatusDataRequest
+        _atapiDataPhasesInBed += 1UL
+        TraceAtaInBed("ATAPI data-in DRQ bytes=" & phaseLength.ToString() &
+                      " response-offset=" & state.PacketResponseOffset.ToString() & "/" &
+                      state.PacketResponse.Length.ToString())
         RaiseInterrupt()
     End Sub
 
@@ -1054,6 +1071,7 @@ Public Class IdeController
         state.LbaMid = 0
         state.LbaHigh = 0
         state.Status = StatusDriveReady
+        TraceAtaInBed("ATAPI complete reason=03 ST=" & state.Status.ToString("X2"))
         RaiseInterrupt()
     End Sub
 
@@ -1121,6 +1139,10 @@ Public Class IdeController
         state.LbaMid = 0
         state.LbaHigh = 0
         state.Status = StatusDriveReady Or StatusError
+        TraceAtaInBed("ATAPI CHECK CONDITION sense=" & state.SenseKey.ToString("X2") & "/" &
+                      state.AdditionalSenseCode.ToString("X2") & "/" &
+                      state.AdditionalSenseQualifier.ToString("X2") &
+                      " ERR=" & state.ErrorRegister.ToString("X2"))
         RaiseInterrupt()
     End Sub
 
@@ -1186,7 +1208,30 @@ Public Class IdeController
                                _master.LbaLow.ToString("X2") &
                                " DH=" & _driveHead.ToString("X2") &
                                " ST=" & _master.Status.ToString("X2"))
-        reportInBed.AppendLine("Recent ATA sector phases (oldest first):")
+        reportInBed.AppendLine("ATAPI packets/read sectors: " &
+                               _atapiPacketCommandsInBed.ToString("N0") & " / " &
+                               _atapiReadSectorsInBed.ToString("N0"))
+        reportInBed.AppendLine("ATAPI data-in DRQ phases : " & _atapiDataPhasesInBed.ToString("N0"))
+        reportInBed.AppendLine("ATAPI task file reason/BC : " &
+                               _slave.SectorCount.ToString("X2") & " / " &
+                               _slave.LbaHigh.ToString("X2") & _slave.LbaMid.ToString("X2") &
+                               " ERR=" & _slave.ErrorRegister.ToString("X2") &
+                               " ST=" & _slave.Status.ToString("X2"))
+        reportInBed.AppendLine("ATAPI transfer/index      : " & _slave.Transfer.ToString() & " / " &
+                               _slave.DataIndex.ToString() & "/" &
+                               If(_slave.Data Is Nothing, "0", _slave.Data.Length.ToString()))
+        reportInBed.AppendLine("ATAPI response offset     : " & _slave.PacketResponseOffset.ToString() & "/" &
+                               If(_slave.PacketResponse Is Nothing, "0", _slave.PacketResponse.Length.ToString()) &
+                               " limit=" & _slave.PacketByteLimit.ToString())
+        reportInBed.AppendLine("ATAPI media/UA/prevent    : " &
+                               If(_cdrom Is Nothing, "absent", "present") & " / " &
+                               If(_slave.UnitAttentionPending, "pending", "clear") & " / " &
+                               If(_slave.MediumRemovalPrevented, "yes", "no"))
+        reportInBed.AppendLine("ATAPI sense key/ASC/ASCQ  : " &
+                               _slave.SenseKey.ToString("X2") & "/" &
+                               _slave.AdditionalSenseCode.ToString("X2") & "/" &
+                               _slave.AdditionalSenseQualifier.ToString("X2"))
+        reportInBed.AppendLine("Recent ATA/ATAPI phases (oldest first):")
         If _ataDiagnosticInBed.Count = 0 Then
             reportInBed.AppendLine("  <none>")
         Else

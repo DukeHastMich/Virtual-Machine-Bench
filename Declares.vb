@@ -273,7 +273,11 @@ Public FrontPanel As New FrontPanelState
         ' The built-in diagnostic DCE endpoints present the same ready carrier
         ' lines as a powered modem.  Guest software still reaches them solely
         ' through the UART pins/registers; no BIOS or CPU host shortcut exists.
-        Com1.SetExternalModemInputs(cts:=True, dsr:=True, ringIndicator:=False, carrierDetect:=True)
+        ' A Microsoft serial mouse uses TXD/RTS/DTR for power and RXD for data.
+        ' Its cable does not loop RTS->CTS or DTR->DSR, and it does not assert
+        ' carrier detect.  Leaving those modem inputs high misidentifies the DCE
+        ' wiring to software which probes COM1 before accepting the M response.
+        Com1.SetExternalModemInputs(cts:=False, dsr:=False, ringIndicator:=False, carrierDetect:=False)
         Com2.SetExternalModemInputs(cts:=True, dsr:=True, ringIndicator:=False, carrierDetect:=True)
         ' Attach actual printers, not diagnostic byte sinks.  All guest traffic
         ' still traverses DATA/STROBE/BUSY/ACK on ParallelPortSpp first.

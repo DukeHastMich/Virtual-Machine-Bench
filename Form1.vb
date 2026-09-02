@@ -1,6 +1,8 @@
 ﻿Imports System.IO 'for loading the ROM files
 Imports System.Collections.Generic
 Imports System.Math 'For advanced Math Functions
+Imports System.ComponentModel
+Imports System.Runtime.InteropServices
 Public Class Form1
     Public Shared Current As Form1
     ' CROMWELL HOST REFIT BRICK 9C - the complete guest machine executes on one
@@ -18,11 +20,25 @@ Public Class Form1
     Private _onScreenKeyboardInBed As On_Screen_Keyboard
     Private _serialMouseCapturedInBed As Boolean
     Private _serialMouseHostCursorHiddenInBed As Boolean
-    Private _serialMouseHoverPointValidInBed As Boolean
-    Private _serialMouseLastHoverPointInBed As Point
     Private _serialMouseLeftInBed As Boolean
     Private _serialMouseRightInBed As Boolean
     Private _serialMouseMenuItemInBed As ToolStripMenuItem
+    ' Host pointer messages can arrive much faster than the emulated 1200-baud
+    ' Microsoft mouse can report them.  Do not make the UI thread wait for the
+    ' machine ownership gate once per WM_MOUSEMOVE.  Coalesce raw host counts
+    ' here and transfer them to the physical mouse at the next machine boundary.
+    Private _serialMousePendingHostXInBed As Long
+    Private _serialMousePendingHostYInBed As Long
+    ' A period Microsoft ball mouse produced far fewer counts per inch than a
+    ' modern high-resolution host pointer. Preserve fractional host travel so
+    ' fine motion and shallow diagonals survive the resolution conversion.
+    Private Const SerialMouseHostPixelsPerCountInBed As Integer = 4
+    Private _serialMouseHostRemainderXInBed As Integer
+    Private _serialMouseHostRemainderYInBed As Integer
+    Private _serialMousePreviousClipInBed As Rectangle
+    Private _serialMouseHostMoveMessagesInBed As Long
+    Private _serialMouseBoundaryTransfersInBed As Long
+    Private _serialMouseUncapturedTitleInBed As String
     Private floppyAStatus As ToolStripMenuItem
     Private floppyBStatus As ToolStripMenuItem
     Private hardDiskStatus As ToolStripMenuItem
@@ -33,6 +49,14 @@ Public Class Form1
     ' CROMWELL TECHNOLOGIES SNEAKER NET / FLOPPY BOX BRICK 1
     Private _floppyBox As FloppyBox
     Private _sneakerNetForm As SneakerNetForm
+    Private _driveBayPanelInBed As Panel
+    Private _floppyBayAInBed As PictureBox
+    Private _floppyBayBInBed As PictureBox
+    Private _driveBayToolTipInBed As ToolTip
+    Private _floppyBayPopupInBed As ContextMenuStrip
+    Private _threeAndHalfDriveFaceInBed As Bitmap
+    Private _fiveAndQuarterDriveFaceInBed As Bitmap
+    Private _emptyDriveFaceInBed As Bitmap
     Private floppyAMountMenu As ToolStripMenuItem
     Private floppyBMountMenu As ToolStripMenuItem
     ' CROMWELL KEYBOARD REALITY BRICK 3 FIELDS
@@ -77,6 +101,58 @@ Public Class Form1
     Private Const WM_KEYUP As Integer = &H101
     Private Const WM_SYSKEYDOWN As Integer = &H104
     Private Const WM_SYSKEYUP As Integer = &H105
+    Private Const WM_INPUT As Integer = &HFF
+    Private Const RID_INPUT As UInteger = &H10000003UI
+    Private Const RIM_TYPEMOUSE As UInteger = 0UI
+    Private Const MOUSE_MOVE_ABSOLUTE As UShort = &H1US
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputDeviceInBed
+        Public UsagePage As UShort
+        Public Usage As UShort
+        Public Flags As UInteger
+        Public Target As IntPtr
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputHeaderInBed
+        Public Type As UInteger
+        Public Size As UInteger
+        Public Device As IntPtr
+        Public WParam As IntPtr
+    End Structure
+
+    <StructLayout(LayoutKind.Explicit, Size:=24)>
+    Private Structure RawMouseInBed
+        <FieldOffset(0)> Public Flags As UShort
+        <FieldOffset(4)> Public Buttons As UInteger
+        <FieldOffset(8)> Public RawButtons As UInteger
+        <FieldOffset(12)> Public LastX As Integer
+        <FieldOffset(16)> Public LastY As Integer
+        <FieldOffset(20)> Public ExtraInformation As UInteger
+    End Structure
+
+    <StructLayout(LayoutKind.Sequential)>
+    Private Structure RawInputInBed
+        Public Header As RawInputHeaderInBed
+        Public Mouse As RawMouseInBed
+    End Structure
+
+    <DllImport("user32.dll", SetLastError:=True)>
+    Private Shared Function RegisterRawInputDevices(
+        devicesInBed As RawInputDeviceInBed(),
+        deviceCountInBed As UInteger,
+        structureSizeInBed As UInteger) As Boolean
+    End Function
+
+    <DllImport("user32.dll", SetLastError:=True)>
+    Private Shared Function GetRawInputData(
+        rawInputHandleInBed As IntPtr,
+        commandInBed As UInteger,
+        ByRef dataInBed As RawInputInBed,
+        ByRef sizeInBed As UInteger,
+        headerSizeInBed As UInteger) As UInteger
+    End Function
 
     ' Every host-side keyboard source reports physical key state through this
     ' event.  The Keymaster panel uses it only for key-cap animation; guest input
@@ -96,6 +172,17 @@ Public Class Form1
     ' from keypad Enter, dedicated navigation from keypad keys, and left/right
     ' modifiers.  No guest scan code is created in the UI layer.
     Protected Overrides Sub WndProc(ByRef m As Message)
+        If m.Msg = WM_INPUT Then RouteRawSerialMouseInputInBed(m.LParam)
+        If _serialMouseCapturedInBed AndAlso
+           (m.Msg = WM_KEYDOWN OrElse m.Msg = WM_SYSKEYDOWN) AndAlso
+           CType(CInt(m.WParam.ToInt64() And &HFFFFL), Keys) = Keys.M Then
+            Dim modifiersInBed As Keys = Control.ModifierKeys
+            If (modifiersInBed And Keys.Control) <> 0 AndAlso
+               (modifiersInBed And Keys.Alt) <> 0 Then
+                ReleaseSerialMouseCaptureInBed()
+                Return
+            End If
+        End If
         Select Case m.Msg
             Case WM_KEYDOWN, WM_SYSKEYDOWN
                 If RoutePhysicalKeyboardMessage(m, pressed:=True) Then Return
@@ -103,6 +190,43 @@ Public Class Form1
                 If RoutePhysicalKeyboardMessage(m, pressed:=False) Then Return
         End Select
         MyBase.WndProc(m)
+    End Sub
+
+    Private Sub RegisterRawSerialMouseInputInBed()
+        Dim devicesInBed As RawInputDeviceInBed() = {
+            New RawInputDeviceInBed With {
+                .UsagePage = &H1US,
+                .Usage = &H2US,
+                .Flags = 0UI,
+                .Target = Handle
+            }
+        }
+        If Not RegisterRawInputDevices(
+            devicesInBed,
+            CUInt(devicesInBed.Length),
+            CUInt(Marshal.SizeOf(Of RawInputDeviceInBed)())) Then
+            Throw New Win32Exception(Marshal.GetLastWin32Error(),
+                                     "Unable to register raw host mouse input.")
+        End If
+    End Sub
+
+    Private Sub RouteRawSerialMouseInputInBed(rawInputHandleInBed As IntPtr)
+        If Not _serialMouseCapturedInBed OrElse _closingInBed OrElse Not _machinePoweredInBed Then Return
+
+        Dim rawInBed As New RawInputInBed()
+        Dim rawSizeInBed As UInteger = CUInt(Marshal.SizeOf(Of RawInputInBed)())
+        Dim headerSizeInBed As UInteger = CUInt(Marshal.SizeOf(Of RawInputHeaderInBed)())
+        Dim resultInBed As UInteger =
+            GetRawInputData(rawInputHandleInBed,
+                            RID_INPUT,
+                            rawInBed,
+                            rawSizeInBed,
+                            headerSizeInBed)
+        If resultInBed = UInteger.MaxValue OrElse rawInBed.Header.Type <> RIM_TYPEMOUSE Then Return
+        If (rawInBed.Mouse.Flags And MOUSE_MOVE_ABSOLUTE) <> 0US Then Return
+        If rawInBed.Mouse.LastX <> 0 OrElse rawInBed.Mouse.LastY <> 0 Then
+            QueueSerialMouseHostMovementInBed(rawInBed.Mouse.LastX, rawInBed.Mouse.LastY)
+        End If
     End Sub
 
     ' KeyPreview causes keyboard messages addressed to a child HWND to visit the
@@ -189,6 +313,10 @@ Public Class Form1
 
     Private Sub PictureBox1_MouseDown(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseDown
         If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If Not _serialMouseCapturedInBed Then
+            If e.Button = MouseButtons.Left Then CaptureSerialMouseInBed()
+            Return
+        End If
         If _serialMouseCapturedInBed AndAlso e.Button = MouseButtons.Middle Then
             ReleaseSerialMouseCaptureInBed()
             Return
@@ -199,45 +327,26 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseUp(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseUp
+        If Not _serialMouseCapturedInBed Then Return
         If e.Button = MouseButtons.Left Then _serialMouseLeftInBed = False
         If e.Button = MouseButtons.Right Then _serialMouseRightInBed = False
         RouteSerialMouseButtonsInBed()
     End Sub
 
     Private Sub PictureBox1_MouseMove(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseMove
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
-        If Not _serialMouseCapturedInBed Then
-            Dim currentPointInBed As New Point(e.X, e.Y)
-            If Not _serialMouseHoverPointValidInBed Then
-                _serialMouseLastHoverPointInBed = currentPointInBed
-                _serialMouseHoverPointValidInBed = True
-                Return
-            End If
-            Dim hoverDeltaXInBed As Integer = currentPointInBed.X - _serialMouseLastHoverPointInBed.X
-            Dim hoverDeltaYInBed As Integer = currentPointInBed.Y - _serialMouseLastHoverPointInBed.Y
-            _serialMouseLastHoverPointInBed = currentPointInBed
-            If hoverDeltaXInBed <> 0 OrElse hoverDeltaYInBed <> 0 Then
-                WithMachineInBed(Sub() SerialMouse.AddHostMovement(hoverDeltaXInBed, hoverDeltaYInBed))
-            End If
-            Return
-        End If
-        Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
-                                     Math.Max(0, PictureBox1.ClientSize.Height \ 2))
-        Dim deltaXInBed As Integer = e.X - centerInBed.X
-        Dim deltaYInBed As Integer = e.Y - centerInBed.Y
-        If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
-        WithMachineInBed(Sub() SerialMouse.AddHostMovement(deltaXInBed, deltaYInBed))
-        Cursor.Position = PictureBox1.PointToScreen(centerInBed)
+        ' Captured motion is supplied exclusively by WM_INPUT. Absolute
+        ' MouseMove coordinates are ignored so cursor confinement and Windows
+        ' desktop acceleration cannot create guest motion or message feedback.
     End Sub
 
     Private Sub PictureBox1_MouseEnter(sender As Object, e As EventArgs) Handles PictureBox1.MouseEnter
-        _serialMouseHoverPointValidInBed = False
-        SetSerialMouseHostCursorHiddenInBed(True)
+        ClearSerialMouseHostMovementInBed()
+        SetSerialMouseHostCursorHiddenInBed(_serialMouseCapturedInBed)
     End Sub
 
     Private Sub PictureBox1_MouseLeave(sender As Object, e As EventArgs) Handles PictureBox1.MouseLeave
         If _serialMouseCapturedInBed Then Return
-        _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
         SetSerialMouseHostCursorHiddenInBed(False)
         If _serialMouseLeftInBed OrElse _serialMouseRightInBed Then
             _serialMouseLeftInBed = False
@@ -247,7 +356,21 @@ Public Class Form1
     End Sub
 
     Private Sub PictureBox1_MouseCaptureChanged(sender As Object, e As EventArgs) Handles PictureBox1.MouseCaptureChanged
-        If _serialMouseCapturedInBed AndAlso Not PictureBox1.Capture Then ReleaseSerialMouseCaptureInBed()
+        If Not _serialMouseCapturedInBed OrElse PictureBox1.Capture OrElse
+           _closingInBed OrElse Not _machinePoweredInBed OrElse Not ContainsFocus Then Return
+
+        ' WinForms may release a control's native mouse capture as part of the
+        ' ordinary left/right button-up lifecycle.  That is not an operator
+        ' request to disconnect the guest mouse.  Reacquire after the current
+        ' message unwinds; explicit release paths clear the logical flag first.
+        BeginInvoke(
+            New Action(
+                Sub()
+                    If _serialMouseCapturedInBed AndAlso Not _closingInBed AndAlso
+                       _machinePoweredInBed AndAlso ContainsFocus Then
+                        PictureBox1.Capture = True
+                    End If
+                End Sub))
     End Sub
 
     Private Sub CaptureSerialMouseInBed()
@@ -259,12 +382,21 @@ Public Class Form1
         Activate()
         Focus()
         _serialMouseCapturedInBed = True
-        _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
         PictureBox1.Capture = True
         SetSerialMouseHostCursorHiddenInBed(True)
-        Cursor.Position = PictureBox1.PointToScreen(New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
-                                                               Math.Max(0, PictureBox1.ClientSize.Height \ 2)))
-        If _serialMouseMenuItemInBed IsNot Nothing Then _serialMouseMenuItemInBed.Checked = True
+        Dim centerInBed As New Point(Math.Max(0, PictureBox1.ClientSize.Width \ 2),
+                                     Math.Max(0, PictureBox1.ClientSize.Height \ 2))
+        Dim centerScreenInBed As Point = PictureBox1.PointToScreen(centerInBed)
+        _serialMousePreviousClipInBed = Cursor.Clip
+        Cursor.Position = centerScreenInBed
+        Cursor.Clip = New Rectangle(centerScreenInBed, New Size(1, 1))
+        If String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then _serialMouseUncapturedTitleInBed = Text
+        Text = _serialMouseUncapturedTitleInBed & " — Mouse captured (Ctrl+Alt+M or middle-click to release)"
+        If _serialMouseMenuItemInBed IsNot Nothing Then
+            _serialMouseMenuItemInBed.Checked = True
+            _serialMouseMenuItemInBed.Text = "Release COM1 serial mouse"
+        End If
     End Sub
 
     Private Sub ReleaseSerialMouseCaptureInBed()
@@ -273,7 +405,8 @@ Public Class Form1
             Return
         End If
         _serialMouseCapturedInBed = False
-        _serialMouseHoverPointValidInBed = False
+        ClearSerialMouseHostMovementInBed()
+        Cursor.Clip = _serialMousePreviousClipInBed
         _serialMouseLeftInBed = False
         _serialMouseRightInBed = False
         If Not _closingInBed Then
@@ -284,10 +417,12 @@ Public Class Form1
             End Try
         End If
         PictureBox1.Capture = False
-        Dim hostPointerInDisplayInBed As Boolean =
-            PictureBox1.ClientRectangle.Contains(PictureBox1.PointToClient(Cursor.Position))
-        SetSerialMouseHostCursorHiddenInBed(hostPointerInDisplayInBed)
-        If _serialMouseMenuItemInBed IsNot Nothing Then _serialMouseMenuItemInBed.Checked = False
+        SetSerialMouseHostCursorHiddenInBed(False)
+        If Not String.IsNullOrEmpty(_serialMouseUncapturedTitleInBed) Then Text = _serialMouseUncapturedTitleInBed
+        If _serialMouseMenuItemInBed IsNot Nothing Then
+            _serialMouseMenuItemInBed.Checked = False
+            _serialMouseMenuItemInBed.Text = "Capture COM1 serial mouse"
+        End If
         If Not _closingInBed AndAlso _machinePoweredInBed Then
             ActiveControl = Nothing
             Activate()
@@ -310,6 +445,41 @@ Public Class Form1
         Dim leftInBed As Boolean = _serialMouseLeftInBed
         Dim rightInBed As Boolean = _serialMouseRightInBed
         WithMachineInBed(Sub() SerialMouse.SetHostButtons(leftInBed, rightInBed))
+    End Sub
+
+    Private Sub QueueSerialMouseHostMovementInBed(deltaXInBed As Integer, deltaYInBed As Integer)
+        Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        Dim accumulatedXInBed As Integer = _serialMouseHostRemainderXInBed + deltaXInBed
+        Dim accumulatedYInBed As Integer = _serialMouseHostRemainderYInBed + deltaYInBed
+        Dim mouseCountXInBed As Integer = accumulatedXInBed \ SerialMouseHostPixelsPerCountInBed
+        Dim mouseCountYInBed As Integer = accumulatedYInBed \ SerialMouseHostPixelsPerCountInBed
+        _serialMouseHostRemainderXInBed = accumulatedXInBed Mod SerialMouseHostPixelsPerCountInBed
+        _serialMouseHostRemainderYInBed = accumulatedYInBed Mod SerialMouseHostPixelsPerCountInBed
+        If mouseCountXInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostXInBed, CLng(mouseCountXInBed))
+        If mouseCountYInBed <> 0 Then Threading.Interlocked.Add(_serialMousePendingHostYInBed, CLng(mouseCountYInBed))
+    End Sub
+
+    Private Sub ClearSerialMouseHostMovementInBed()
+        Threading.Interlocked.Exchange(_serialMousePendingHostXInBed, 0L)
+        Threading.Interlocked.Exchange(_serialMousePendingHostYInBed, 0L)
+        _serialMouseHostRemainderXInBed = 0
+        _serialMouseHostRemainderYInBed = 0
+    End Sub
+
+    ' Called only by MachineRuntime286 while it owns the complete guest.  The
+    ' host accumulator is transport decoupling, not a virtual-input shortcut:
+    ' after this handoff the counts still obey mouse sampling, 1200-baud serial
+    ' framing, the 16550 receive path, PIC IRQ4, and the guest mouse driver.
+    Private Sub DrainSerialMouseHostMovementAtBoundaryInBed()
+        Dim deltaXInBed As Long = Threading.Interlocked.Exchange(_serialMousePendingHostXInBed, 0L)
+        Dim deltaYInBed As Long = Threading.Interlocked.Exchange(_serialMousePendingHostYInBed, 0L)
+        If deltaXInBed = 0 AndAlso deltaYInBed = 0 Then Return
+
+        Const MaximumTransferInBed As Long = Integer.MaxValue
+        Dim boundedXInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaXInBed)))
+        Dim boundedYInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaYInBed)))
+        SerialMouse.AddHostMovement(boundedXInBed, boundedYInBed)
+        Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
     End Sub
 
     Friend Shared Function HostPhysicalKey(scan As Byte, extended As Boolean, virtualKey As Keys) As AtPhysicalKey
@@ -526,6 +696,7 @@ Public Class Form1
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== CPU CORE / PROTECTION =====")
                         reportInBed.AppendLine(CPU0.CoreRefitDiagnosticText())
+                        reportInBed.AppendLine(CPU0.HotPathDiagnosticText())
                         reportInBed.AppendLine(CPU0.DiagnosticExecutionHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticCpuFaultTraceText())
                         reportInBed.AppendLine(CPU0.DiagnosticProtectionGateText(13))
@@ -534,6 +705,30 @@ Public Class Form1
                         reportInBed.AppendLine(CPU0.DiagnosticSecondCliEntryHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticGpReturnHistoryText())
                         reportInBed.AppendLine(CPU0.DiagnosticGpHandlerTraceText())
+                        reportInBed.AppendLine()
+                        reportInBed.AppendLine("===== HOST PERFORMANCE =====")
+                        SyncLock _cpuPerfLockInBed
+                            Dim targetHzInBed As Long = MachineClock.CpuClockHz
+                            Dim ratioInBed As Double = If(targetHzInBed > 0,
+                                _cpuPerfEffectiveTStatesPerSecond / CDbl(targetHzInBed), 0.0R)
+                            reportInBed.AppendLine("Target CPU clock       : " &
+                                (CDbl(targetHzInBed) / 1000000.0R).ToString("0.000") & " MHz")
+                            reportInBed.AppendLine("Effective T-state rate : " &
+                                (_cpuPerfEffectiveTStatesPerSecond / 1000000.0R).ToString("0.000") & " MT-states/s")
+                            reportInBed.AppendLine("Real-time ratio        : " &
+                                (ratioInBed * 100.0R).ToString("0.0") & " %")
+                            reportInBed.AppendLine("Pending scheduler debt : " &
+                                MachineClock.PendingTStates.ToString("N0") & " T-states")
+                            reportInBed.AppendLine("RunSlice last/avg/min/max ms: " &
+                                _cpuPerfLastSliceMilliseconds.ToString("0.000") & " / " &
+                                _cpuPerfAverageSliceMillisecondsInBed.ToString("0.000") & " / " &
+                                _cpuPerfMinimumSliceMillisecondsInBed.ToString("0.000") & " / " &
+                                _cpuPerfMaximumSliceMillisecondsInBed.ToString("0.000"))
+                            reportInBed.AppendLine("Adaptive slice ceiling : " &
+                                _machineRuntime.CurrentMaximumTStatesPerSlice.ToString("N0") & " T-states")
+                        End SyncLock
+                        Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+                        If presentationInBed IsNot Nothing Then reportInBed.AppendLine(presentationInBed.DiagnosticText())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== SOFTWARE INTERRUPTS / DOS FILE SERVICES =====")
                         reportInBed.AppendLine(CPU0.GetDiagnosticImportantIntTrace())
@@ -553,6 +748,11 @@ Public Class Form1
                         reportInBed.AppendLine(SoundBlaster16.DiagnosticText())
                         reportInBed.AppendLine(Ne2000.DiagnosticText())
                         reportInBed.AppendLine(SerialMouse.DiagnosticText())
+                        reportInBed.AppendLine(
+                            $"Serial mouse host frontend: input=WM_INPUT captured={_serialMouseCapturedInBed} " &
+                            $"raw-move-messages={Threading.Interlocked.Read(_serialMouseHostMoveMessagesInBed)} " &
+                            $"boundary-transfers={Threading.Interlocked.Read(_serialMouseBoundaryTransfersInBed)} " &
+                            $"pending-raw={Threading.Interlocked.Read(_serialMousePendingHostXInBed)}/{Threading.Interlocked.Read(_serialMousePendingHostYInBed)}")
                         reportInBed.AppendLine($"COM1 pins DTR/RTS/OUT1/OUT2/BREAK: {Com1DiagnosticPeripheral.Dtr}/{Com1DiagnosticPeripheral.Rts}/{Com1DiagnosticPeripheral.Out1}/{Com1DiagnosticPeripheral.Out2}/{Com1DiagnosticPeripheral.BreakAsserted}")
                         reportInBed.AppendLine($"COM2 pins DTR/RTS/OUT1/OUT2/BREAK: {Com2DiagnosticPeripheral.Dtr}/{Com2DiagnosticPeripheral.Rts}/{Com2DiagnosticPeripheral.Out1}/{Com2DiagnosticPeripheral.Out2}/{Com2DiagnosticPeripheral.BreakAsserted}")
                         reportInBed.AppendLine($"LPT1 functions SELECTIN/INIT/AUTOFEED: {Lpt1Printer.SelectInAsserted}/{Lpt1Printer.InitializeAsserted}/{Lpt1Printer.AutoFeedAsserted}")
@@ -858,6 +1058,7 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As System.Object, e As System.EventArgs) Handles MyBase.Load
         Current = Me
+        RegisterRawSerialMouseInputInBed()
         SystemLoop.Enabled = False
         ' Preserve the emulated CRT face geometry when the host window is resized.
         PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
@@ -888,6 +1089,7 @@ Public Class Form1
         InitializeIdeDriveShelf()
         InitializeFloppyBox()
         CreateMediaMenu()
+        InitializeDriveBayPanelInBed()
         InitializeSystemConfigurationInBed()
         BeginInvoke(New Action(AddressOf InitializeChassisPanel))
 
@@ -896,7 +1098,12 @@ Public Class Form1
         Mode2.Enabled = False
         Mode3.Enabled = False
         Mode4.Enabled = False
-        GPU.Interval = 16
+        ' Host CRT presentation is deliberately capped at 20 Hz. The S3 worker
+        ' currently needs about 23 ms to rasterize a Windows frame; requesting
+        ' one every 16 ms wastes host time on frames the UI cannot consume and
+        ' starves the substantially more valuable guest CPU. Scan-out state and
+        ' all guest-visible VGA timing remain on the emulated card.
+        GPU.Interval = 50
         GPU.Enabled = False
 
         CPU0.Reset()
@@ -915,6 +1122,7 @@ Public Class Form1
         _videoPresentation.Start()
         _machineRuntime.SetBoundaryService(
             Sub()
+                DrainSerialMouseHostMovementAtBoundaryInBed()
                 Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
                 If presentationInBed IsNot Nothing Then
                     presentationInBed.ServiceCaptureAtMachineBoundary(VideoCard)
@@ -988,6 +1196,10 @@ Public Class Form1
         ' WinForms can deliver Deactivate and other focus/input callbacks during
         ' teardown. Mark shutdown before disposing any machine-owned object.
         _closingInBed = True
+        If _floppyBayPopupInBed IsNot Nothing Then
+            _floppyBayPopupInBed.Dispose()
+            _floppyBayPopupInBed = Nothing
+        End If
         ReleaseSerialMouseCaptureInBed()
         GPU.Enabled = False
 
@@ -1066,7 +1278,9 @@ Public Class Form1
         machine.DropDownItems.Add("On-screen keyboard...", Nothing, Sub() ShowOnScreenKeyboardInBed())
         _serialMouseMenuItemInBed = New ToolStripMenuItem("Capture COM1 serial mouse") With {
             .CheckOnClick = False,
-            .ToolTipText = "Click the guest display to capture; middle-click or use this menu to release"
+            .ShortcutKeys = Keys.Control Or Keys.Alt Or Keys.M,
+            .ShowShortcutKeys = True,
+            .ToolTipText = "Capture the guest pointer; release with Ctrl+Alt+M, middle-click, or this menu"
         }
         AddHandler _serialMouseMenuItemInBed.Click,
             Sub()
@@ -1922,6 +2136,8 @@ Public Class Form1
         Dim floppyBPresentInBed As Boolean
         Dim floppyATextInBed As String = String.Empty
         Dim floppyBTextInBed As String = String.Empty
+        Dim floppyAGeometryInBed As Integer() = Nothing
+        Dim floppyBGeometryInBed As Integer() = Nothing
         Dim hardDiskPresentInBed As Boolean
         Dim cdPresentInBed As Boolean
 
@@ -1931,6 +2147,8 @@ Public Class Form1
                 floppyBPresentInBed = FloppyController.IsMediaPresent(1)
                 floppyATextInBed = FloppyController.GetAttachmentStatus(0)
                 floppyBTextInBed = FloppyController.GetAttachmentStatus(1)
+                floppyAGeometryInBed = FloppyController.GetGeometry(0)
+                floppyBGeometryInBed = FloppyController.GetGeometry(1)
                 hardDiskPresentInBed = Declares.IdeController.HardDiskSectorCount > 0
                 cdPresentInBed = Declares.IdeController.CdRomMounted
             End Sub)
@@ -1956,6 +2174,7 @@ Public Class Form1
             End If
         End If
         If cdRomStatus IsNot Nothing Then cdRomStatus.Checked = cdPresentInBed
+        UpdateDriveBayFacesInBed(floppyAGeometryInBed, floppyBGeometryInBed)
     End Sub
 
     Private Sub EjectFloppy(drive As Integer)
@@ -2109,6 +2328,114 @@ Public Class Form1
     Private Sub InitializeFloppyBox()
         _floppyBox = New FloppyBox(AppContext.BaseDirectory)
         _floppyBox.EnsureExists()
+    End Sub
+
+    Private Sub InitializeDriveBayPanelInBed()
+        If _driveBayPanelInBed IsNot Nothing Then Return
+
+        Dim artworkDirectoryInBed As String =
+            Path.Combine(AppContext.BaseDirectory, "Resources", "System Images")
+        _threeAndHalfDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "Teac-Floppy.png"))
+        _fiveAndQuarterDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "five and a quarter floppy.png"))
+        _emptyDriveFaceInBed = LoadDriveFaceInBed(
+            Path.Combine(artworkDirectoryInBed, "five and a quarter face plate.png"))
+
+        Const bayRailWidthInBed As Integer = 210
+        Const displayGapInBed As Integer = 10
+        Dim originalDisplayLeftInBed As Integer = PictureBox1.Left
+        _driveBayPanelInBed = New Panel() With {
+            .Location = New Point(originalDisplayLeftInBed, PictureBox1.Top),
+            .Size = New Size(bayRailWidthInBed, PictureBox1.Height),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Bottom Or AnchorStyles.Left,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .BorderStyle = BorderStyle.FixedSingle
+        }
+        _driveBayToolTipInBed = New ToolTip()
+        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, 8)
+        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, 76)
+        _driveBayPanelInBed.Controls.Add(_floppyBayAInBed)
+        _driveBayPanelInBed.Controls.Add(_floppyBayBInBed)
+        Controls.Add(_driveBayPanelInBed)
+        _driveBayPanelInBed.BringToFront()
+
+        PictureBox1.Left = originalDisplayLeftInBed + bayRailWidthInBed + displayGapInBed
+        PictureBox1.Width = Math.Max(1, PictureBox1.Width - bayRailWidthInBed - displayGapInBed)
+        UpdateDriveBayFacesInBed(Nothing, Nothing)
+    End Sub
+
+    Private Shared Function LoadDriveFaceInBed(pathInBed As String) As Bitmap
+        Using streamInBed As New FileStream(pathInBed, FileMode.Open, FileAccess.Read, FileShare.Read)
+            Using sourceInBed As New Bitmap(streamInBed)
+                Return New Bitmap(sourceInBed)
+            End Using
+        End Using
+    End Function
+
+    Private Function CreateFloppyBayFaceInBed(driveInBed As Integer, topInBed As Integer) As PictureBox
+        Dim faceInBed As New PictureBox() With {
+            .Location = New Point(7, topInBed),
+            .Size = New Size(194, 58),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right,
+            .SizeMode = PictureBoxSizeMode.Zoom,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .Cursor = Cursors.Hand,
+            .Tag = driveInBed,
+            .TabStop = False
+        }
+        _driveBayToolTipInBed.SetToolTip(
+            faceInBed,
+            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — click for media choices")
+        AddHandler faceInBed.Click,
+            Sub() ShowFloppyBayMenuInBed(faceInBed, driveInBed)
+        Return faceInBed
+    End Function
+
+    Private Sub ShowFloppyBayMenuInBed(faceInBed As PictureBox, driveInBed As Integer)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+
+        If _floppyBayPopupInBed IsNot Nothing Then
+            _floppyBayPopupInBed.Dispose()
+            _floppyBayPopupInBed = Nothing
+        End If
+
+        ' Build from the same routine used by the Media menu, then transfer the
+        ' live items (including their handlers) into a short-lived context menu.
+        ' This keeps the chassis shortcut and top-level menu behavior identical.
+        Dim sourceInBed As New ToolStripMenuItem()
+        RebuildFloppyBoxMountMenu(sourceInBed, driveInBed)
+        Dim popupInBed As New ContextMenuStrip()
+        While sourceInBed.DropDownItems.Count > 0
+            Dim itemInBed As ToolStripItem = sourceInBed.DropDownItems(0)
+            sourceInBed.DropDownItems.RemoveAt(0)
+            popupInBed.Items.Add(itemInBed)
+        End While
+        sourceInBed.Dispose()
+        _floppyBayPopupInBed = popupInBed
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
+
+    Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
+        UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
+        UpdateDriveBayFaceInBed(_floppyBayBInBed, 1, geometryBInBed)
+    End Sub
+
+    Private Sub UpdateDriveBayFaceInBed(faceInBed As PictureBox,
+                                        driveInBed As Integer,
+                                        geometryInBed As Integer())
+        If faceInBed Is Nothing Then Return
+        Dim isFiveAndQuarterInBed As Boolean =
+            geometryInBed IsNot Nothing AndAlso geometryInBed.Length >= 3 AndAlso
+            (geometryInBed(0) <= 40 OrElse geometryInBed(2) = 15)
+        faceInBed.Image = If(isFiveAndQuarterInBed,
+                             _fiveAndQuarterDriveFaceInBed,
+                             _threeAndHalfDriveFaceInBed)
+        Dim formatInBed As String = If(isFiveAndQuarterInBed, "5.25-inch", "3.5-inch")
+        _driveBayToolTipInBed.SetToolTip(
+            faceInBed,
+            "Floppy " & ChrW(AscW("A"c) + driveInBed) & ": — " & formatInBed &
+            " face; click for Disk Box and drive actions")
     End Sub
 
     Private Sub RebuildFloppyBoxMountMenu(menuInBed As ToolStripMenuItem,
