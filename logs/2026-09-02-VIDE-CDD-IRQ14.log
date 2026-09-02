@@ -1,0 +1,71 @@
+Virtual Machine Bench - IDE/ATAPI IRQ14 diagnostic record
+Date: 2026-09-02
+Branch: Working
+
+SYMPTOM
+VIDE-CDD detected the IDE/ATAPI CD-ROM, but initialization and an ISO DIR request
+waited for minutes before timing out or returning no directory listing.
+
+CAPTURED DEVICE STATE
+- MODE SENSE(10), CDB 5A 00 2A 00 00 00 00 00 90 00 00 00
+- 28-byte response prepared, task-file status 48h (DRDY + DRQ)
+- Later TEST UNIT READY completed with CHECK CONDITION for pending Unit Attention
+- No READ(10) sector transfer had begun during the stalled DIR capture
+
+CAPTURED INTERRUPT STATE
+- Slave PIC IRR/ISR/line: 40h / 40h / 40h (local IRQ6 = system IRQ14)
+- Master PIC ISR: 04h (cascade IRQ2 in service)
+- Neither controller could deliver another IRQ14 while the cascade remained in service
+- CPU repeatedly executed VIDE-CDD's timeout loop at 0255:12D9-135Dh
+
+DRIVER FORENSICS
+VIDE-CDD 2.14 SHA-256:
+1D74D7CA6CDF790D86136C06EE06F97ED2F3B4731EC272D07A6FE5EBCA88A9F1
+The decoded wait path tests BDA byte 40:8Eh bit 7 before reading IDE status.
+
+ROOT CAUSE
+The system BIOS initialized INT 76h to the generic default_int handler, which
+performed only IRET. An acknowledged IRQ14 therefore left the slave IRQ6 and
+master cascade IRQ2 in service. This violated the IBM AT fixed-disk interrupt
+contract expected by the DOS driver.
+
+CORRECTION
+Firmware/atbios.asm now installs int76. The handler preserves AX and DS, sets
+BDA 40:8Eh bit 7, sends non-specific EOI to slave port A0h and then master port
+20h, restores registers, and executes IRET.
+
+BUILD VERIFICATION
+- System BIOS assembled successfully at exactly 65,536 bytes.
+- Firmware/atbios.rom and Debug-output Firmware/atbios.rom hashes match.
+- VirtualComputer.Modern solution: build succeeded, 0 warnings, 0 errors.
+
+REMAINING GUEST VERIFICATION
+Cold-boot the rebuilt emulator, load VIDE-CDD and MSCDEX, list the mounted ISO,
+and read files. Capture Dump All again if IRQ14 remains in service or a packet
+phase fails. Do not bypass the ISA IDE task file or the cascaded PIC path.
+
+HOST UI FOLLOW-UP
+The Disc Box Optical page previously returned silently when Mount was clicked
+with an empty path. The live Debug Disc-Box folder was also empty at inspection.
+Mount now opens an ISO picker rooted in Disc Box when needed, validates the
+selected file, and displays callback/file/mount failures instead of silently
+doing nothing. This changes host media handling only; the selected ISO still
+enters the guest exclusively through IdeController.MountCdRom and IDE/ATAPI.
+
+NOT READY / UNIT ATTENTION FOLLOW-UP
+The 2026-09-02 01:12:36 diagnostic dump at the DOS `Not ready reading drive D:`
+prompt showed media present, no active transfer, clear PIC IRR/ISR, and sense
+06/28/00. The ATAPI trace recorded one TEST UNIT READY and two READ TOC commands
+all receiving the same media-change CHECK CONDITION. Root cause was
+UnitAttentionPending remaining set until REQUEST SENSE; VIDE-CDD retried READ
+TOC directly. The controller now consumes unit attention upon its first CHECK
+CONDITION while retaining sense data for REQUEST SENSE.
+
+DIR D: STATUS-POLL FOLLOW-UP
+The 2026-09-02 10:50:58 dump showed media present, unit attention clear, no
+active transfer, and both PICs idle. The CPU was looping in VIDE-CDD at
+0255:12D9-1331, repeatedly reading status port 1F7h. The loop masks BSY|DSC and
+waits for DSC=1 with BSY=0; the emulated completed device returned 40h (DRDY
+only). Ready/reset, data-request, successful completion, and error states now
+include DSC, yielding idle 50h and DRQ 58h while retaining the normal ISA IDE
+task-file and IRQ14 paths.

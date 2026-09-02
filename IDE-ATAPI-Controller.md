@@ -43,6 +43,21 @@ A large response is therefore not exposed as one giant DRQ. `IdeController` stor
 
 A host byte-count limit of zero is treated as a 64-KiB allowance. Individual device phases are capped at 65534 bytes so the live phase count remains non-zero in the 16-bit byte-count registers, which is friendlier to conservative DOS polling code.
 
+## IRQ14 BIOS contract
+
+The primary IDE channel reaches the CPU through slave-PIC input 6 (IRQ14 / INT
+76h).  The system BIOS installs a fixed-disk completion handler at INT 76h.  It
+sets BDA byte `40:8E` bit 7 and issues non-specific EOI to the slave PIC followed
+by the master PIC.  This is required even before a DOS device driver installs or
+chains its own handler: otherwise an early IDE interrupt can leave IRQ14 and the
+master cascade input in service indefinitely.
+
+This was confirmed with VIDE-CDD 2.14.  Its wait loop polls the IBM-compatible
+`40:8E` completion bit.  With INT 76h left at a bare `IRET`, both PIC ISR bits
+remained set and later ATAPI `MODE SENSE(10)` / `TEST UNIT READY` phases timed
+out despite correct task-file state.  Do not work around this in the IDE device;
+the BDA notification and dual EOI belong to system firmware.
+
 ## Interrupts versus polling
 
 Regular Status (`1F7h`) acknowledges the IDE IRQ. Alternate Status (`3F6h`) does not. Device Control bit 1 (`nIEN`) suppresses the physical interrupt output.

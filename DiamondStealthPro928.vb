@@ -4271,10 +4271,16 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
         If _disposedInBed Then Throw New ObjectDisposedException(NameOf(DiamondStealthPro928PresentationWorker))
         If Interlocked.CompareExchange(_runningInBed, 1, 0) <> 0 Then Return
         Interlocked.Exchange(_stopRequestedInBed, 0)
+        ' This worker is only the final host CRT transducer. Guest VRAM,
+        ' CRTC timing and scanout state have already been captured at a
+        ' coordinated machine boundary. Do not let an expensive cosmetic
+        ' raster compete at equal priority with the machine timeline; when
+        ' the host is saturated, presentation may coalesce a frame while
+        ' guest-visible hardware continues deterministically.
         _workerInBed = New Thread(AddressOf WorkerLoopInBed) With {
             .IsBackground = True,
             .Name = "Diamond Stealth Pro 928 host rasterizer",
-            .Priority = ThreadPriority.Normal
+            .Priority = ThreadPriority.BelowNormal
         }
         _workerInBed.Start()
     End Sub

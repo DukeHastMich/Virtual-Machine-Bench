@@ -14,6 +14,9 @@ obj/
 # Runtime diagnostics and generated output
 Doutput/
 logs/
+!logs/
+logs/*
+!logs/2026-09-02-VIDE-CDD-IRQ14.log
 
 # Local backup collections
 .BrickPalletBackups/

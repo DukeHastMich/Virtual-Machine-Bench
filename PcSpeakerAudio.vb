@@ -39,6 +39,9 @@ Public NotInheritable Class PcSpeakerDevice
     ' without altering the guest-visible one-bit node.
     Private _previousRawInBed As Double
     Private _previousFilteredInBed As Double
+    Private _signalActiveInBed As Boolean
+    Private _generatedSamplesInBed As ULong
+    Private _silentSamplesSkippedInBed As ULong
     Private _disposedInBed As Boolean
 
     Public Sub New(pit As Pit8253, systemControl As AtSystemControlPorts)
@@ -63,6 +66,24 @@ Public NotInheritable Class PcSpeakerDevice
 
         If sampleCountInBed <= 0 Then Return
 
+        ' Port 61h bit 1 disconnects the motherboard speaker driver. Do not spend
+        ' host time synthesizing and buffering thousands of zero PCM samples while
+        ' the guest-visible electrical path is disabled. Close the last partial
+        ' audible buffer once so a later beep cannot inherit stale samples.
+        If Not _systemControl.SpeakerDataEnabled Then
+            _silentSamplesSkippedInBed += CULng(sampleCountInBed)
+            _previousRawInBed = 0.0
+            _previousFilteredInBed = 0.0
+            If _signalActiveInBed Then
+                _waveOut.EndSignal()
+                _signalActiveInBed = False
+            End If
+            Return
+        End If
+
+        _signalActiveInBed = True
+        _generatedSamplesInBed += CULng(sampleCountInBed)
+
         Dim numeratorToSampleInBed As Long = PicosecondsPerSecondInBed - phaseAtStartInBed
 
         For sampleIndexInBed As Long = 0 To sampleCountInBed - 1
@@ -74,10 +95,8 @@ Public NotInheritable Class PcSpeakerDevice
                 sampleOffsetPicosecondsInBed = elapsedPicoseconds
             End If
 
-            Dim rawInBed As Double = 0.0
-            If _systemControl.SpeakerDataEnabled Then
-                rawInBed = If(_pit.GetOutputAtOffset(2, sampleOffsetPicosecondsInBed), 1.0, -1.0)
-            End If
+            Dim rawInBed As Double =
+                If(_pit.GetOutputAtOffset(2, sampleOffsetPicosecondsInBed), 1.0, -1.0)
 
             Dim filteredInBed As Double =
                 rawInBed - _previousRawInBed + DcBlockerPoleInBed * _previousFilteredInBed
@@ -101,8 +120,22 @@ Public NotInheritable Class PcSpeakerDevice
         _sampleClockNumeratorInBed = 0
         _previousRawInBed = 0.0
         _previousFilteredInBed = 0.0
+        _signalActiveInBed = False
         _waveOut.Reset()
     End Sub
+
+    Public Function DiagnosticText() As String
+        Return "Motherboard PC speaker" & Environment.NewLine &
+               "  port61 data/gate/node : " &
+               If(_systemControl.SpeakerDataEnabled, "1", "0") & "/" &
+               If(_systemControl.SpeakerTimerGateEnabled, "1", "0") & "/" &
+               If(_systemControl.SpeakerOutput, "1", "0") & Environment.NewLine &
+               "  PCM generated/skipped : " & _generatedSamplesInBed.ToString("N0") & "/" &
+               _silentSamplesSkippedInBed.ToString("N0") & Environment.NewLine &
+               "  buffers queued/dropped: " & _waveOut.QueuedBufferCount.ToString("N0") & "/" &
+               _waveOut.DroppedBufferCount.ToString("N0") & Environment.NewLine &
+               "  waveOut error          : " & _waveOut.LastError.ToString()
+    End Function
 
     Public ReadOnly Property DroppedHostAudioBuffers As ULong
         Get
@@ -219,6 +252,7 @@ Friend NotInheritable Class WinMmWaveOut16
     Private _disposedInBed As Boolean
     Private _lastErrorInBed As UInteger
     Private _droppedBufferCountInBed As ULong
+    Private _queuedBufferCountInBed As ULong
 
     Public Sub New(sampleRate As Integer)
         If sampleRate <= 0 Then Throw New ArgumentOutOfRangeException(NameOf(sampleRate))
@@ -234,6 +268,12 @@ Friend NotInheritable Class WinMmWaveOut16
     Public ReadOnly Property DroppedBufferCount As ULong
         Get
             Return _droppedBufferCountInBed
+        End Get
+    End Property
+
+    Public ReadOnly Property QueuedBufferCount As ULong
+        Get
+            Return _queuedBufferCountInBed
         End Get
     End Property
 
@@ -281,7 +321,17 @@ Friend NotInheritable Class WinMmWaveOut16
         End If
 
         _inFlightInBed(bufferIndexInBed) = True
+        _queuedBufferCountInBed += 1UL
         _nextBufferInBed = (bufferIndexInBed + 1) Mod BufferCountInBed
+    End Sub
+
+    ' Finish the final audible fragment with silence exactly once when port 61h
+    ' disconnects the speaker. Subsequent silent motherboard time is free.
+    Public Sub EndSignal()
+        If _disposedInBed OrElse _disabledInBed OrElse _stagingCountInBed <= 0 Then Return
+        Array.Clear(_stagingInBed, _stagingCountInBed, SamplesPerBufferInBed - _stagingCountInBed)
+        QueueStagingBufferInBed()
+        _stagingCountInBed = 0
     End Sub
 
     Private Function FindAvailableBufferInBed() As Integer

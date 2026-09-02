@@ -5218,6 +5218,7 @@ Public NotInheritable Class SneakerNetForm
         Using pickerInBed As New OpenFileDialog()
             pickerInBed.Title = "Choose optical image"
             pickerInBed.Filter = "ISO images (*.iso)|*.iso|All files (*.*)|*.*"
+            pickerInBed.InitialDirectory = DiscBoxPath()
             If pickerInBed.ShowDialog(Me) <> DialogResult.OK Then Return
             _opticalPathInBed.Text = pickerInBed.FileName
             InspectOpticalImageInBed()
@@ -5225,12 +5226,30 @@ Public NotInheritable Class SneakerNetForm
     End Sub
 
     Private Sub MountOpticalImageInBed()
-        If _mountIsoImage Is Nothing OrElse String.IsNullOrWhiteSpace(_opticalPathInBed.Text) Then Return
+        If _mountIsoImage Is Nothing Then
+            Dim messageInBed As String = "This Disc Box is not connected to a chassis optical drive."
+            _opticalDetailsInBed.Text = messageInBed
+            MessageBox.Show(Me, messageInBed, "Unable to mount CD-ROM", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return
+        End If
+
+        If String.IsNullOrWhiteSpace(_opticalPathInBed.Text) Then
+            ChooseOpticalImageInBed()
+            If String.IsNullOrWhiteSpace(_opticalPathInBed.Text) Then
+                _opticalDetailsInBed.Text = "No ISO image was selected."
+                Return
+            End If
+        End If
+
         Try
-            _mountIsoImage(Path.GetFullPath(_opticalPathInBed.Text))
-            _opticalDetailsInBed.Text = "Mounted through the current chassis optical path:" & Environment.NewLine & Path.GetFullPath(_opticalPathInBed.Text)
+            Dim fullPathInBed As String = Path.GetFullPath(_opticalPathInBed.Text)
+            If Not File.Exists(fullPathInBed) Then Throw New FileNotFoundException("The selected ISO image no longer exists.", fullPathInBed)
+            _mountIsoImage(fullPathInBed)
+            _opticalPathInBed.Text = fullPathInBed
+            _opticalDetailsInBed.Text = "Mounted through the current chassis optical path:" & Environment.NewLine & fullPathInBed
         Catch ex As Exception
             _opticalDetailsInBed.Text = ex.Message
+            MessageBox.Show(Me, ex.Message, "Unable to mount CD-ROM", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 
