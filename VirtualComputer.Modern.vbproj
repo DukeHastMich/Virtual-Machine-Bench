@@ -28,11 +28,13 @@
     <Compile Include="On-Screen-Keyboard.Designer.vb" />
     <Compile Include="On-Screen-Keyboard.vb" />
     <Compile Include="Program.vb" />
-    <Compile Include="CGAcard.vb" />
     <Compile Include="Declares.vb" />
     <Compile Include="FloppyMedia.vb" />
     <Compile Include="FloppyController.vb" />
-    <Compile Include="Form1.vb" /> 
+    <Compile Include="Form1.vb" />
+    <Compile Include="Form1.Diagnostics.vb">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </Compile>
     <Compile Include="Form1.Designer.vb">
       <DependentUpon>Form1.vb</DependentUpon>
     </Compile>
@@ -47,9 +49,7 @@
     <Compile Include="AtKeyboard101.vb" />
     <Compile Include="MotherboardDevices.vb" />
     <Compile Include="ProcessorCore.vb" />
-    <Compile Include="ScreenModes.vb" />
     <Compile Include="StorageDevices.vb" />
-    <Compile Include="SystemRoms.vb" />
     <Compile Include="My Project\Resources.Designer.vb">
       <AutoGen>true</AutoGen>
       <DesignTime>true</DesignTime>
