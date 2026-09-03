@@ -126,6 +126,18 @@ Frequently used floppy images can be retained in the Disk Box and mounted into e
 
 Scorched Earth 1.00 is shown running from guest media, exercising DOS execution, keyboard input, timing, and VGA graphics. Guest software pictured here is not distributed with the emulator.
 
+### Doom Setup
+
+![Doom Setup running inside Virtual Machine Bench](docs/screenshots/doom-setup.png)
+
+Doom Setup 1.7 is shown running after installation from the emulated ATAPI CD-ROM path. The setup utility exercises DOS protected application behavior, VGA text/graphics, keyboard input, guest file access, and hardware configuration. Doom itself requires a 386-class processor and is not claimed to run on the currently emulated 80286.
+
+### OutRun
+
+![OutRun running inside Virtual Machine Bench](docs/screenshots/outrun.png)
+
+The DOS conversion of OutRun reaches its title screen and runs on the emulated 80286 platform, exercising guest timing, VGA graphics, keyboard input, and the PIT-driven motherboard PC speaker.
+
 ### Windows 3.1 Setup
 
 ![Windows 3.1 Setup running inside the emulator](docs/screenshots/windows-31-setup.png)
