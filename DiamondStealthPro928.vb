@@ -4240,7 +4240,6 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
     Private _requestOutstandingInBed As Integer
     Private _snapshotBusyInBed As Integer
     Private _snapshotReadyInBed As Integer
-    Private _powerOffFrameRequestInBed As Integer
     Private _disposedInBed As Boolean
 
     Private _latestFrameInBed As Bitmap
@@ -4291,16 +4290,6 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
         If Interlocked.Exchange(_requestOutstandingInBed, 1) <> 0 Then
             Interlocked.Increment(_coalescedRequestCountInBed)
         End If
-    End Sub
-
-    ' Host chassis power-off presentation. No guest/device state is sampled.
-    ' The raster worker owns CrtPresenter, so the synthetic dark CRT is queued to
-    ' that same worker instead of touching its mutable presentation surface on UI.
-    Public Sub RequestPowerOffFrame()
-        If _disposedInBed OrElse Volatile.Read(_stopRequestedInBed) <> 0 Then Return
-        Interlocked.Exchange(_requestOutstandingInBed, 0)
-        Interlocked.Exchange(_powerOffFrameRequestInBed, 1)
-        _requestInBed.Set()
     End Sub
 
     ' Called only by MachineRuntime286 while the machine thread already owns the
@@ -4370,35 +4359,6 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
             While Volatile.Read(_stopRequestedInBed) = 0
                 _requestInBed.WaitOne()
                 If Volatile.Read(_stopRequestedInBed) <> 0 Then Exit While
-
-                If Interlocked.Exchange(_powerOffFrameRequestInBed, 0) <> 0 Then
-                    ' If a captured guest snapshot was queued but not yet rasterized,
-                    ' discard it now that the chassis is dark and release replica
-                    ' ownership so the next power-on can capture immediately.
-                    If Interlocked.Exchange(_snapshotReadyInBed, 0) <> 0 Then
-                        Interlocked.Exchange(_snapshotBusyInBed, 0)
-                    End If
-                    Try
-                        Using blankInBed As New Bitmap(640, 400, PixelFormat.Format32bppArgb)
-                            Using graphicsInBed As Graphics = Graphics.FromImage(blankInBed)
-                                graphicsInBed.Clear(Color.Black)
-                            End Using
-                            Dim powerOffTimingInBed As New VideoScanoutTiming With {
-                                .HorizontalActiveDots = 640,
-                                .HorizontalTotalDots = 800,
-                                .VerticalActiveLines = 400,
-                                .VerticalTotalLines = 449,
-                                .PixelRepeat = 1
-                            }
-                            Dim presentedOffInBed As Bitmap =
-                                _crtPresenterInBed.Present(blankInBed, powerOffTimingInBed)
-                            PublishFrameInBed(presentedOffInBed)
-                        End Using
-                    Catch ex As Exception
-                        FailPresentationInBed(ex)
-                    End Try
-                    Continue While
-                End If
 
                 If Interlocked.Exchange(_snapshotReadyInBed, 0) = 0 Then Continue While
 

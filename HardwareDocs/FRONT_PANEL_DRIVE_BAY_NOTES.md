@@ -3,6 +3,23 @@
 The drive faces are host presentation and media-workflow controls. They never
 inject sectors, modify guest memory, or bypass the emulated FDC/IDE paths.
 
+## Chassis layout
+
+The left front-panel rail is now treated as a physical stack instead of two
+floating controls:
+
+1. Floppy A
+2. Floppy B
+3. Fitted ATAPI CD-ROM
+4. Blank 5.25-inch bay reserved for a future IDE device
+5. Fitted primary-master hard disk with an MFM/RLL-era fixed-disk facade
+6. Blank 5.25-inch bay reserved for a future IDE device
+
+The fitted optical and hard-disk faces are derived at run time from the supplied
+blank 5.25-inch plate so they stay visually consistent with the chassis artwork.
+Blank bays are deliberately inert; they do not advertise hardware the guest
+cannot actually see.
+
 ## Floppy bays
 
 - Each fitted A:/B: bay shows the TEAC 3.5-inch face with no medium mounted.
@@ -12,14 +29,31 @@ inject sectors, modify guest memory, or bypass the emulated FDC/IDE paths.
 - Clicking a fitted floppy face opens the same per-drive media list as its Media
   menu entry: Disk Box images, physical floppy attachments, browse, eject, and
   boot actions. It does not open the broader Sneaker Net creation workbench.
-- The supplied blank plate is loaded with the face set and reserved for a future
-  genuinely absent-drive chassis configuration. An empty medium is not the same
-  hardware state as an absent drive.
 
 Artwork is deployed from `Resources/System Images` by the project file.
 
 ## Optical bay
 
-The optical bay awaits dedicated period-correct artwork. When added, clicking it
-should open the existing Optical/Disc Box workflow; mount and eject operations
-must continue through the emulated IDE/ATAPI device.
+Clicking the fitted ATAPI face opens a chassis-local menu with current media
+state, the existing ISO mount/eject actions, and a shortcut into Sneaker Net's
+Optical/Disc Box page. The shortcut selects the Optical page directly instead of
+opening the workbench on an unrelated tab.
+
+All mount/eject operations still pass through the emulated IDE/ATAPI device.
+
+## Hard-disk bay
+
+Clicking the fitted fixed-disk facade opens:
+
+- the live IDE Drive Shelf selector,
+- the existing mount/create/boot/disconnect operations,
+- the IDE-Drives folder,
+- and a `Hard Drive Utilities...` shortcut into Sneaker Net's Hard Drives page.
+
+The Hard Drives workbench already owns inspect, attach/disconnect, clone, backup,
+shelf browsing and variable-size image creation. Opening it from the facade also
+selects the currently attached shelf drive when possible, so those utilities are
+immediately aimed at the physical bay the operator clicked.
+
+The facade remains presentation only. ATA attachment and guest access still pass
+through the primary-master controller path.

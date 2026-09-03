@@ -1,9 +1,19 @@
 # Change log
 
+## 2026-09-03
+
+### Front panel / media controls
+
+- Rebuilt the left drive rail as a compact physical bay stack: two floppy drives, the fitted ATAPI CD-ROM, two honest blank 5.25-inch reserve plates, and a period MFM/RLL-style facade for the fitted IDE primary-master hard disk.
+- Wired the ATAPI facade to current media state, ISO mount/eject actions, and the Sneaker Net Optical/Disc Box workbench.
+- Wired the hard-disk facade to the live IDE Drive Shelf, mount/create/boot/disconnect controls, the shelf folder, and the Sneaker Net Hard Drive utilities (inspect, clone, backup, attach/disconnect, and image creation).
+- Blank reserve bays remain inert and do not imply guest-visible IDE devices that are not implemented.
+
 ## 2026-09-02
 
 ### Fixed
 
+- Restored the form's embedded "demon dreaming" chassis artwork while machine power is off. The S3 presentation worker no longer replaces the intended power-off face with a synthetic black CRT frame.
 - Began the `working-beta` boundary cleanup by removing the disabled WinForms CGA/text rendering timers and their unreachable `VrMem`/bitmap/font-cache subsystem. The active Diamond Stealth Pro/S3 presentation path is unchanged. Host diagnostic viewers were moved from the main form implementation into `Form1.Diagnostics.vb` as the first behavior-preserving responsibility split.
 - Lowered the host-only Diamond Stealth Pro 928 CRT raster worker to below-normal scheduling priority. Under host saturation, cosmetic presentation now yields to the coordinated CPU/bus/device timeline; guest VRAM, CRTC, ISA and interrupt behavior are unchanged.
 - Corrected ATAPI media-change handling so `UNIT ATTENTION 06/28/00` is consumed when first reported as CHECK CONDITION while the sense tuple remains available for `REQUEST SENSE`. Legacy DOS drivers that retry `READ TOC` directly no longer receive the media-change failure forever.

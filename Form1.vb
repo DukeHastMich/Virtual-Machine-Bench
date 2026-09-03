@@ -12,6 +12,7 @@ Public Class Form1
     Private _videoPresentation As DiamondStealthPro928PresentationWorker
     Private _videoPresentationGenerationInBed As Long
     Private _displayedPresentationFrameInBed As Bitmap
+    Private _powerOffDisplayImageInBed As Image
     Private _closingInBed As Boolean
     Private _machinePoweredInBed As Boolean = True
     Private _powerMenuItemInBed As ToolStripMenuItem
@@ -52,11 +53,17 @@ Public Class Form1
     Private _driveBayPanelInBed As Panel
     Private _floppyBayAInBed As PictureBox
     Private _floppyBayBInBed As PictureBox
+    Private _cdRomBayInBed As PictureBox
+    Private _reservedAtapiBayInBed As PictureBox
+    Private _hardDiskBayInBed As PictureBox
+    Private _reservedIdeBayInBed As PictureBox
     Private _driveBayToolTipInBed As ToolTip
-    Private _floppyBayPopupInBed As ContextMenuStrip
+    Private _driveBayPopupInBed As ContextMenuStrip
     Private _threeAndHalfDriveFaceInBed As Bitmap
     Private _fiveAndQuarterDriveFaceInBed As Bitmap
     Private _emptyDriveFaceInBed As Bitmap
+    Private _cdRomDriveFaceInBed As Bitmap
+    Private _mfmHardDiskDriveFaceInBed As Bitmap
     Private floppyAMountMenu As ToolStripMenuItem
     Private floppyBMountMenu As ToolStripMenuItem
     ' CROMWELL KEYBOARD REALITY BRICK 3 FIELDS
@@ -608,6 +615,9 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As System.Object, e As System.EventArgs) Handles MyBase.Load
         Current = Me
+        ' The designer image is the chassis artwork shown with power removed.
+        ' Retain it before the first completed S3 frame replaces PictureBox1.Image.
+        _powerOffDisplayImageInBed = PictureBox1.Image
         RegisterRawSerialMouseInputInBed()
         SystemLoop.Enabled = False
         ' Preserve the emulated CRT face geometry when the host window is resized.
@@ -617,9 +627,7 @@ Public Class Form1
         ' the motherboard bus.  This is host chassis state, not guest CMOS.
         InitializeIsaExpansionCardConfigurationInBed()
 
-        ' Bring only the real motherboard/device fabric up before the reset vector.
-        ' The historical CGA host renderer/resources remain compiled archaeology,
-        ' but they are no longer initialized in the normal machine path.
+        ' Bring the real motherboard/device fabric up before the reset vector.
         InitializeHardware()
 
 
@@ -741,10 +749,7 @@ Public Class Form1
         ' WinForms can deliver Deactivate and other focus/input callbacks during
         ' teardown. Mark shutdown before disposing any machine-owned object.
         _closingInBed = True
-        If _floppyBayPopupInBed IsNot Nothing Then
-            _floppyBayPopupInBed.Dispose()
-            _floppyBayPopupInBed = Nothing
-        End If
+        DisposeDriveBayPopupInBed()
         ReleaseSerialMouseCaptureInBed()
         GPU.Enabled = False
 
@@ -1609,46 +1614,68 @@ Public Class Form1
 
     Private Sub RebuildIdeDriveShelfMenu()
         If ideDriveShelfMenu Is Nothing Then Return
-        ideDriveShelfMenu.DropDownItems.Clear()
+        PopulateIdeDriveShelfMenuInBed(ideDriveShelfMenu)
+    End Sub
+
+    Private Sub PopulateIdeDriveShelfMenuInBed(menuInBed As ToolStripMenuItem)
+        If menuInBed Is Nothing Then Return
+        menuInBed.DropDownItems.Clear()
 
         If _ideDriveShelf Is Nothing Then
-            Dim unavailable As New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False}
-            ideDriveShelfMenu.DropDownItems.Add(unavailable)
+            Dim unavailableInBed As New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False}
+            menuInBed.DropDownItems.Add(unavailableInBed)
             Return
         End If
 
         Try
-            Dim entries As List(Of IdeDriveShelfEntry) = _ideDriveShelf.GetEntries()
-            Dim configured As Integer = _ideDriveShelf.PrimaryMasterId
-            Dim configuredText As String = If(configured < 0,
+            Dim entriesInBed As List(Of IdeDriveShelfEntry) = _ideDriveShelf.GetEntries()
+            Dim configuredInBed As Integer = _ideDriveShelf.PrimaryMasterId
+            Dim configuredTextInBed As String = If(configuredInBed < 0,
                 "Primary Master: disconnected",
-                "Primary Master: shelf #" & configured.ToString() & If(_mountedIdeDriveId = configured, " (attached)", " (not attached)"))
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem(configuredText) With {.Enabled = False})
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
+                "Primary Master: shelf #" & configuredInBed.ToString() &
+                If(_mountedIdeDriveId = configuredInBed, " (attached)", " (not attached)"))
+            menuInBed.DropDownItems.Add(
+                New ToolStripMenuItem(configuredTextInBed) With {.Enabled = False})
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
 
-            If entries.Count = 0 Then
-                ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
+            If entriesInBed.Count = 0 Then
+                menuInBed.DropDownItems.Add(
+                    New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
             Else
-                For Each entry As IdeDriveShelfEntry In entries
-                    Dim driveId As Integer = entry.Id
-                    Dim item As New ToolStripMenuItem(entry.Id.ToString() & " - " & entry.Label) With {
-                        .Checked = (entry.Id = _mountedIdeDriveId)
+                For Each entryInBed As IdeDriveShelfEntry In entriesInBed
+                    Dim driveIdInBed As Integer = entryInBed.Id
+                    Dim itemInBed As New ToolStripMenuItem(
+                        entryInBed.Id.ToString() & " - " & entryInBed.Label) With {
+                        .Checked = (entryInBed.Id = _mountedIdeDriveId)
                     }
-                    item.ToolTipText = entry.FullPath
-                    AddHandler item.Click, Sub() SelectIdeShelfDrive(driveId)
-                    ideDriveShelfMenu.DropDownItems.Add(item)
+                    itemInBed.ToolTipText = entryInBed.FullPath
+                    AddHandler itemInBed.Click, Sub() SelectIdeShelfDrive(driveIdInBed)
+                    menuInBed.DropDownItems.Add(itemInBed)
                 Next
             End If
 
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
-            ideDriveShelfMenu.DropDownItems.Add("Rescan IDE-Drives", Nothing, Sub() RebuildIdeDriveShelfMenu())
-            ideDriveShelfMenu.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
-            ideDriveShelfMenu.DropDownItems.Add("Disconnect Primary Master", Nothing, Sub() EjectHardDisk())
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
+            menuInBed.DropDownItems.Add(
+                "Rescan IDE-Drives",
+                Nothing,
+                Sub() PopulateIdeDriveShelfMenuInBed(menuInBed))
+            menuInBed.DropDownItems.Add(
+                "Open IDE-Drives folder",
+                Nothing,
+                Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Add(
+                "Disconnect Primary Master",
+                Nothing,
+                Sub() EjectHardDisk())
         Catch ex As Exception
-            ideDriveShelfMenu.DropDownItems.Clear()
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
-            ideDriveShelfMenu.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Clear()
+            menuInBed.DropDownItems.Add(
+                New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
+            menuInBed.DropDownItems.Add(
+                "Open IDE-Drives folder",
+                Nothing,
+                Sub() OpenIdeDriveShelfFolder())
         End Try
     End Sub
 
@@ -1819,9 +1846,7 @@ Public Class Form1
             _machinePoweredInBed = False
             FrontPanel.SetCpuStateByte(0)
             FrontPanel.SetPower(False)
-
-            Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-            If presentationInBed IsNot Nothing Then presentationInBed.RequestPowerOffFrame()
+            ShowPowerOffArtworkInBed()
 
             UpdatePowerControlsInBed()
             Return
@@ -1848,6 +1873,7 @@ Public Class Form1
 
             _machinePoweredInBed = True
             FrontPanel.SetPower(True)
+            PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
             _machineRuntime.Start()
 
             Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
@@ -1859,6 +1885,20 @@ Public Class Form1
         Finally
             UpdatePowerControlsInBed()
         End Try
+    End Sub
+
+    Private Sub ShowPowerOffArtworkInBed()
+        Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+        Dim previousFrameInBed As Bitmap = _displayedPresentationFrameInBed
+
+        _displayedPresentationFrameInBed = Nothing
+        PictureBox1.SizeMode = PictureBoxSizeMode.StretchImage
+        PictureBox1.Image = _powerOffDisplayImageInBed
+        PictureBox1.Invalidate()
+
+        If presentationInBed IsNot Nothing AndAlso previousFrameInBed IsNot Nothing Then
+            presentationInBed.RecycleFrame(previousFrameInBed)
+        End If
     End Sub
 
     Private Sub UpdatePowerControlsInBed()
@@ -1887,8 +1927,19 @@ Public Class Form1
         _emptyDriveFaceInBed = LoadDriveFaceInBed(
             Path.Combine(artworkDirectoryInBed, "five and a quarter face plate.png"))
 
+        ' The fixed-disk and optical fronts are intentionally derived from the
+        ' supplied blank 5.25-inch plate.  That keeps the whole chassis in one
+        ' period-beige visual family without inventing extra guest-visible drives.
+        _cdRomDriveFaceInBed = BuildCdRomDriveFaceInBed(_emptyDriveFaceInBed)
+        _mfmHardDiskDriveFaceInBed = BuildMfmHardDiskDriveFaceInBed(_emptyDriveFaceInBed)
+
         Const bayRailWidthInBed As Integer = 210
         Const displayGapInBed As Integer = 10
+        Const firstBayTopInBed As Integer = 8
+        Const bayHeightInBed As Integer = 58
+        Const bayGapInBed As Integer = 4
+        Const bayPitchInBed As Integer = bayHeightInBed + bayGapInBed
+
         Dim originalDisplayLeftInBed As Integer = PictureBox1.Left
         _driveBayPanelInBed = New Panel() With {
             .Location = New Point(originalDisplayLeftInBed, PictureBox1.Top),
@@ -1898,10 +1949,43 @@ Public Class Form1
             .BorderStyle = BorderStyle.FixedSingle
         }
         _driveBayToolTipInBed = New ToolTip()
-        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, 8)
-        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, 76)
+
+        ' Physical chassis order.  Only devices implemented by the current
+        ' controller are interactive.  The two unused 5.25-inch positions are
+        ' blank plates reserved for a future secondary IDE channel.
+        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, firstBayTopInBed)
+        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, firstBayTopInBed + bayPitchInBed)
+        _cdRomBayInBed = CreateFixedBayFaceInBed(
+            _cdRomDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 2),
+            Cursors.Hand,
+            "ATAPI CD-ROM — click for optical media choices",
+            Sub() ShowCdRomBayMenuInBed())
+        _reservedAtapiBayInBed = CreateFixedBayFaceInBed(
+            _emptyDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 3),
+            Cursors.Default,
+            "Reserved 5.25-inch bay — no IDE device fitted",
+            Nothing)
+        _hardDiskBayInBed = CreateFixedBayFaceInBed(
+            _mfmHardDiskDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 4),
+            Cursors.Hand,
+            "IDE primary master hard disk — click for drive shelf and utilities",
+            Sub() ShowHardDiskBayMenuInBed())
+        _reservedIdeBayInBed = CreateFixedBayFaceInBed(
+            _emptyDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 5),
+            Cursors.Default,
+            "Reserved 5.25-inch bay — no IDE device fitted",
+            Nothing)
+
         _driveBayPanelInBed.Controls.Add(_floppyBayAInBed)
         _driveBayPanelInBed.Controls.Add(_floppyBayBInBed)
+        _driveBayPanelInBed.Controls.Add(_cdRomBayInBed)
+        _driveBayPanelInBed.Controls.Add(_reservedAtapiBayInBed)
+        _driveBayPanelInBed.Controls.Add(_hardDiskBayInBed)
+        _driveBayPanelInBed.Controls.Add(_reservedIdeBayInBed)
         Controls.Add(_driveBayPanelInBed)
         _driveBayPanelInBed.BringToFront()
 
@@ -1916,6 +2000,94 @@ Public Class Form1
                 Return New Bitmap(sourceInBed)
             End Using
         End Using
+    End Function
+
+    Private Shared Function BuildCdRomDriveFaceInBed(blankFaceInBed As Bitmap) As Bitmap
+        Dim resultInBed As New Bitmap(blankFaceInBed)
+        Using graphicsInBed As Graphics = Graphics.FromImage(resultInBed)
+            graphicsInBed.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias
+            graphicsInBed.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
+
+            Dim trayInBed As New Rectangle(78, 63, resultInBed.Width - 178, 138)
+            Using trayShadowInBed As New Pen(Color.FromArgb(105, 102, 90), 5.0F),
+                  trayLineInBed As New Pen(Color.FromArgb(73, 72, 65), 3.0F),
+                  trayFillInBed As New SolidBrush(Color.FromArgb(166, 165, 148))
+                graphicsInBed.FillRectangle(trayFillInBed, trayInBed)
+                graphicsInBed.DrawRectangle(trayShadowInBed, trayInBed)
+                graphicsInBed.DrawLine(trayLineInBed,
+                                       trayInBed.Left + 14,
+                                       trayInBed.Bottom - 22,
+                                       trayInBed.Right - 14,
+                                       trayInBed.Bottom - 22)
+            End Using
+
+            Using darkInBed As New SolidBrush(Color.FromArgb(62, 62, 57))
+                graphicsInBed.FillEllipse(darkInBed, resultInBed.Width - 142, 200, 18, 18)
+                graphicsInBed.FillRectangle(darkInBed, resultInBed.Width - 101, 198, 48, 21)
+            End Using
+            Using ledInBed As New SolidBrush(Color.FromArgb(72, 105, 49))
+                graphicsInBed.FillRectangle(ledInBed, resultInBed.Width - 187, 201, 23, 15)
+            End Using
+
+            Using labelFontInBed As New Font("Arial", 24.0F, FontStyle.Bold, GraphicsUnit.Pixel),
+                  detailFontInBed As New Font("Arial", 17.0F, FontStyle.Regular, GraphicsUnit.Pixel),
+                  labelBrushInBed As New SolidBrush(Color.FromArgb(112, 111, 99))
+                graphicsInBed.DrawString("ATAPI CD-ROM", labelFontInBed, labelBrushInBed, 91.0F, 215.0F)
+                graphicsInBed.DrawString("4X", detailFontInBed, labelBrushInBed, 91.0F, 247.0F)
+            End Using
+        End Using
+        Return resultInBed
+    End Function
+
+    Private Shared Function BuildMfmHardDiskDriveFaceInBed(blankFaceInBed As Bitmap) As Bitmap
+        Dim resultInBed As New Bitmap(blankFaceInBed)
+        Using graphicsInBed As Graphics = Graphics.FromImage(resultInBed)
+            graphicsInBed.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias
+            graphicsInBed.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
+
+            ' A deliberately chunky late-80s full-width fixed-disk facade:
+            ' vent field, recessed service plate, key/lock detail and red activity LED.
+            Dim recessInBed As New Rectangle(70, 58, resultInBed.Width - 140, 156)
+            Using recessFillInBed As New SolidBrush(Color.FromArgb(154, 153, 137)),
+                  recessEdgeInBed As New Pen(Color.FromArgb(105, 103, 91), 5.0F)
+                graphicsInBed.FillRectangle(recessFillInBed, recessInBed)
+                graphicsInBed.DrawRectangle(recessEdgeInBed, recessInBed)
+            End Using
+
+            Using ventBrushInBed As New SolidBrush(Color.FromArgb(83, 82, 74))
+                For ventInBed As Integer = 0 To 10
+                    Dim xInBed As Integer = 104 + (ventInBed * 39)
+                    graphicsInBed.FillRectangle(ventBrushInBed, xInBed, 90, 19, 86)
+                Next
+            End Using
+
+            Using plateFillInBed As New SolidBrush(Color.FromArgb(184, 182, 162)),
+                  plateEdgeInBed As New Pen(Color.FromArgb(108, 106, 94), 3.0F)
+                graphicsInBed.FillRectangle(plateFillInBed, 572, 84, 329, 98)
+                graphicsInBed.DrawRectangle(plateEdgeInBed, 572, 84, 329, 98)
+            End Using
+
+            Using labelFontInBed As New Font("Arial", 25.0F, FontStyle.Bold, GraphicsUnit.Pixel),
+                  detailFontInBed As New Font("Arial", 17.0F, FontStyle.Regular, GraphicsUnit.Pixel),
+                  labelBrushInBed As New SolidBrush(Color.FromArgb(89, 87, 76))
+                graphicsInBed.DrawString("FIXED DISK", labelFontInBed, labelBrushInBed, 603.0F, 98.0F)
+                graphicsInBed.DrawString("MFM / RLL", detailFontInBed, labelBrushInBed, 604.0F, 136.0F)
+            End Using
+
+            Using ledBezelInBed As New SolidBrush(Color.FromArgb(70, 62, 58)),
+                  ledInBed As New SolidBrush(Color.FromArgb(132, 28, 23))
+                graphicsInBed.FillRectangle(ledBezelInBed, 930, 92, 63, 44)
+                graphicsInBed.FillRectangle(ledInBed, 941, 103, 41, 22)
+            End Using
+
+            Using lockBezelInBed As New SolidBrush(Color.FromArgb(82, 81, 73)),
+                  lockFaceInBed As New SolidBrush(Color.FromArgb(197, 195, 174))
+                graphicsInBed.FillEllipse(lockBezelInBed, 928, 153, 48, 48)
+                graphicsInBed.FillEllipse(lockFaceInBed, 937, 162, 30, 30)
+                graphicsInBed.FillRectangle(lockBezelInBed, 950, 168, 4, 18)
+            End Using
+        End Using
+        Return resultInBed
     End Function
 
     Private Function CreateFloppyBayFaceInBed(driveInBed As Integer, topInBed As Integer) As PictureBox
@@ -1937,13 +2109,37 @@ Public Class Form1
         Return faceInBed
     End Function
 
+    Private Function CreateFixedBayFaceInBed(imageInBed As Image,
+                                             topInBed As Integer,
+                                             cursorInBed As Cursor,
+                                             toolTipInBed As String,
+                                             clickInBed As Action) As PictureBox
+        Dim faceInBed As New PictureBox() With {
+            .Location = New Point(7, topInBed),
+            .Size = New Size(194, 58),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right,
+            .SizeMode = PictureBoxSizeMode.Zoom,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .Cursor = cursorInBed,
+            .Image = imageInBed,
+            .TabStop = False
+        }
+        _driveBayToolTipInBed.SetToolTip(faceInBed, toolTipInBed)
+        If clickInBed IsNot Nothing Then
+            AddHandler faceInBed.Click, Sub() clickInBed()
+        End If
+        Return faceInBed
+    End Function
+
+    Private Sub DisposeDriveBayPopupInBed()
+        If _driveBayPopupInBed Is Nothing Then Return
+        _driveBayPopupInBed.Dispose()
+        _driveBayPopupInBed = Nothing
+    End Sub
+
     Private Sub ShowFloppyBayMenuInBed(faceInBed As PictureBox, driveInBed As Integer)
         If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
-
-        If _floppyBayPopupInBed IsNot Nothing Then
-            _floppyBayPopupInBed.Dispose()
-            _floppyBayPopupInBed = Nothing
-        End If
+        DisposeDriveBayPopupInBed()
 
         ' Build from the same routine used by the Media menu, then transfer the
         ' live items (including their handlers) into a short-lived context menu.
@@ -1957,13 +2153,120 @@ Public Class Form1
             popupInBed.Items.Add(itemInBed)
         End While
         sourceInBed.Dispose()
-        _floppyBayPopupInBed = popupInBed
+        _driveBayPopupInBed = popupInBed
         popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
+
+    Private Sub ShowCdRomBayMenuInBed()
+        If _cdRomBayInBed Is Nothing OrElse _cdRomBayInBed.IsDisposed Then Return
+        DisposeDriveBayPopupInBed()
+
+        Dim cdPresentInBed As Boolean =
+            ReadMachineInBed(Function() Declares.IdeController.CdRomMounted)
+        Dim popupInBed As New ContextMenuStrip()
+        popupInBed.Items.Add(
+            New ToolStripMenuItem(
+                If(cdPresentInBed,
+                   "ATAPI CD-ROM — media inserted",
+                   "ATAPI CD-ROM — tray empty")) With {.Enabled = False})
+        popupInBed.Items.Add(New ToolStripSeparator())
+        popupInBed.Items.Add(
+            "Disc Box / Optical Utilities...",
+            Nothing,
+            Sub() RunSneakerNet("optical"))
+        popupInBed.Items.Add(
+            "Mount CD-ROM ISO...",
+            Nothing,
+            Sub() ChooseIso())
+        Dim ejectInBed As ToolStripItem =
+            popupInBed.Items.Add(
+                "Eject CD-ROM",
+                Nothing,
+                Sub() EjectCdRom())
+        ejectInBed.Enabled = cdPresentInBed
+
+        _driveBayPopupInBed = popupInBed
+        popupInBed.Show(_cdRomBayInBed, New Point(0, _cdRomBayInBed.Height))
+    End Sub
+
+    Private Sub ShowHardDiskBayMenuInBed()
+        If _hardDiskBayInBed Is Nothing OrElse _hardDiskBayInBed.IsDisposed Then Return
+        DisposeDriveBayPopupInBed()
+
+        Dim hardDiskPresentInBed As Boolean =
+            ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount > 0)
+        Dim popupInBed As New ContextMenuStrip()
+        popupInBed.Items.Add(
+            New ToolStripMenuItem(
+                If(hardDiskPresentInBed,
+                   "IDE primary master — hard disk attached",
+                   "IDE primary master — disconnected")) With {.Enabled = False})
+        popupInBed.Items.Add(New ToolStripSeparator())
+
+        Dim shelfInBed As New ToolStripMenuItem("IDE Drive Shelf")
+        PopulateIdeDriveShelfMenuInBed(shelfInBed)
+        popupInBed.Items.Add(shelfInBed)
+
+        popupInBed.Items.Add(
+            "Hard Drive Utilities...",
+            Nothing,
+            Sub() RunSneakerNet("harddisk"))
+        popupInBed.Items.Add(New ToolStripSeparator())
+        popupInBed.Items.Add(
+            "Mount hard-disk image...",
+            Nothing,
+            Sub() ChooseHardDisk())
+        popupInBed.Items.Add(
+            "Create 64 MB IDE shelf drive...",
+            Nothing,
+            Sub() CreateHardDisk())
+        popupInBed.Items.Add(
+            "Open IDE-Drives folder",
+            Nothing,
+            Sub() OpenIdeDriveShelfFolder())
+        popupInBed.Items.Add(New ToolStripSeparator())
+
+        Dim bootInBed As ToolStripItem =
+            popupInBed.Items.Add(
+                "Boot hard disk",
+                Nothing,
+                Sub() BootHardDisk())
+        bootInBed.Enabled = hardDiskPresentInBed
+
+        Dim ejectInBed As ToolStripItem =
+            popupInBed.Items.Add(
+                "Disconnect hard disk",
+                Nothing,
+                Sub() EjectHardDisk())
+        ejectInBed.Enabled = hardDiskPresentInBed
+
+        _driveBayPopupInBed = popupInBed
+        popupInBed.Show(_hardDiskBayInBed, New Point(0, _hardDiskBayInBed.Height))
     End Sub
 
     Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
         UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
         UpdateDriveBayFaceInBed(_floppyBayBInBed, 1, geometryBInBed)
+
+        If _cdRomBayInBed IsNot Nothing Then
+            Dim cdPresentInBed As Boolean =
+                ReadMachineInBed(Function() Declares.IdeController.CdRomMounted)
+            _driveBayToolTipInBed.SetToolTip(
+                _cdRomBayInBed,
+                If(cdPresentInBed,
+                   "ATAPI CD-ROM — media inserted; click for optical media choices",
+                   "ATAPI CD-ROM — tray empty; click for optical media choices"))
+        End If
+
+        If _hardDiskBayInBed IsNot Nothing Then
+            Dim hardDiskPresentInBed As Boolean =
+                ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount > 0)
+            _driveBayToolTipInBed.SetToolTip(
+                _hardDiskBayInBed,
+                If(hardDiskPresentInBed,
+                   "IDE primary master hard disk — attached; click for drive shelf and utilities",
+                   "IDE primary master hard disk — disconnected; click for drive shelf and utilities"))
+        End If
     End Sub
 
     Private Sub UpdateDriveBayFaceInBed(faceInBed As PictureBox,
@@ -2104,7 +2407,7 @@ Public Class Form1
         Process.Start(startInBed)
     End Sub
 
-    Private Sub RunSneakerNet()
+    Private Sub RunSneakerNet(Optional mediaPageInBed As String = Nothing)
         If _floppyBox Is Nothing Then InitializeFloppyBox()
 
         If _sneakerNetForm Is Nothing OrElse _sneakerNetForm.IsDisposed Then
@@ -2150,6 +2453,10 @@ Public Class Form1
             If _sneakerNetForm.WindowState = FormWindowState.Minimized Then _sneakerNetForm.WindowState = FormWindowState.Normal
             _sneakerNetForm.BringToFront()
             _sneakerNetForm.Activate()
+        End If
+
+        If Not String.IsNullOrWhiteSpace(mediaPageInBed) Then
+            _sneakerNetForm.ShowMediaPageInBed(mediaPageInBed)
         End If
     End Sub
 
@@ -2441,8 +2748,9 @@ Public Class Form1
         ' worker. WinForms only swaps in a completed frame when a new generation exists.
         Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
         If presentationInBed Is Nothing Then Return
+        If Not _machinePoweredInBed Then Return
 
-        If _machinePoweredInBed Then presentationInBed.RequestFrame()
+        presentationInBed.RequestFrame()
         Dim nextFrameInBed As Bitmap =
             presentationInBed.TakeLatestFrame(_videoPresentationGenerationInBed)
         If nextFrameInBed Is Nothing Then Return

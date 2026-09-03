@@ -2701,6 +2701,34 @@ Public NotInheritable Class SneakerNetForm
         RefreshBackupBrowserInBed()
     End Sub
 
+    Public Sub ShowMediaPageInBed(pageInBed As String)
+        If String.IsNullOrWhiteSpace(pageInBed) Then Return
+
+        Select Case pageInBed.Trim().ToLowerInvariant()
+            Case "floppy", "floppies"
+                _mediaTabs.SelectedTab = _floppyWorkbenchPage
+
+            Case "harddisk", "hard disk", "harddrive", "hard drive", "harddrives", "hard drives", "hdd"
+                _mediaTabs.SelectedTab = _hardDrivePage
+                RefreshHardDrivesInBed()
+                SelectMountedHardDriveForUtilitiesInBed()
+
+            Case "optical", "cd", "cdrom", "cd-rom", "disc", "disc box"
+                _mediaTabs.SelectedTab = _opticalPage
+
+            Case "host", "hostdevices", "host devices"
+                _mediaTabs.SelectedTab = _hostDevicesPage
+                RefreshHostDevicesInBed()
+
+            Case "imaging"
+                _mediaTabs.SelectedTab = _imagingPage
+
+            Case "backup"
+                _mediaTabs.SelectedTab = _backupPage
+                RefreshBackupBrowserInBed()
+        End Select
+    End Sub
+
     Private Sub BuildUi()
         Text = "Cromwell Technologies Sneaker Net"
         StartPosition = FormStartPosition.CenterParent
@@ -5072,6 +5100,21 @@ Public NotInheritable Class SneakerNetForm
         Finally
             _hddListInBed.EndUpdate()
         End Try
+    End Sub
+
+    Private Sub SelectMountedHardDriveForUtilitiesInBed()
+        If _mountedIdeShelfDriveId Is Nothing Then Return
+        Dim mountedIdInBed As Integer = _mountedIdeShelfDriveId()
+        If mountedIdInBed < 0 Then Return
+
+        For Each itemInBed As ListViewItem In _hddListInBed.Items
+            Dim entryInBed As IdeDriveShelfEntry = TryCast(itemInBed.Tag, IdeDriveShelfEntry)
+            If entryInBed Is Nothing OrElse entryInBed.Id <> mountedIdInBed Then Continue For
+            itemInBed.Selected = True
+            itemInBed.Focused = True
+            itemInBed.EnsureVisible()
+            Exit For
+        Next
     End Sub
 
     Private Function SelectedHardDriveInBed() As IdeDriveShelfEntry
