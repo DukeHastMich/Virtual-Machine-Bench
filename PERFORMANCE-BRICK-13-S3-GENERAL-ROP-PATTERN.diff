@@ -1,0 +1,508 @@
+--- a/DiamondStealthPro928.vb
++++ b/DiamondStealthPro928.vb
+@@ -4082,11 +4082,17 @@
+                         If Not TryFastSolidFillSpanInBed(commandInBed,
+                                                         CInt(rowInBed),
+                                                         columnInBed,
+                                                         spanPixelsInBed,
+                                                         xDirectionInBed,
+-                                                        yDirectionInBed) Then
++                                                        yDirectionInBed) AndAlso
++                           Not TryFastGeneralSolidRopSpanInBed(commandInBed,
++                                                              CInt(rowInBed),
++                                                              columnInBed,
++                                                              spanPixelsInBed,
++                                                              xDirectionInBed,
++                                                              yDirectionInBed) Then
+                             For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+                                 Dim xxInBed As Integer = columnInBed + offsetInBed
+                                 Dim destinationXInBed As Integer =
+                                     CInt(commandInBed.CurX) + xxInBed * xDirectionInBed
+                                 Dim destinationYInBed As Integer =
+@@ -4103,11 +4109,17 @@
+                         If Not TryFastSourceCopySpanInBed(commandInBed,
+                                                          CInt(rowInBed),
+                                                          columnInBed,
+                                                          spanPixelsInBed,
+                                                          xDirectionInBed,
+-                                                         yDirectionInBed) Then
++                                                         yDirectionInBed) AndAlso
++                           Not TryFastGeneralBitBltRopSpanInBed(commandInBed,
++                                                               CInt(rowInBed),
++                                                               columnInBed,
++                                                               spanPixelsInBed,
++                                                               xDirectionInBed,
++                                                               yDirectionInBed) Then
+                             For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+                                 Dim xxInBed As Integer = columnInBed + offsetInBed
+                                 Dim sourceInBed As UInteger =
+                                     GetEnhancedPixelForCommand(commandInBed,
+                                         CInt(commandInBed.CurX) + xxInBed * xDirectionInBed,
+@@ -4124,31 +4136,40 @@
+                                                            commandInBed.ForegroundMix)
+                             Next
+                         End If
+ 
+                     Case 7
+-                        ' Pattern source changes with every pixel and may interact
+-                        ' with arbitrary MIX/compare/write-mask state.  Batch the
+-                        ' timing and row arithmetic, but retain the proven per-pixel
+-                        ' datapath until a separate verified pattern fast path exists.
+-                        For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+-                            Dim xxInBed As Integer = columnInBed + offsetInBed
+-                            Dim patternXInBed As Integer =
+-                                (CInt(commandInBed.CurX) And Not 7) + (xxInBed And 7)
+-                            Dim patternYInBed As Integer =
+-                                CInt(commandInBed.CurY) + (CInt(rowInBed) And 7)
+-                            Dim sourceInBed As UInteger =
+-                                GetEnhancedPixelForCommand(commandInBed,
+-                                                           patternXInBed,
+-                                                           patternYInBed,
+-                                                           sourceAddressInBed:=True)
+-                            PutEnhancedPixelForCommand(commandInBed,
+-                                                       CInt(commandInBed.DestX) + xxInBed,
+-                                                       CInt(commandInBed.DestY) + CInt(rowInBed),
+-                                                       sourceInBed,
+-                                                       commandInBed.ForegroundMix)
+-                        Next
++                        ' Through-plane patterns are common GDI work.  When the
++                        ' command uses ordinary scissors, no color compare, full
++                        ' write mask, and no across-plane foreground/background
++                        ' selector, the exact existing datapath can be collapsed
++                        ' into one direct VRAM span loop.
++                        '
++                        ' Across-plane modes (PIX_CNTL selector 2/3) deliberately
++                        ' remain on the original per-pixel path.
++                        If Not TryFastPatternRopSpanInBed(commandInBed,
++                                                         CInt(rowInBed),
++                                                         columnInBed,
++                                                         spanPixelsInBed) Then
++                            For offsetInBed As Integer = 0 To spanPixelsInBed - 1
++                                Dim xxInBed As Integer = columnInBed + offsetInBed
++                                Dim patternXInBed As Integer =
++                                    (CInt(commandInBed.CurX) And Not 7) + (xxInBed And 7)
++                                Dim patternYInBed As Integer =
++                                    CInt(commandInBed.CurY) + (CInt(rowInBed) And 7)
++                                Dim sourceInBed As UInteger =
++                                    GetEnhancedPixelForCommand(commandInBed,
++                                                               patternXInBed,
++                                                               patternYInBed,
++                                                               sourceAddressInBed:=True)
++                                PutEnhancedPixelForCommand(commandInBed,
++                                                           CInt(commandInBed.DestX) + xxInBed,
++                                                           CInt(commandInBed.DestY) + CInt(rowInBed),
++                                                           sourceInBed,
++                                                           commandInBed.ForegroundMix)
++                            Next
++                        End If
+                 End Select
+             End If
+ 
+             commandInBed.Progress += spanPixelsInBed
+             ticksConsumedInBed += spanPixelsInBed
+@@ -4242,10 +4263,340 @@
+                                   commandInBed.BytesPerPixel,
+                                   finalColorInBed)
+         Return True
+     End Function
+ 
++    Private Function TryFastGeneralSolidRopSpanInBed(commandInBed As EngineCommand928,
++                                                     rowInBed As Integer,
++                                                     columnInBed As Integer,
++                                                     pixelCountInBed As Integer,
++                                                     xDirectionInBed As Integer,
++                                                     yDirectionInBed As Integer) As Boolean
++        If pixelCountInBed <= 0 Then Return True
++
++        ' This is the same safe envelope as the original solid fast fill, except
++        ' destination-dependent MIX functions are allowed.  Each destination
++        ' pixel is still read, transformed through the exact S3 MIX truth table,
++        ' and written in programmed X order.
++        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
++        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
++        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
++
++        Dim activeMaskInBed As UInteger =
++            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
++        If activeMaskInBed = 0UI Then Return False
++        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
++            Return False
++        End If
++
++        Dim destinationYInBed As Integer =
++            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
++        If destinationYInBed < 0 Then Return True
++        If destinationYInBed < commandInBed.TopScissors OrElse
++           destinationYInBed > commandInBed.BottomScissors Then
++            Return True
++        End If
++
++        Dim firstColumnInBed As Integer
++        Dim lastColumnInBed As Integer
++        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.CurX),
++                                                   xDirectionInBed,
++                                                   columnInBed,
++                                                   pixelCountInBed,
++                                                   commandInBed.LeftScissors,
++                                                   commandInBed.RightScissors,
++                                                   firstColumnInBed,
++                                                   lastColumnInBed) Then
++            Return True
++        End If
++
++        Dim firstXInBed As Integer =
++            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
++        Dim lastXInBed As Integer =
++            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
++        Dim minimumXInBed As Integer = Math.Min(firstXInBed, lastXInBed)
++        Dim maximumXInBed As Integer = Math.Max(firstXInBed, lastXInBed)
++
++        Dim minimumAddressInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(minimumXInBed) * commandInBed.BytesPerPixel
++        Dim maximumEndInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(maximumXInBed + 1) * commandInBed.BytesPerPixel
++        If minimumAddressInBed < 0 OrElse maximumEndInBed > VramSize Then
++            Return False
++        End If
++
++        Dim selectedSourceInBed As UInteger =
++            SelectCommandMixColor(commandInBed,
++                                  commandInBed.ForegroundMix,
++                                  commandInBed.ForegroundColor,
++                                  0UI)
++        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
++        Dim strideBytesInBed As Integer =
++            xDirectionInBed * commandInBed.BytesPerPixel
++        Dim addressInBed As Integer =
++            CInt(commandInBed.DestinationBaseAddress +
++                 CLng(destinationYInBed) * commandInBed.PitchBytes +
++                 CLng(firstXInBed) * commandInBed.BytesPerPixel)
++
++        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
++            Dim destinationInBed As UInteger =
++                ReadEnhancedPixelDirectInBed(addressInBed,
++                                             commandInBed.BytesPerPixel)
++            Dim mixedInBed As UInteger =
++                ApplyMixFunction(selectedSourceInBed,
++                                 destinationInBed,
++                                 mixInBed) And activeMaskInBed
++            WriteEnhancedPixelDirectInBed(addressInBed,
++                                          commandInBed.BytesPerPixel,
++                                          mixedInBed)
++            addressInBed += strideBytesInBed
++        Next
++
++        Return True
++    End Function
++
++    Private Function TryFastGeneralBitBltRopSpanInBed(commandInBed As EngineCommand928,
++                                                      rowInBed As Integer,
++                                                      columnInBed As Integer,
++                                                      pixelCountInBed As Integer,
++                                                      xDirectionInBed As Integer,
++                                                      yDirectionInBed As Integer) As Boolean
++        If pixelCountInBed <= 0 Then Return True
++        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
++        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
++        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
++
++        Dim activeMaskInBed As UInteger =
++            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
++        If activeMaskInBed = 0UI Then Return False
++        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
++            Return False
++        End If
++
++        Dim destinationYInBed As Integer =
++            CInt(commandInBed.DestY) + rowInBed * yDirectionInBed
++        If destinationYInBed < 0 Then Return True
++        If destinationYInBed < commandInBed.TopScissors OrElse
++           destinationYInBed > commandInBed.BottomScissors Then
++            Return True
++        End If
++
++        Dim sourceYInBed As Integer =
++            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
++        If sourceYInBed < 0 Then Return False
++
++        Dim firstColumnInBed As Integer
++        Dim lastColumnInBed As Integer
++        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.DestX),
++                                                   xDirectionInBed,
++                                                   columnInBed,
++                                                   pixelCountInBed,
++                                                   commandInBed.LeftScissors,
++                                                   commandInBed.RightScissors,
++                                                   firstColumnInBed,
++                                                   lastColumnInBed) Then
++            Return True
++        End If
++
++        Dim sourceFirstXInBed As Integer =
++            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
++        Dim sourceLastXInBed As Integer =
++            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
++        If sourceFirstXInBed < 0 OrElse sourceLastXInBed < 0 Then Return False
++
++        Dim destinationFirstXInBed As Integer =
++            CInt(commandInBed.DestX) + firstColumnInBed * xDirectionInBed
++        Dim destinationLastXInBed As Integer =
++            CInt(commandInBed.DestX) + lastColumnInBed * xDirectionInBed
++
++        Dim sourceMinXInBed As Integer = Math.Min(sourceFirstXInBed, sourceLastXInBed)
++        Dim sourceMaxXInBed As Integer = Math.Max(sourceFirstXInBed, sourceLastXInBed)
++        Dim destinationMinXInBed As Integer =
++            Math.Min(destinationFirstXInBed, destinationLastXInBed)
++        Dim destinationMaxXInBed As Integer =
++            Math.Max(destinationFirstXInBed, destinationLastXInBed)
++
++        Dim sourceMinAddressInBed As Long =
++            commandInBed.SourceBaseAddress +
++            CLng(sourceYInBed) * commandInBed.PitchBytes +
++            CLng(sourceMinXInBed) * commandInBed.BytesPerPixel
++        Dim sourceMaxEndInBed As Long =
++            commandInBed.SourceBaseAddress +
++            CLng(sourceYInBed) * commandInBed.PitchBytes +
++            CLng(sourceMaxXInBed + 1) * commandInBed.BytesPerPixel
++        Dim destinationMinAddressInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(destinationMinXInBed) * commandInBed.BytesPerPixel
++        Dim destinationMaxEndInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(destinationMaxXInBed + 1) * commandInBed.BytesPerPixel
++
++        If sourceMinAddressInBed < 0 OrElse sourceMaxEndInBed > VramSize OrElse
++           destinationMinAddressInBed < 0 OrElse destinationMaxEndInBed > VramSize Then
++            Return False
++        End If
++
++        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
++        Dim sourceSelectorInBed As Integer = (mixInBed >> 5) And 3US
++        Dim constantSourceInBed As UInteger = 0UI
++        If sourceSelectorInBed <> 3 Then
++            constantSourceInBed =
++                SelectCommandMixColor(commandInBed,
++                                      mixInBed,
++                                      0UI,
++                                      0UI)
++        End If
++
++        Dim strideBytesInBed As Integer =
++            xDirectionInBed * commandInBed.BytesPerPixel
++        Dim sourceAddressInBed As Integer =
++            CInt(commandInBed.SourceBaseAddress +
++                 CLng(sourceYInBed) * commandInBed.PitchBytes +
++                 CLng(sourceFirstXInBed) * commandInBed.BytesPerPixel)
++        Dim destinationAddressInBed As Integer =
++            CInt(commandInBed.DestinationBaseAddress +
++                 CLng(destinationYInBed) * commandInBed.PitchBytes +
++                 CLng(destinationFirstXInBed) * commandInBed.BytesPerPixel)
++
++        ' Programmed iteration order is retained exactly.  That matters when
++        ' source and destination overlap: an unsafe guest-selected direction must
++        ' still smear just like the real engine, rather than gaining memmove
++        ' semantics from the host implementation.
++        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
++            Dim operationSourceInBed As UInteger =
++                If(sourceSelectorInBed = 3,
++                   ReadEnhancedPixelDirectInBed(sourceAddressInBed,
++                                                commandInBed.BytesPerPixel),
++                   constantSourceInBed)
++            Dim destinationInBed As UInteger =
++                ReadEnhancedPixelDirectInBed(destinationAddressInBed,
++                                             commandInBed.BytesPerPixel)
++            Dim mixedInBed As UInteger =
++                ApplyMixFunction(operationSourceInBed,
++                                 destinationInBed,
++                                 mixInBed) And activeMaskInBed
++            WriteEnhancedPixelDirectInBed(destinationAddressInBed,
++                                          commandInBed.BytesPerPixel,
++                                          mixedInBed)
++
++            sourceAddressInBed += strideBytesInBed
++            destinationAddressInBed += strideBytesInBed
++        Next
++
++        Return True
++    End Function
++
++    Private Function TryFastPatternRopSpanInBed(commandInBed As EngineCommand928,
++                                                rowInBed As Integer,
++                                                columnInBed As Integer,
++                                                pixelCountInBed As Integer) As Boolean
++        If pixelCountInBed <= 0 Then Return True
++        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
++        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
++        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
++
++        Dim activeMaskInBed As UInteger =
++            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
++        If activeMaskInBed = 0UI Then Return False
++        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
++            Return False
++        End If
++
++        ' Preserve the existing type-7 coordinate semantics exactly: destination
++        ' advances +X/+Y by command progress, and the source repeats an 8x8 tile
++        ' rooted at CUR_X rounded down to an 8-pixel boundary.
++        Dim destinationYInBed As Integer =
++            CInt(commandInBed.DestY) + rowInBed
++        If destinationYInBed < 0 Then Return True
++        If destinationYInBed < commandInBed.TopScissors OrElse
++           destinationYInBed > commandInBed.BottomScissors Then
++            Return True
++        End If
++
++        Dim firstColumnInBed As Integer
++        Dim lastColumnInBed As Integer
++        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.DestX),
++                                                   1,
++                                                   columnInBed,
++                                                   pixelCountInBed,
++                                                   commandInBed.LeftScissors,
++                                                   commandInBed.RightScissors,
++                                                   firstColumnInBed,
++                                                   lastColumnInBed) Then
++            Return True
++        End If
++
++        Dim destinationFirstXInBed As Integer =
++            CInt(commandInBed.DestX) + firstColumnInBed
++        Dim destinationLastXInBed As Integer =
++            CInt(commandInBed.DestX) + lastColumnInBed
++        Dim destinationStartAddressInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(destinationFirstXInBed) * commandInBed.BytesPerPixel
++        Dim destinationEndInBed As Long =
++            commandInBed.DestinationBaseAddress +
++            CLng(destinationYInBed) * commandInBed.PitchBytes +
++            CLng(destinationLastXInBed + 1) * commandInBed.BytesPerPixel
++        If destinationStartAddressInBed < 0 OrElse
++           destinationEndInBed > VramSize Then
++            Return False
++        End If
++
++        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
++        Dim sourceSelectorInBed As Integer = (mixInBed >> 5) And 3US
++        Dim constantSourceInBed As UInteger = 0UI
++        If sourceSelectorInBed <> 3 Then
++            constantSourceInBed =
++                SelectCommandMixColor(commandInBed,
++                                      mixInBed,
++                                      0UI,
++                                      0UI)
++        End If
++
++        Dim patternBaseXInBed As Integer =
++            CInt(commandInBed.CurX) And Not 7
++        Dim patternYInBed As Integer =
++            CInt(commandInBed.CurY) + (rowInBed And 7)
++        Dim destinationAddressInBed As Integer =
++            CInt(destinationStartAddressInBed)
++
++        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
++            Dim operationSourceInBed As UInteger = constantSourceInBed
++            If sourceSelectorInBed = 3 Then
++                Dim patternXInBed As Integer =
++                    patternBaseXInBed + (logicalColumnInBed And 7)
++                operationSourceInBed =
++                    ReadEnhancedPixelForAddressSafeInBed(
++                        commandInBed.SourceBaseAddress +
++                        CLng(patternYInBed) * commandInBed.PitchBytes +
++                        CLng(patternXInBed) * commandInBed.BytesPerPixel,
++                        commandInBed.BytesPerPixel)
++            End If
++
++            Dim destinationInBed As UInteger =
++                ReadEnhancedPixelDirectInBed(destinationAddressInBed,
++                                             commandInBed.BytesPerPixel)
++            Dim mixedInBed As UInteger =
++                ApplyMixFunction(operationSourceInBed,
++                                 destinationInBed,
++                                 mixInBed) And activeMaskInBed
++            WriteEnhancedPixelDirectInBed(destinationAddressInBed,
++                                          commandInBed.BytesPerPixel,
++                                          mixedInBed)
++            destinationAddressInBed += commandInBed.BytesPerPixel
++        Next
++
++        Return True
++    End Function
++
+     Private Function TryFastSourceCopySpanInBed(commandInBed As EngineCommand928,
+                                                 rowInBed As Integer,
+                                                 columnInBed As Integer,
+                                                 pixelCountInBed As Integer,
+                                                 xDirectionInBed As Integer,
+@@ -4428,10 +4779,64 @@
+                     _vram(indexInBed + 1) = b1InBed
+                     _vram(indexInBed + 2) = b2InBed
+                     _vram(indexInBed + 3) = b3InBed
+                     indexInBed += 4
+                 Next
++        End Select
++    End Sub
++
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
++    Private Function ReadEnhancedPixelDirectInBed(addressInBed As Integer,
++                                                  bytesPerPixelInBed As Integer) As UInteger
++        Select Case bytesPerPixelInBed
++            Case 1
++                Return CUInt(_vram(addressInBed))
++            Case 2
++                Return CUInt(_vram(addressInBed)) Or
++                       (CUInt(_vram(addressInBed + 1)) << 8)
++            Case 4
++                Return CUInt(_vram(addressInBed)) Or
++                       (CUInt(_vram(addressInBed + 1)) << 8) Or
++                       (CUInt(_vram(addressInBed + 2)) << 16) Or
++                       (CUInt(_vram(addressInBed + 3)) << 24)
++            Case Else
++                Return 0UI
++        End Select
++    End Function
++
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
++    Private Function ReadEnhancedPixelForAddressSafeInBed(addressInBed As Long,
++                                                          bytesPerPixelInBed As Integer) As UInteger
++        If addressInBed < 0 OrElse
++           addressInBed + bytesPerPixelInBed > VramSize Then
++            Return 0UI
++        End If
++        Return ReadEnhancedPixelDirectInBed(CInt(addressInBed),
++                                            bytesPerPixelInBed)
++    End Function
++
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
++    Private Sub WriteEnhancedPixelDirectInBed(addressInBed As Integer,
++                                              bytesPerPixelInBed As Integer,
++                                              valueInBed As UInteger)
++        Select Case bytesPerPixelInBed
++            Case 1
++                _vram(addressInBed) = CByte(valueInBed And &HFFUI)
++            Case 2
++                _vram(addressInBed) =
++                    CByte(valueInBed And &HFFUI)
++                _vram(addressInBed + 1) =
++                    CByte((valueInBed >> 8) And &HFFUI)
++            Case 4
++                _vram(addressInBed) =
++                    CByte(valueInBed And &HFFUI)
++                _vram(addressInBed + 1) =
++                    CByte((valueInBed >> 8) And &HFFUI)
++                _vram(addressInBed + 2) =
++                    CByte((valueInBed >> 16) And &HFFUI)
++                _vram(addressInBed + 3) =
++                    CByte((valueInBed >> 24) And &HFFUI)
+         End Select
+     End Sub
+ 
+     Private Sub CopyEnhancedPixelDirectInBed(sourceAddressInBed As Integer,
+                                              destinationAddressInBed As Integer,

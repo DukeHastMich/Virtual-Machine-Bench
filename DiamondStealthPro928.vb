@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Diagnostics
 Imports System.Threading
 Imports System.Drawing
@@ -440,7 +440,7 @@ Public NotInheritable Class BrooktreeBt485Ramdac928
 End Class
 
 Public Class DiamondStealthPro928
-    Implements IPortDevice, IWordPortDevice, IClockedDevice, IClockBatchSafeDevice, IPortDecodeCandidateProvider, IMemoryDecodeChangeSource, IMemoryMappedDevice, IPageCoherentMemoryDecode, IResettableDevice, IPowerCycleDevice, IDisposable
+    Implements IPortDevice, IWordPortDevice, IClockedDevice, IClockBatchSafeDevice, IPortDecodeCandidateProvider, IMemoryDecodeChangeSource, IMemoryMappedDevice, IPageCoherentMemoryDecode, IMemoryAccessTimingProvider, IResettableDevice, IPowerCycleDevice, IDisposable
 
     Public Event MemoryDecodeChanged() Implements IMemoryDecodeChangeSource.MemoryDecodeChanged
 
@@ -802,6 +802,10 @@ Public Class DiamondStealthPro928
     End Property
 
     Public Sub BeginDiagnosticVgaTrace()
+        If Not RuntimeDiagnostics.Enabled Then
+            _diagnosticVgaTraceEnabled = False
+            Return
+        End If
         _diagnosticVgaTrace.Clear()
         _diagnosticVgaTraceSequence = 0UL
         _diagnosticDacTrace.Clear()
@@ -810,14 +814,22 @@ Public Class DiamondStealthPro928
         _diagnosticVgaDacDataWriteCount = 0UL
         _diagnosticLastRenderClass = String.Empty
         _diagnosticVgaTraceEnabled = True
-        TraceVgaDiagnostic("TRACE BEGIN")
-        TraceVgaDiagnostic("STATE " & DiagnosticVgaStateOneLine())
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaDiagnostic("TRACE BEGIN")
+        End If
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaDiagnostic("STATE " & DiagnosticVgaStateOneLine())
+        End If
     End Sub
 
     Public Sub EndDiagnosticVgaTrace()
-        If _diagnosticVgaTraceEnabled Then
-            TraceVgaDiagnostic("STATE " & DiagnosticVgaStateOneLine())
-            TraceVgaDiagnostic("TRACE END")
+        If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("STATE " & DiagnosticVgaStateOneLine())
+            End If
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("TRACE END")
+            End If
         End If
         _diagnosticVgaTraceEnabled = False
     End Sub
@@ -1044,7 +1056,9 @@ Public Class DiamondStealthPro928
                                   " component=" & _ramdac.ComponentPhase.ToString())
         AppendDiagnosticPaletteInBed(preservedInBed, "preserved pre-text DAC palette")
         _diagnosticLastGraphicsState = preservedInBed.ToString()
-        TraceVgaDiagnostic("PRESERVED GRAPHICS STATE before " & reasonInBed)
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaDiagnostic("PRESERVED GRAPHICS STATE before " & reasonInBed)
+        End If
     End Sub
 
     Private Function DiagnosticRenderClass() As String
@@ -1075,7 +1089,7 @@ Public Class DiamondStealthPro928
     End Function
 
     Private Sub TraceVgaDiagnostic(messageInBed As String)
-        If Not _diagnosticVgaTraceEnabled Then Return
+        If Not RuntimeDiagnostics.Enabled OrElse Not _diagnosticVgaTraceEnabled Then Return
         _diagnosticVgaTraceSequence += 1UL
         While _diagnosticVgaTrace.Count >= DiagnosticVgaTraceCapacity
             _diagnosticVgaTrace.Dequeue()
@@ -1084,6 +1098,7 @@ Public Class DiamondStealthPro928
     End Sub
 
     Private Sub TraceVgaPortWriteInBed(portInBed As UInt16, valueInBed As Byte)
+        If Not RuntimeDiagnostics.Enabled Then Return
         Dim registerIndexInBed As Byte = &HFF
         Select Case portInBed
             Case &H3C0US : registerIndexInBed = CByte(_attributeIndex And &H1F)
@@ -1133,7 +1148,7 @@ Public Class DiamondStealthPro928
     End Sub
 
     Private Sub TraceDacDiagnosticInBed(messageInBed As String)
-        If Not _diagnosticVgaTraceEnabled Then Return
+        If Not RuntimeDiagnostics.Enabled OrElse Not _diagnosticVgaTraceEnabled Then Return
         _diagnosticDacTraceSequence += 1UL
         While _diagnosticDacTrace.Count >= DiagnosticDacTraceCapacity
             _diagnosticDacTrace.Dequeue()
@@ -1157,7 +1172,9 @@ Public Class DiamondStealthPro928
         Dim currentClassInBed As String = DiagnosticRenderClass()
         If String.Equals(currentClassInBed, _diagnosticLastRenderClass, StringComparison.Ordinal) Then Return
         _diagnosticLastRenderClass = currentClassInBed
-        TraceVgaDiagnostic("RENDER -> " & currentClassInBed & "   " & DiagnosticVgaStateOneLine())
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaDiagnostic("RENDER -> " & currentClassInBed & "   " & DiagnosticVgaStateOneLine())
+        End If
     End Sub
 
     Public Sub LoadOptionRom(data As Byte())
@@ -1249,13 +1266,15 @@ Public Class DiamondStealthPro928
         Dim componentBeforeInBed As Integer = _ramdac.ComponentPhase
         Dim readingBeforeInBed As Boolean = _ramdac.IsReading
         Dim resultInBed As Byte = _ramdac.ReadRegister(registerSelectInBed)
-        TraceDacDiagnosticInBed("IN  " & portInBed.ToString("X4") &
-                                " RS=" & registerSelectInBed.ToString("X1") &
-                                " -> " & resultInBed.ToString("X2") &
-                                " pre=" & If(readingBeforeInBed, "R", "W") &
-                                " ri=" & readIndexBeforeInBed.ToString("X2") &
-                                " wi=" & writeIndexBeforeInBed.ToString("X2") &
-                                " c=" & componentBeforeInBed.ToString())
+        If RuntimeDiagnostics.Enabled Then
+            TraceDacDiagnosticInBed("IN  " & portInBed.ToString("X4") &
+                                    " RS=" & registerSelectInBed.ToString("X1") &
+                                    " -> " & resultInBed.ToString("X2") &
+                                    " pre=" & If(readingBeforeInBed, "R", "W") &
+                                    " ri=" & readIndexBeforeInBed.ToString("X2") &
+                                    " wi=" & writeIndexBeforeInBed.ToString("X2") &
+                                    " c=" & componentBeforeInBed.ToString())
+        End If
         Return resultInBed
     End Function
 
@@ -1340,10 +1359,12 @@ Public Class DiamondStealthPro928
             Case &H3CFUS
                 Return _graphics(_graphicsIndex)
             Case &H3BAUS, &H3DAUS
-                _diagnosticVgaStatusReadCount += 1UL
-                If _diagnosticVgaTraceEnabled Then
+                If RuntimeDiagnostics.Enabled Then _diagnosticVgaStatusReadCount += 1UL
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then
                     If _attributeDataPhase Then
-                        TraceVgaDiagnostic("IN " & port.ToString("X4") & " status: AC flip-flop data->index")
+                        If RuntimeDiagnostics.Enabled Then
+                            TraceVgaDiagnostic("IN " & port.ToString("X4") & " status: AC flip-flop data->index")
+                        End If
                     End If
                 End If
                 _attributeDataPhase = False
@@ -1375,16 +1396,22 @@ Public Class DiamondStealthPro928
     End Function
 
     Public Sub WritePort(port As UInt16, value As Byte) Implements IPortDevice.WritePort
-        TraceVgaPortWriteInBed(port, value)
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaPortWriteInBed(port, value)
+        End If
         If port = &H102US Then
-            TraceVgaDiagnostic("OUT 0102 <- " & value.ToString("X2") & "  setup option")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("OUT 0102 <- " & value.ToString("X2") & "  setup option")
+            End If
             Dim decodeBeforeInBed As Boolean = BoardAddressDecodeEnabled()
             _setupOptionSelect = value
             If BoardAddressDecodeEnabled() <> decodeBeforeInBed Then RaiseEvent MemoryDecodeChanged()
             Return
         End If
         If port = &H46E8US Then
-            TraceVgaDiagnostic("OUT 46E8 <- " & value.ToString("X2") & "  subsystem setup")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("OUT 46E8 <- " & value.ToString("X2") & "  subsystem setup")
+            End If
             Dim decodeBeforeInBed As Boolean = BoardAddressDecodeEnabled()
             _setupRegister = value
             If BoardAddressDecodeEnabled() <> decodeBeforeInBed Then RaiseEvent MemoryDecodeChanged()
@@ -1396,14 +1423,18 @@ Public Class DiamondStealthPro928
         Select Case port
             Case &H3C0US
                 If Not _attributeDataPhase Then
-                    TraceVgaDiagnostic("OUT 3C0 AC index <- " & (value And &H1F).ToString("X2") &
-                                       " PAS=" & If((value And &H20) <> 0, "1", "0"))
+                    If RuntimeDiagnostics.Enabled Then
+                        TraceVgaDiagnostic("OUT 3C0 AC index <- " & (value And &H1F).ToString("X2") &
+                                           " PAS=" & If((value And &H20) <> 0, "1", "0"))
+                    End If
                     _attributeIndex = CByte(value And &H1F)
                     _attributeVideoEnabled = (value And &H20) <> 0
                     _attributeDataPhase = True
                 Else
-                    TraceVgaDiagnostic("OUT 3C0 AC[" & (_attributeIndex And &H1F).ToString("X2") &
-                                       "] <- " & value.ToString("X2"))
+                    If RuntimeDiagnostics.Enabled Then
+                        TraceVgaDiagnostic("OUT 3C0 AC[" & (_attributeIndex And &H1F).ToString("X2") &
+                                           "] <- " & value.ToString("X2"))
+                    End If
                     Dim attributeRegisterInBed As Integer = _attributeIndex And &H1F
                     ' IBM VGA Hardware Technical Reference, Attribute Controller:
                     ' PAS protects palette registers 00-0F while video is enabled.
@@ -1421,7 +1452,9 @@ Public Class DiamondStealthPro928
                 End If
                 Return
             Case &H3C2US
-                TraceVgaDiagnostic("OUT 3C2 MISC <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 3C2 MISC <- " & value.ToString("X2"))
+                End If
                 Dim memoryDecodeBeforeInBed As Boolean = VideoMemoryDecodeEnabled()
                 ' S3 86C928 Data Book BKWD_3 CR34 bit 7, p. 7-4: lock only
                 ' Misc Output clock-select bits 3:2; all other pins remain writable.
@@ -1432,11 +1465,11 @@ Public Class DiamondStealthPro928
                 If VideoMemoryDecodeEnabled() <> memoryDecodeBeforeInBed Then RaiseEvent MemoryDecodeChanged()
                 Return
             Case &H3C4US
-                If _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3C4 SEQ index <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3C4 SEQ index <- " & value.ToString("X2"))
                 _sequencerIndex = value
                 Return
             Case &H3C5US
-                If _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3C5 SEQ[" & _sequencerIndex.ToString("X2") & "] <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3C5 SEQ[" & _sequencerIndex.ToString("X2") & "] <- " & value.ToString("X2"))
                 ' S3 86C928 Data Book BKWD_3 CR34 bit 5, p. 7-4: only SR1
                 ' bit 0 (8/9-dot character width) is locked.
                 If _sequencerIndex = 1 AndAlso (_crtc(&H34) And &H20) <> 0 Then
@@ -1445,56 +1478,72 @@ Public Class DiamondStealthPro928
                 _sequencer(_sequencerIndex) = value
                 Return
             Case &H3C6US
-                TraceDacDiagnosticInBed("OUT 3C6 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
-                                        " <- " & value.ToString("X2") &
-                                        " pre=" & If(_ramdac.IsReading, "R", "W") &
-                                        " ri=" & _ramdac.ReadIndex.ToString("X2") &
-                                        " wi=" & _ramdac.WriteIndex.ToString("X2") &
-                                        " c=" & _ramdac.ComponentPhase.ToString())
-                TraceVgaDiagnostic("OUT 3C6 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDacDiagnosticInBed("OUT 3C6 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
+                                            " <- " & value.ToString("X2") &
+                                            " pre=" & If(_ramdac.IsReading, "R", "W") &
+                                            " ri=" & _ramdac.ReadIndex.ToString("X2") &
+                                            " wi=" & _ramdac.WriteIndex.ToString("X2") &
+                                            " c=" & _ramdac.ComponentPhase.ToString())
+                End If
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 3C6 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                End If
                 If (_crtc(&H33) And &H10) = 0 Then _ramdac.WriteRegister(GetBt485RegisterSelectInBed(port), value)
                 Return
             Case &H3C7US
-                TraceDacDiagnosticInBed("OUT 3C7 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
-                                        " <- " & value.ToString("X2") &
-                                        " pre=" & If(_ramdac.IsReading, "R", "W") &
-                                        " ri=" & _ramdac.ReadIndex.ToString("X2") &
-                                        " wi=" & _ramdac.WriteIndex.ToString("X2") &
-                                        " c=" & _ramdac.ComponentPhase.ToString())
-                TraceVgaDiagnostic("OUT 3C7 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDacDiagnosticInBed("OUT 3C7 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
+                                            " <- " & value.ToString("X2") &
+                                            " pre=" & If(_ramdac.IsReading, "R", "W") &
+                                            " ri=" & _ramdac.ReadIndex.ToString("X2") &
+                                            " wi=" & _ramdac.WriteIndex.ToString("X2") &
+                                            " c=" & _ramdac.ComponentPhase.ToString())
+                End If
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 3C7 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                End If
                 If (_crtc(&H33) And &H10) = 0 Then _ramdac.WriteRegister(GetBt485RegisterSelectInBed(port), value)
                 Return
             Case &H3C8US
-                TraceDacDiagnosticInBed("OUT 3C8 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
-                                        " <- " & value.ToString("X2") &
-                                        " pre=" & If(_ramdac.IsReading, "R", "W") &
-                                        " ri=" & _ramdac.ReadIndex.ToString("X2") &
-                                        " wi=" & _ramdac.WriteIndex.ToString("X2") &
-                                        " c=" & _ramdac.ComponentPhase.ToString())
-                TraceVgaDiagnostic("OUT 3C8 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDacDiagnosticInBed("OUT 3C8 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
+                                            " <- " & value.ToString("X2") &
+                                            " pre=" & If(_ramdac.IsReading, "R", "W") &
+                                            " ri=" & _ramdac.ReadIndex.ToString("X2") &
+                                            " wi=" & _ramdac.WriteIndex.ToString("X2") &
+                                            " c=" & _ramdac.ComponentPhase.ToString())
+                End If
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 3C8 DAC RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") & " <- " & value.ToString("X2"))
+                End If
                 If (_crtc(&H33) And &H10) = 0 Then _ramdac.WriteRegister(GetBt485RegisterSelectInBed(port), value)
                 Return
             Case &H3C9US
-                If _diagnosticVgaTraceEnabled Then _diagnosticVgaDacDataWriteCount += 1UL
-                TraceDacDiagnosticInBed("OUT 3C9 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
-                                        " <- " & value.ToString("X2") &
-                                        " pre=" & If(_ramdac.IsReading, "R", "W") &
-                                        " ri=" & _ramdac.ReadIndex.ToString("X2") &
-                                        " wi=" & _ramdac.WriteIndex.ToString("X2") &
-                                        " c=" & _ramdac.ComponentPhase.ToString())
-                TraceVgaDiagnostic("OUT 3C9 DAC[" & _ramdac.WriteIndex.ToString("X2") &
-                                   "]." & _ramdac.ComponentPhase.ToString() &
-                                   " <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then _diagnosticVgaDacDataWriteCount += 1UL
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDacDiagnosticInBed("OUT 3C9 RS=" & GetBt485RegisterSelectInBed(port).ToString("X1") &
+                                            " <- " & value.ToString("X2") &
+                                            " pre=" & If(_ramdac.IsReading, "R", "W") &
+                                            " ri=" & _ramdac.ReadIndex.ToString("X2") &
+                                            " wi=" & _ramdac.WriteIndex.ToString("X2") &
+                                            " c=" & _ramdac.ComponentPhase.ToString())
+                End If
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 3C9 DAC[" & _ramdac.WriteIndex.ToString("X2") &
+                                       "]." & _ramdac.ComponentPhase.ToString() &
+                                       " <- " & value.ToString("X2"))
+                End If
                 ' S3 86C928 Data Book BKWD_2 CR33 bit 4, p. 7-3: all video
                 ' DAC register writes are blocked while reads remain live.
                 If (_crtc(&H33) And &H10) = 0 Then _ramdac.WriteRegister(GetBt485RegisterSelectInBed(port), value)
                 Return
             Case &H3CEUS
-                If _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3CE GC index <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3CE GC index <- " & value.ToString("X2"))
                 _graphicsIndex = value
                 Return
             Case &H3CFUS
-                If _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3CF GC[" & _graphicsIndex.ToString("X2") & "] <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled AndAlso _diagnosticVgaTraceEnabled Then TraceVgaDiagnostic("OUT 3CF GC[" & _graphicsIndex.ToString("X2") & "] <- " & value.ToString("X2"))
                 Dim oldGraphicsValueInBed As Byte = _graphics(_graphicsIndex)
                 If _graphicsIndex = &H6 AndAlso
                    (oldGraphicsValueInBed And 1) <> 0 AndAlso
@@ -1508,11 +1557,15 @@ Public Class DiamondStealthPro928
                 End If
                 Return
             Case &H3BAUS, &H3DAUS
-                TraceVgaDiagnostic("OUT " & port.ToString("X4") & " feature <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT " & port.ToString("X4") & " feature <- " & value.ToString("X2"))
+                End If
                 _featureControl = value
                 Return
             Case &H3B4US, &H3D4US
-                TraceVgaDiagnostic("OUT " & port.ToString("X4") & " CRTC index <- " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT " & port.ToString("X4") & " CRTC index <- " & value.ToString("X2"))
+                End If
                 _crtcIndex = value
                 Return
             Case &H3B5US, &H3D5US
@@ -1615,16 +1668,22 @@ Public Class DiamondStealthPro928
 
     Private Sub WriteCrtc(index As Byte, value As Byte)
         If index = &H38 Then
-            TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " APPLIED lock key")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " APPLIED lock key")
+            End If
             _crtc(index) = value
             Return
         End If
         If index >= &H30 AndAlso index <= &H3C AndAlso Not S3VgaRegistersUnlocked() Then
-            TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED S3 VGA lock")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED S3 VGA lock")
+            End If
             Return
         End If
         If index >= &H40 AndAlso index <= &H5F AndAlso Not S3SystemRegistersUnlocked() Then
-            TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED S3 system lock")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED S3 system lock")
+            End If
             Return
         End If
         If index = &H4A Then
@@ -1636,7 +1695,9 @@ Public Class DiamondStealthPro928
             Return
         End If
         If index = &H30 OrElse index = &H36 OrElse index = &H37 Then
-            TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED read-only strap")
+            If RuntimeDiagnostics.Enabled Then
+                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED read-only strap")
+            End If
             Return
         End If
         ' S3 86C928 Data Book CR35, p. 7-5: timing locks are register/bit
@@ -1644,7 +1705,9 @@ Public Class DiamondStealthPro928
         ' bits in the same CRTC register still follow the bus write.
         If (_crtc(&H35) And &H20) <> 0 Then
             If index <= 5 Then
-                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR35 horizontal lock")
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR35 horizontal lock")
+                End If
                 Return
             ElseIf index = &H17 Then
                 value = CByte((value And Not &H4) Or (_crtc(&H17) And &H4))
@@ -1653,7 +1716,9 @@ Public Class DiamondStealthPro928
         If (_crtc(&H35) And &H10) <> 0 Then
             Select Case index
                 Case &H6, &H10, &H15, &H16
-                    TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR35 vertical lock")
+                    If RuntimeDiagnostics.Enabled Then
+                        TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR35 vertical lock")
+                    End If
                     Return
                 Case &H7
                     Const verticalOverflowLockMaskInBed As Integer = &HAD ' bits 7,5,3,2,0
@@ -1673,11 +1738,15 @@ Public Class DiamondStealthPro928
                 If (_crtc(&H33) And &H2) <> 0 Then writableMaskInBed = writableMaskInBed Or &H42
                 value = CByte((_crtc(7) And Not writableMaskInBed) Or (value And writableMaskInBed))
             Else
-                TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR11 protect")
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " BLOCKED CR11 protect")
+                End If
                 Return
             End If
         End If
-        TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " APPLIED")
+        If RuntimeDiagnostics.Enabled Then
+            TraceVgaDiagnostic("CRTC[" & index.ToString("X2") & "] <- " & value.ToString("X2") & " APPLIED")
+        End If
         Dim oldValueInBed As Byte = _crtc(index)
         Dim normalizedValueInBed As Byte = NormalizeExtendedCrtcWrite(index, value)
         _crtc(index) = normalizedValueInBed
@@ -1772,6 +1841,40 @@ Public Class DiamondStealthPro928
     Private Sub WriteDacData(value As Byte)
         _ramdac.WriteData(value)
     End Sub
+
+    ' CROMWELL VGA/VRAM CLOCK-BATCH BRICK 14
+    '
+    ' The 86C928 is one clocked device with several very different memory
+    ' windows.  S3 MMIO is timing-sensitive because PIX_TRANS and enhanced
+    ' command writes interact with the running graphics engine.  Plain option
+    ' ROM and VRAM storage cycles are not beam-status observations and do not
+    ' alter any guest-visible clock deadline.
+    '
+    ' The one important ordering exception is a running enhanced graphics
+    ' engine: CPU VRAM cycles then share backing storage with that engine, so
+    ' pending emulated time must be committed before the CPU touches VRAM.
+    Public Function MemoryAccessRequiresSynchronization(address As UInteger,
+                                                        isWrite As Boolean) As Boolean _
+        Implements IMemoryAccessTimingProvider.MemoryAccessRequiresSynchronization
+
+        If MemoryMappedIoContainsInBed(address) Then Return True
+        If Not _graphicsEngineBusy Then Return False
+
+        Dim ignoredInBed As Integer
+        If TryTranslateLegacyAperture(address, ignoredInBed) Then Return True
+        If TryTranslateLinearWindow(address, ignoredInBed) Then Return True
+        Return False
+    End Function
+
+    Public Function MemoryAccessChangesTimingTopology(address As UInteger,
+                                                      isWrite As Boolean) As Boolean _
+        Implements IMemoryAccessTimingProvider.MemoryAccessChangesTimingTopology
+
+        ' Only the MMIO aliases can feed/consume PIX_TRANS or write enhanced
+        ' engine registers.  Ordinary VGA/linear VRAM and ROM cycles neither
+        ' create nor remove a clock/wake condition.
+        Return MemoryMappedIoContainsInBed(address)
+    End Function
 
     Public Function HandlesMemory(address As UInteger) As Boolean Implements IMemoryMappedDevice.HandlesMemory
         If address >= OptionRomBase AndAlso address < OptionRomBase + OptionRomWindowSize AndAlso _optionRom.Length > 0 Then Return True
@@ -1917,7 +2020,7 @@ Public Class DiamondStealthPro928
     End Function
 
     Private Function ReadVgaMemory(apertureOffset As Integer) As Byte
-        _diagnosticVgaMemoryReadCount += 1UL
+        If RuntimeDiagnostics.Enabled Then _diagnosticVgaMemoryReadCount += 1UL
         Dim planeOffset As Integer
         Dim selectedPlaneInBed As Integer
         If Chain4Enabled() Then
@@ -1973,18 +2076,20 @@ Public Class DiamondStealthPro928
 
         Dim mapMask As Integer = (_sequencer(2) And &HF) And forcedPlaneMask
         Dim writeMode As Integer = _graphics(5) And 3
-        _diagnosticVgaWriteModeCounts(writeMode) += 1UL
-        _diagnosticVgaMapMaskCounts(mapMask And &HF) += 1UL
-        If Chain4Enabled() Then
-            _diagnosticVgaChainedWriteCount += 1UL
-        Else
-            _diagnosticVgaUnchainedWriteCount += 1UL
+        If RuntimeDiagnostics.Enabled Then
+            _diagnosticVgaWriteModeCounts(writeMode) += 1UL
+            _diagnosticVgaMapMaskCounts(mapMask And &HF) += 1UL
+            If Chain4Enabled() Then
+                _diagnosticVgaChainedWriteCount += 1UL
+            Else
+                _diagnosticVgaUnchainedWriteCount += 1UL
+            End If
         End If
         Dim rotateCount As Integer = _graphics(3) And 7
         Dim logicalOp As Integer = (_graphics(3) >> 3) And 3
         Dim bitMask As Integer = _graphics(8)
         Dim rotated As Integer = RotateRight8(value, rotateCount)
-        If writeMode = 2 Then _diagnosticVgaMode2Inputs(logicalOp, value And &HF) += 1UL
+        If RuntimeDiagnostics.Enabled AndAlso writeMode = 2 Then _diagnosticVgaMode2Inputs(logicalOp, value And &HF) += 1UL
 
         For plane As Integer = 0 To 3
             If (mapMask And (1 << plane)) = 0 Then Continue For
@@ -2015,17 +2120,26 @@ Public Class DiamondStealthPro928
                     effectiveMask = RotateRight8(value, rotateCount) And bitMask
             End Select
             Dim finalValue As Byte = CByte(((source And effectiveMask) Or (_latches(plane) And (Not effectiveMask And &HFF))) And &HFF)
-            Dim oldValueInBed As Integer = ReadPlaneByte(plane, planeOffset)
-            _diagnosticVgaPlaneBitsSet(writeMode, plane) +=
-                CULng(System.Numerics.BitOperations.PopCount(CUInt((Not oldValueInBed) And finalValue And &HFF)))
-            _diagnosticVgaPlaneBitsCleared(writeMode, plane) +=
-                CULng(System.Numerics.BitOperations.PopCount(CUInt(oldValueInBed And (Not finalValue) And &HFF)))
+
+            ' CROMWELL VGA DIAGNOSTIC DEAD-READ BRICK 15
+            '
+            ' oldValueInBed exists only to feed host-only diagnostic bit-transition
+            ' counters.  When runtime diagnostics are compiled out, reading the
+            ' physical plane here is pure overhead and performs a second complete
+            ' VGA plane-address calculation for every enabled plane write.
+            If RuntimeDiagnostics.Enabled Then
+                Dim oldValueInBed As Integer = ReadPlaneByte(plane, planeOffset)
+                _diagnosticVgaPlaneBitsSet(writeMode, plane) +=
+                    CULng(System.Numerics.BitOperations.PopCount(CUInt((Not oldValueInBed) And finalValue And &HFF)))
+                _diagnosticVgaPlaneBitsCleared(writeMode, plane) +=
+                    CULng(System.Numerics.BitOperations.PopCount(CUInt(oldValueInBed And (Not finalValue) And &HFF)))
+            End If
             WritePlaneByte(plane, planeOffset, finalValue)
         Next
     End Sub
 
     Private Sub LoadLatches(offset As Integer)
-        _diagnosticVgaLatchLoadCount += 1UL
+        If RuntimeDiagnostics.Enabled Then _diagnosticVgaLatchLoadCount += 1UL
         For plane As Integer = 0 To 3
             _latches(plane) = ReadPlaneByte(plane, offset)
         Next
@@ -2315,7 +2429,7 @@ Public Class DiamondStealthPro928
     End Function
 
     Public Function RenderFrame() As Bitmap
-        TraceVgaRenderClassIfChanged()
+        If RuntimeDiagnostics.Enabled Then TraceVgaRenderClassIfChanged()
         Dim frameInBed As Bitmap
         If Not VideoOutputEnabledInBed() Then
             frameInBed = RenderBlank(640, 400)
@@ -3479,7 +3593,9 @@ Public Class DiamondStealthPro928
     Private Sub WriteEnhancedWord(port As UInt16, value As UInt16)
         Select Case port
             Case &H42E8US
-                TraceVgaDiagnostic("OUT 42E8 S3 subsystem <- " & value.ToString("X4"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 42E8 S3 subsystem <- " & value.ToString("X4"))
+                End If
                 ' Bits 0-3 are write-one clear strobes.  Bits 8-11 are the
                 ' persistent enables; clear strobes must never be read back by
                 ' the byte-write shadow or replayed by a later high-byte write.
@@ -3498,7 +3614,9 @@ Public Class DiamondStealthPro928
                     _fifoEmptyInterruptPending = True
                 End If
             Case &H4AE8US
-                TraceVgaDiagnostic("OUT 4AE8 S3 advanced function <- " & value.ToString("X4"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceVgaDiagnostic("OUT 4AE8 S3 advanced function <- " & value.ToString("X4"))
+                End If
                 Dim oldAdvancedFunctionInBed As UInt16 = _advancedFunction
                 _advancedFunction = value
                 If ((oldAdvancedFunctionInBed Xor value) And &H30US) <> 0US Then
@@ -3658,24 +3776,1133 @@ Public Class DiamondStealthPro928
     End Sub
 
     Private Sub AdvanceGraphicsEngine(elapsedPicosecondsInBed As Long)
+        ' The 86C928 engine is a 40 MHz hardware state machine.  The old host
+        ' implementation modeled that clock by making one very large VB method
+        ' call for every 25 ns engine tick.  Windows accelerated GDI can issue
+        ' hundreds of thousands of pixels, turning one guest-time slice into
+        ' thousands of host calls even though the CPU cannot observe any state
+        ' between those ticks.
+        '
+        ' Keep the exact same 25 ns clock and BUSY/FIFO completion points, but
+        ' consume all whole engine ticks available in this coordinated machine
+        ' interval as one deterministic batch.  No worker thread and no host-time
+        ' shortcut are involved: the engine remains on the machine owner.
         Dim remainingInBed As Long = elapsedPicosecondsInBed
+
         While remainingInBed > 0 AndAlso _engineActiveCommand IsNot Nothing
-            Dim neededInBed As Long = EnginePixelPeriodPicoseconds - _engineActiveCommand.PixelPhasePicoseconds
+            Dim commandInBed As EngineCommand928 = _engineActiveCommand
+            Dim neededInBed As Long =
+                EnginePixelPeriodPicoseconds - commandInBed.PixelPhasePicoseconds
+
             If remainingInBed < neededInBed Then
-                _engineActiveCommand.PixelPhasePicoseconds += remainingInBed
+                commandInBed.PixelPhasePicoseconds += remainingInBed
                 Exit While
             End If
+
+            ' Reach the next real 40 MHz engine edge.  Everything after this edge
+            ' can be represented as a count of additional complete engine ticks.
             remainingInBed -= neededInBed
-            _engineActiveCommand.PixelPhasePicoseconds = 0
-            If StepEnhancedCommand(_engineActiveCommand) Then
-                Dim completedInBed As EngineCommand928 = _engineActiveCommand
+            commandInBed.PixelPhasePicoseconds = 0
+
+            Dim ticksAvailableInBed As Long =
+                1L + (remainingInBed \ EnginePixelPeriodPicoseconds)
+            Dim ticksConsumedInBed As Long = 0
+            Dim stalledInBed As Boolean = False
+            Dim completedCommandInBed As Boolean =
+                StepEnhancedCommandBatchInBed(commandInBed,
+                                              ticksAvailableInBed,
+                                              ticksConsumedInBed,
+                                              stalledInBed)
+
+            ' Every normal batch consumes at least the edge which got us here.
+            ' Keep a defensive floor so a malformed future command cannot spin
+            ' the machine thread forever.
+            If ticksConsumedInBed <= 0 Then ticksConsumedInBed = 1
+            If ticksConsumedInBed > ticksAvailableInBed Then
+                ticksConsumedInBed = ticksAvailableInBed
+            End If
+
+            If ticksConsumedInBed > 1 Then
+                remainingInBed -=
+                    (ticksConsumedInBed - 1L) * EnginePixelPeriodPicoseconds
+            End If
+
+            If completedCommandInBed Then
+                Dim completedInBed As EngineCommand928 = commandInBed
                 _engineActiveCommand = Nothing
                 _curX = CUShort(completedInBed.CurX And &HFFFUS)
                 _curY = CUShort(completedInBed.CurY And &HFFFUS)
                 _errorTerm = CUShort(completedInBed.ErrorTerm And &H3FFFUS)
                 StartNextEngineCommand()
+                Continue While
+            End If
+
+            If stalledInBed Then
+                ' WAIT image-transfer commands are genuinely blocked on CPU
+                ' PIX_TRANS traffic.  While blocked, subsequent 40 MHz edges do
+                ' not make command progress.  Preserve only the free-running
+                ' fractional engine phase that the old per-tick loop would have
+                ' left at the end of this interval; do not manufacture catch-up
+                ' work for the next CPU write.
+                commandInBed.PixelPhasePicoseconds =
+                    remainingInBed Mod EnginePixelPeriodPicoseconds
+                Exit While
+            End If
+
+            ' If the active command neither completed nor stalled, the batch used
+            ' every whole engine tick available in this interval.  The only time
+            ' left is the sub-pixel phase toward the next 40 MHz edge.
+            commandInBed.PixelPhasePicoseconds = remainingInBed
+            Exit While
+        End While
+    End Sub
+
+    Private Function StepEnhancedCommandBatchInBed(commandInBed As EngineCommand928,
+                                                    maxTicksInBed As Long,
+                                                    ByRef ticksConsumedInBed As Long,
+                                                    ByRef stalledInBed As Boolean) As Boolean
+        ticksConsumedInBed = 0
+        stalledInBed = False
+        If maxTicksInBed <= 0 Then Return False
+
+        If commandInBed.IsShortStroke Then
+            Return StepShortStrokeBatchInBed(commandInBed,
+                                             maxTicksInBed,
+                                             ticksConsumedInBed)
+        End If
+
+        Dim commandTypeInBed As Integer = (commandInBed.Command >> 13) And 7
+
+        ' Rectangle + WAIT is the host image-transfer handshake.  It is not a
+        ' pixel-clocked autonomous rectangle while the CPU transfer FIFO is empty.
+        If commandTypeInBed = 2 AndAlso (commandInBed.Command And &H100US) <> 0 Then
+            Return StepPixelTransferBatchInBed(commandInBed,
+                                               maxTicksInBed,
+                                               ticksConsumedInBed,
+                                               stalledInBed)
+        End If
+
+        Select Case commandTypeInBed
+            Case 1
+                Return StepLineBatchInBed(commandInBed,
+                                          maxTicksInBed,
+                                          ticksConsumedInBed)
+
+            Case 2, 6, 7
+                Return StepRectangleLikeBatchInBed(commandInBed,
+                                                   commandTypeInBed,
+                                                   maxTicksInBed,
+                                                   ticksConsumedInBed)
+
+            Case Else
+                ' Reserved/other command types keep their previous one-engine-edge
+                ' behavior.  Do not invent a bulk operation for undocumented CMD
+                ' encodings merely because a batch budget is available.
+                ticksConsumedInBed = 1
+                Return StepEnhancedCommand(commandInBed)
+        End Select
+    End Function
+
+    Private Function StepPixelTransferBatchInBed(commandInBed As EngineCommand928,
+                                                 maxTicksInBed As Long,
+                                                 ByRef ticksConsumedInBed As Long,
+                                                 ByRef stalledInBed As Boolean) As Boolean
+        While ticksConsumedInBed < maxTicksInBed
+            If Not commandInBed.TransferInitialized Then
+                InitializePixelTransferCommandInBed(commandInBed)
+            End If
+
+            Dim transferBytesInBed As Integer = If(commandInBed.TransferWordWidth, 2, 1)
+            Dim canAdvanceInBed As Boolean
+            If commandInBed.TransferWrite Then
+                canAdvanceInBed = _pixelTransferWriteBytes.Count >= transferBytesInBed
+            Else
+                canAdvanceInBed = _pixelTransferReadBytes.Count = 0
+            End If
+
+            If Not canAdvanceInBed Then
+                ' The old engine loop spent this edge discovering that the
+                ' transfer was blocked, then repeated the same no-op test on every
+                ' later 25 ns edge until CPU traffic arrived.  Consume this one
+                ' edge and collapse the rest of the provably idle interval.
+                ticksConsumedInBed += 1
+                stalledInBed = True
+                Return False
+            End If
+
+            Dim completedInBed As Boolean = StepPixelTransferCommandInBed(commandInBed)
+            ticksConsumedInBed += 1
+            If completedInBed Then Return True
+        End While
+
+        Return False
+    End Function
+
+    Private Function StepLineBatchInBed(commandInBed As EngineCommand928,
+                                        maxTicksInBed As Long,
+                                        ByRef ticksConsumedInBed As Long) As Boolean
+        If Not commandInBed.Initialized Then
+            commandInBed.LineX = commandInBed.CurX
+            commandInBed.LineY = commandInBed.CurY
+            commandInBed.TotalPixels = (commandInBed.MajorAxisCount And &HFFFUS) + 1L
+            Dim directionInBed As Integer = (commandInBed.Command >> 5) And 7
+            commandInBed.LineRadial = (commandInBed.Command And &H8US) <> 0
+
+            If commandInBed.LineRadial Then
+                GetEngineDirectionStepInBed(directionInBed,
+                                            commandInBed.LineStepX,
+                                            commandInBed.LineStepY)
+            Else
+                commandInBed.LineStepX = If((directionInBed And 1) <> 0, 1, -1)
+                commandInBed.LineStepY = If((directionInBed And 4) <> 0, 1, -1)
+                commandInBed.LineMajorIsY = (directionInBed And 2) = 0
+                commandInBed.LineDx = SignExtend14(commandInBed.DestY)
+                commandInBed.LineDy = SignExtend14(commandInBed.DestX)
+                commandInBed.LineError = SignExtend14(commandInBed.ErrorTerm)
+            End If
+            commandInBed.Initialized = True
+        End If
+
+        Dim remainingPixelsInBed As Long = commandInBed.TotalPixels - commandInBed.Progress
+        If remainingPixelsInBed <= 0 Then Return True
+        Dim pixelsToRunInBed As Long = Math.Min(maxTicksInBed, remainingPixelsInBed)
+
+        While ticksConsumedInBed < pixelsToRunInBed
+            Dim finalPixelInBed As Boolean =
+                commandInBed.Progress = commandInBed.TotalPixels - 1L
+            Dim drawPixelInBed As Boolean =
+                (commandInBed.Command And &H10US) <> 0 AndAlso
+                Not (finalPixelInBed AndAlso (commandInBed.Command And &H4US) <> 0)
+
+            If drawPixelInBed Then
+                PutEnhancedPixelForCommand(commandInBed,
+                                           commandInBed.LineX,
+                                           commandInBed.LineY,
+                                           commandInBed.ForegroundColor,
+                                           commandInBed.ForegroundMix)
+            End If
+
+            commandInBed.Progress += 1
+            ticksConsumedInBed += 1
+
+            If commandInBed.Progress >= commandInBed.TotalPixels Then
+                commandInBed.CurX = CUShort(commandInBed.LineX And &HFFF)
+                commandInBed.CurY = CUShort(commandInBed.LineY And &HFFF)
+                commandInBed.ErrorTerm = CUShort(commandInBed.LineError And &H3FFF)
+                Return True
+            End If
+
+            If commandInBed.LineRadial Then
+                commandInBed.LineX += commandInBed.LineStepX
+                commandInBed.LineY += commandInBed.LineStepY
+            ElseIf commandInBed.LineError >= 0 Then
+                commandInBed.LineX += commandInBed.LineStepX
+                commandInBed.LineY += commandInBed.LineStepY
+                commandInBed.LineError += commandInBed.LineDy
+            Else
+                If commandInBed.LineMajorIsY Then
+                    commandInBed.LineY += commandInBed.LineStepY
+                Else
+                    commandInBed.LineX += commandInBed.LineStepX
+                End If
+                commandInBed.LineError += commandInBed.LineDx
             End If
         End While
+
+        commandInBed.CurX = CUShort(commandInBed.LineX And &HFFF)
+        commandInBed.CurY = CUShort(commandInBed.LineY And &HFFF)
+        commandInBed.ErrorTerm = CUShort(commandInBed.LineError And &H3FFF)
+        Return False
+    End Function
+
+    Private Function StepShortStrokeBatchInBed(commandInBed As EngineCommand928,
+                                               maxTicksInBed As Long,
+                                               ByRef ticksConsumedInBed As Long) As Boolean
+        If Not commandInBed.Initialized Then
+            commandInBed.LineX = CInt(commandInBed.CurX)
+            commandInBed.LineY = CInt(commandInBed.CurY)
+            commandInBed.ShortStrokeVectorIndex = 0
+            commandInBed.ShortStrokePixelsRemaining = 0
+            commandInBed.Initialized = True
+        End If
+
+        While ticksConsumedInBed < maxTicksInBed
+            While commandInBed.ShortStrokePixelsRemaining <= 0 AndAlso
+                  commandInBed.ShortStrokeVectorIndex < 2
+                Dim byteIndexInBed As Integer =
+                    If((commandInBed.Command And &H1000US) <> 0,
+                       commandInBed.ShortStrokeVectorIndex,
+                       1 - commandInBed.ShortStrokeVectorIndex)
+                Dim vectorInBed As Integer =
+                    (CInt(commandInBed.ShortStrokeValue) >> (byteIndexInBed * 8)) And &HFF
+                commandInBed.ShortStrokeVectorIndex += 1
+                commandInBed.ShortStrokePixelsRemaining = (vectorInBed And &HF) + 1
+                commandInBed.Command =
+                    CUShort((commandInBed.Command And Not &H10US) Or
+                            CUShort(vectorInBed And &H10))
+                Dim directionInBed As Integer = (vectorInBed >> 5) And 7
+                GetEngineDirectionStepInBed(directionInBed,
+                                            commandInBed.LineStepX,
+                                            commandInBed.LineStepY)
+            End While
+
+            If commandInBed.ShortStrokePixelsRemaining <= 0 Then
+                commandInBed.CurX = CUShort(commandInBed.LineX And &HFFF)
+                commandInBed.CurY = CUShort(commandInBed.LineY And &HFFF)
+                Return True
+            End If
+
+            If (commandInBed.Command And &H10US) <> 0 Then
+                PutEnhancedPixelForCommand(commandInBed,
+                                           commandInBed.LineX,
+                                           commandInBed.LineY,
+                                           commandInBed.ForegroundColor,
+                                           commandInBed.ForegroundMix)
+            End If
+
+            commandInBed.LineX += commandInBed.LineStepX
+            commandInBed.LineY += commandInBed.LineStepY
+            commandInBed.ShortStrokePixelsRemaining -= 1
+            commandInBed.Progress += 1
+            ticksConsumedInBed += 1
+            commandInBed.CurX = CUShort(commandInBed.LineX And &HFFF)
+            commandInBed.CurY = CUShort(commandInBed.LineY And &HFFF)
+
+            If commandInBed.Progress >= commandInBed.TotalPixels Then Return True
+        End While
+
+        Return False
+    End Function
+
+    Private Shared Sub GetEngineDirectionStepInBed(directionInBed As Integer,
+                                                   ByRef dxInBed As Integer,
+                                                   ByRef dyInBed As Integer)
+        Select Case directionInBed And 7
+            Case 0 : dxInBed = 1 : dyInBed = 0
+            Case 1 : dxInBed = 1 : dyInBed = -1
+            Case 2 : dxInBed = 0 : dyInBed = -1
+            Case 3 : dxInBed = -1 : dyInBed = -1
+            Case 4 : dxInBed = -1 : dyInBed = 0
+            Case 5 : dxInBed = -1 : dyInBed = 1
+            Case 6 : dxInBed = 0 : dyInBed = 1
+            Case Else : dxInBed = 1 : dyInBed = 1
+        End Select
+    End Sub
+
+    Private Function StepRectangleLikeBatchInBed(commandInBed As EngineCommand928,
+                                                  commandTypeInBed As Integer,
+                                                  maxTicksInBed As Long,
+                                                  ByRef ticksConsumedInBed As Long) As Boolean
+        Dim widthInBed As Integer = (commandInBed.MajorAxisCount And &HFFFUS) + 1
+        Dim heightInBed As Integer = (commandInBed.MinorAxisCount And &HFFFUS) + 1
+        commandInBed.TotalPixels = CLng(widthInBed) * heightInBed
+
+        Dim remainingPixelsInBed As Long = commandInBed.TotalPixels - commandInBed.Progress
+        If remainingPixelsInBed <= 0 Then
+            commandInBed.CurX = commandInBed.DestX
+            commandInBed.CurY = commandInBed.DestY
+            Return True
+        End If
+
+        Dim pixelsToRunInBed As Long = Math.Min(maxTicksInBed, remainingPixelsInBed)
+        Dim drawEnabledInBed As Boolean = (commandInBed.Command And &H10US) <> 0
+        Dim xDirectionInBed As Integer = If((commandInBed.Command And &H20US) <> 0, 1, -1)
+        Dim yDirectionInBed As Integer = If((commandInBed.Command And &H80US) <> 0, 1, -1)
+
+        While ticksConsumedInBed < pixelsToRunInBed
+            Dim rowInBed As Long = commandInBed.Progress \ widthInBed
+            Dim columnInBed As Integer = CInt(commandInBed.Progress - rowInBed * widthInBed)
+            Dim pixelsLeftInRowInBed As Integer = widthInBed - columnInBed
+            Dim batchLeftInBed As Long = pixelsToRunInBed - ticksConsumedInBed
+            Dim spanPixelsInBed As Integer =
+                CInt(Math.Min(CLng(pixelsLeftInRowInBed), batchLeftInBed))
+
+            If drawEnabledInBed Then
+                Select Case commandTypeInBed
+                    Case 2
+                        If Not TryFastSolidFillSpanInBed(commandInBed,
+                                                        CInt(rowInBed),
+                                                        columnInBed,
+                                                        spanPixelsInBed,
+                                                        xDirectionInBed,
+                                                        yDirectionInBed) AndAlso
+                           Not TryFastGeneralSolidRopSpanInBed(commandInBed,
+                                                              CInt(rowInBed),
+                                                              columnInBed,
+                                                              spanPixelsInBed,
+                                                              xDirectionInBed,
+                                                              yDirectionInBed) Then
+                            For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+                                Dim xxInBed As Integer = columnInBed + offsetInBed
+                                Dim destinationXInBed As Integer =
+                                    CInt(commandInBed.CurX) + xxInBed * xDirectionInBed
+                                Dim destinationYInBed As Integer =
+                                    CInt(commandInBed.CurY) + CInt(rowInBed) * yDirectionInBed
+                                PutEnhancedPixelForCommand(commandInBed,
+                                                           destinationXInBed,
+                                                           destinationYInBed,
+                                                           commandInBed.ForegroundColor,
+                                                           commandInBed.ForegroundMix)
+                            Next
+                        End If
+
+                    Case 6
+                        If Not TryFastSourceCopySpanInBed(commandInBed,
+                                                         CInt(rowInBed),
+                                                         columnInBed,
+                                                         spanPixelsInBed,
+                                                         xDirectionInBed,
+                                                         yDirectionInBed) AndAlso
+                           Not TryFastGeneralBitBltRopSpanInBed(commandInBed,
+                                                               CInt(rowInBed),
+                                                               columnInBed,
+                                                               spanPixelsInBed,
+                                                               xDirectionInBed,
+                                                               yDirectionInBed) Then
+                            For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+                                Dim xxInBed As Integer = columnInBed + offsetInBed
+                                Dim sourceInBed As UInteger =
+                                    GetEnhancedPixelForCommand(commandInBed,
+                                        CInt(commandInBed.CurX) + xxInBed * xDirectionInBed,
+                                        CInt(commandInBed.CurY) + CInt(rowInBed) * yDirectionInBed,
+                                        sourceAddressInBed:=True)
+                                Dim destinationXInBed As Integer =
+                                    CInt(commandInBed.DestX) + xxInBed * xDirectionInBed
+                                Dim destinationYInBed As Integer =
+                                    CInt(commandInBed.DestY) + CInt(rowInBed) * yDirectionInBed
+                                PutEnhancedPixelForCommand(commandInBed,
+                                                           destinationXInBed,
+                                                           destinationYInBed,
+                                                           sourceInBed,
+                                                           commandInBed.ForegroundMix)
+                            Next
+                        End If
+
+                    Case 7
+                        ' Through-plane patterns are common GDI work.  When the
+                        ' command uses ordinary scissors, no color compare, full
+                        ' write mask, and no across-plane foreground/background
+                        ' selector, the exact existing datapath can be collapsed
+                        ' into one direct VRAM span loop.
+                        '
+                        ' Across-plane modes (PIX_CNTL selector 2/3) deliberately
+                        ' remain on the original per-pixel path.
+                        If Not TryFastPatternRopSpanInBed(commandInBed,
+                                                         CInt(rowInBed),
+                                                         columnInBed,
+                                                         spanPixelsInBed) Then
+                            For offsetInBed As Integer = 0 To spanPixelsInBed - 1
+                                Dim xxInBed As Integer = columnInBed + offsetInBed
+                                Dim patternXInBed As Integer =
+                                    (CInt(commandInBed.CurX) And Not 7) + (xxInBed And 7)
+                                Dim patternYInBed As Integer =
+                                    CInt(commandInBed.CurY) + (CInt(rowInBed) And 7)
+                                Dim sourceInBed As UInteger =
+                                    GetEnhancedPixelForCommand(commandInBed,
+                                                               patternXInBed,
+                                                               patternYInBed,
+                                                               sourceAddressInBed:=True)
+                                PutEnhancedPixelForCommand(commandInBed,
+                                                           CInt(commandInBed.DestX) + xxInBed,
+                                                           CInt(commandInBed.DestY) + CInt(rowInBed),
+                                                           sourceInBed,
+                                                           commandInBed.ForegroundMix)
+                            Next
+                        End If
+                End Select
+            End If
+
+            commandInBed.Progress += spanPixelsInBed
+            ticksConsumedInBed += spanPixelsInBed
+        End While
+
+        If commandInBed.Progress >= commandInBed.TotalPixels Then
+            commandInBed.CurX = commandInBed.DestX
+            commandInBed.CurY = commandInBed.DestY
+            Return True
+        End If
+
+        Return False
+    End Function
+
+    Private Function TryFastSolidFillSpanInBed(commandInBed As EngineCommand928,
+                                               rowInBed As Integer,
+                                               columnInBed As Integer,
+                                               pixelCountInBed As Integer,
+                                               xDirectionInBed As Integer,
+                                               yDirectionInBed As Integer) As Boolean
+        If pixelCountInBed <= 0 Then Return True
+
+        ' Only collapse a span when every pixel is provably the same write.  Any
+        ' inverse scissors, source color-compare, destination-dependent pixel
+        ' selector, partial write mask, or destination-dependent MIX falls back to
+        ' the original per-pixel datapath.
+        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
+        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
+        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
+
+        Dim activeMaskInBed As UInteger = PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
+        If activeMaskInBed = 0UI Then Return False
+        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then Return False
+
+        Dim selectedSourceInBed As UInteger =
+            SelectCommandMixColor(commandInBed,
+                                  commandInBed.ForegroundMix,
+                                  commandInBed.ForegroundColor,
+                                  0UI)
+        Dim finalColorInBed As UInteger
+        Select Case commandInBed.ForegroundMix And &HFUS
+            Case &H1US
+                finalColorInBed = 0UI
+            Case &H2US
+                finalColorInBed = &HFFFFFFFFUI
+            Case &H4US
+                finalColorInBed = Not selectedSourceInBed
+            Case &H7US
+                finalColorInBed = selectedSourceInBed
+            Case Else
+                Return False
+        End Select
+        finalColorInBed = finalColorInBed And activeMaskInBed
+
+        Dim destinationYInBed As Integer =
+            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
+        If destinationYInBed < 0 Then Return True
+        If destinationYInBed < commandInBed.TopScissors OrElse
+           destinationYInBed > commandInBed.BottomScissors Then
+            Return True
+        End If
+
+        Dim firstColumnInBed As Integer
+        Dim lastColumnInBed As Integer
+        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.CurX),
+                                                   xDirectionInBed,
+                                                   columnInBed,
+                                                   pixelCountInBed,
+                                                   commandInBed.LeftScissors,
+                                                   commandInBed.RightScissors,
+                                                   firstColumnInBed,
+                                                   lastColumnInBed) Then
+            Return True
+        End If
+
+        Dim x1InBed As Integer =
+            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
+        Dim x2InBed As Integer =
+            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
+        Dim minimumXInBed As Integer = Math.Min(x1InBed, x2InBed)
+        Dim pixelsToWriteInBed As Integer = lastColumnInBed - firstColumnInBed + 1
+        Dim addressInBed As Long = commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(minimumXInBed) * commandInBed.BytesPerPixel
+        Dim byteCountInBed As Long = CLng(pixelsToWriteInBed) * commandInBed.BytesPerPixel
+
+        If addressInBed < 0 OrElse addressInBed + byteCountInBed > VramSize Then Return False
+
+        FillEnhancedVramSpanInBed(CInt(addressInBed),
+                                  pixelsToWriteInBed,
+                                  commandInBed.BytesPerPixel,
+                                  finalColorInBed)
+        Return True
+    End Function
+
+    Private Function TryFastGeneralSolidRopSpanInBed(commandInBed As EngineCommand928,
+                                                     rowInBed As Integer,
+                                                     columnInBed As Integer,
+                                                     pixelCountInBed As Integer,
+                                                     xDirectionInBed As Integer,
+                                                     yDirectionInBed As Integer) As Boolean
+        If pixelCountInBed <= 0 Then Return True
+
+        ' This is the same safe envelope as the original solid fast fill, except
+        ' destination-dependent MIX functions are allowed.  Each destination
+        ' pixel is still read, transformed through the exact S3 MIX truth table,
+        ' and written in programmed X order.
+        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
+        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
+        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
+
+        Dim activeMaskInBed As UInteger =
+            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
+        If activeMaskInBed = 0UI Then Return False
+        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
+            Return False
+        End If
+
+        Dim destinationYInBed As Integer =
+            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
+        If destinationYInBed < 0 Then Return True
+        If destinationYInBed < commandInBed.TopScissors OrElse
+           destinationYInBed > commandInBed.BottomScissors Then
+            Return True
+        End If
+
+        Dim firstColumnInBed As Integer
+        Dim lastColumnInBed As Integer
+        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.CurX),
+                                                   xDirectionInBed,
+                                                   columnInBed,
+                                                   pixelCountInBed,
+                                                   commandInBed.LeftScissors,
+                                                   commandInBed.RightScissors,
+                                                   firstColumnInBed,
+                                                   lastColumnInBed) Then
+            Return True
+        End If
+
+        Dim firstXInBed As Integer =
+            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
+        Dim lastXInBed As Integer =
+            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
+        Dim minimumXInBed As Integer = Math.Min(firstXInBed, lastXInBed)
+        Dim maximumXInBed As Integer = Math.Max(firstXInBed, lastXInBed)
+
+        Dim minimumAddressInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(minimumXInBed) * commandInBed.BytesPerPixel
+        Dim maximumEndInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(maximumXInBed + 1) * commandInBed.BytesPerPixel
+        If minimumAddressInBed < 0 OrElse maximumEndInBed > VramSize Then
+            Return False
+        End If
+
+        Dim selectedSourceInBed As UInteger =
+            SelectCommandMixColor(commandInBed,
+                                  commandInBed.ForegroundMix,
+                                  commandInBed.ForegroundColor,
+                                  0UI)
+        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
+        Dim strideBytesInBed As Integer =
+            xDirectionInBed * commandInBed.BytesPerPixel
+        Dim addressInBed As Integer =
+            CInt(commandInBed.DestinationBaseAddress +
+                 CLng(destinationYInBed) * commandInBed.PitchBytes +
+                 CLng(firstXInBed) * commandInBed.BytesPerPixel)
+
+        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
+            Dim destinationInBed As UInteger =
+                ReadEnhancedPixelDirectInBed(addressInBed,
+                                             commandInBed.BytesPerPixel)
+            Dim mixedInBed As UInteger =
+                ApplyMixFunction(selectedSourceInBed,
+                                 destinationInBed,
+                                 mixInBed) And activeMaskInBed
+            WriteEnhancedPixelDirectInBed(addressInBed,
+                                          commandInBed.BytesPerPixel,
+                                          mixedInBed)
+            addressInBed += strideBytesInBed
+        Next
+
+        Return True
+    End Function
+
+    Private Function TryFastGeneralBitBltRopSpanInBed(commandInBed As EngineCommand928,
+                                                      rowInBed As Integer,
+                                                      columnInBed As Integer,
+                                                      pixelCountInBed As Integer,
+                                                      xDirectionInBed As Integer,
+                                                      yDirectionInBed As Integer) As Boolean
+        If pixelCountInBed <= 0 Then Return True
+        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
+        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
+        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
+
+        Dim activeMaskInBed As UInteger =
+            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
+        If activeMaskInBed = 0UI Then Return False
+        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
+            Return False
+        End If
+
+        Dim destinationYInBed As Integer =
+            CInt(commandInBed.DestY) + rowInBed * yDirectionInBed
+        If destinationYInBed < 0 Then Return True
+        If destinationYInBed < commandInBed.TopScissors OrElse
+           destinationYInBed > commandInBed.BottomScissors Then
+            Return True
+        End If
+
+        Dim sourceYInBed As Integer =
+            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
+        If sourceYInBed < 0 Then Return False
+
+        Dim firstColumnInBed As Integer
+        Dim lastColumnInBed As Integer
+        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.DestX),
+                                                   xDirectionInBed,
+                                                   columnInBed,
+                                                   pixelCountInBed,
+                                                   commandInBed.LeftScissors,
+                                                   commandInBed.RightScissors,
+                                                   firstColumnInBed,
+                                                   lastColumnInBed) Then
+            Return True
+        End If
+
+        Dim sourceFirstXInBed As Integer =
+            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
+        Dim sourceLastXInBed As Integer =
+            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
+        If sourceFirstXInBed < 0 OrElse sourceLastXInBed < 0 Then Return False
+
+        Dim destinationFirstXInBed As Integer =
+            CInt(commandInBed.DestX) + firstColumnInBed * xDirectionInBed
+        Dim destinationLastXInBed As Integer =
+            CInt(commandInBed.DestX) + lastColumnInBed * xDirectionInBed
+
+        Dim sourceMinXInBed As Integer = Math.Min(sourceFirstXInBed, sourceLastXInBed)
+        Dim sourceMaxXInBed As Integer = Math.Max(sourceFirstXInBed, sourceLastXInBed)
+        Dim destinationMinXInBed As Integer =
+            Math.Min(destinationFirstXInBed, destinationLastXInBed)
+        Dim destinationMaxXInBed As Integer =
+            Math.Max(destinationFirstXInBed, destinationLastXInBed)
+
+        Dim sourceMinAddressInBed As Long =
+            commandInBed.SourceBaseAddress +
+            CLng(sourceYInBed) * commandInBed.PitchBytes +
+            CLng(sourceMinXInBed) * commandInBed.BytesPerPixel
+        Dim sourceMaxEndInBed As Long =
+            commandInBed.SourceBaseAddress +
+            CLng(sourceYInBed) * commandInBed.PitchBytes +
+            CLng(sourceMaxXInBed + 1) * commandInBed.BytesPerPixel
+        Dim destinationMinAddressInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(destinationMinXInBed) * commandInBed.BytesPerPixel
+        Dim destinationMaxEndInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(destinationMaxXInBed + 1) * commandInBed.BytesPerPixel
+
+        If sourceMinAddressInBed < 0 OrElse sourceMaxEndInBed > VramSize OrElse
+           destinationMinAddressInBed < 0 OrElse destinationMaxEndInBed > VramSize Then
+            Return False
+        End If
+
+        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
+        Dim sourceSelectorInBed As Integer = (mixInBed >> 5) And 3US
+        Dim constantSourceInBed As UInteger = 0UI
+        If sourceSelectorInBed <> 3 Then
+            constantSourceInBed =
+                SelectCommandMixColor(commandInBed,
+                                      mixInBed,
+                                      0UI,
+                                      0UI)
+        End If
+
+        Dim strideBytesInBed As Integer =
+            xDirectionInBed * commandInBed.BytesPerPixel
+        Dim sourceAddressInBed As Integer =
+            CInt(commandInBed.SourceBaseAddress +
+                 CLng(sourceYInBed) * commandInBed.PitchBytes +
+                 CLng(sourceFirstXInBed) * commandInBed.BytesPerPixel)
+        Dim destinationAddressInBed As Integer =
+            CInt(commandInBed.DestinationBaseAddress +
+                 CLng(destinationYInBed) * commandInBed.PitchBytes +
+                 CLng(destinationFirstXInBed) * commandInBed.BytesPerPixel)
+
+        ' Programmed iteration order is retained exactly.  That matters when
+        ' source and destination overlap: an unsafe guest-selected direction must
+        ' still smear just like the real engine, rather than gaining memmove
+        ' semantics from the host implementation.
+        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
+            Dim operationSourceInBed As UInteger =
+                If(sourceSelectorInBed = 3,
+                   ReadEnhancedPixelDirectInBed(sourceAddressInBed,
+                                                commandInBed.BytesPerPixel),
+                   constantSourceInBed)
+            Dim destinationInBed As UInteger =
+                ReadEnhancedPixelDirectInBed(destinationAddressInBed,
+                                             commandInBed.BytesPerPixel)
+            Dim mixedInBed As UInteger =
+                ApplyMixFunction(operationSourceInBed,
+                                 destinationInBed,
+                                 mixInBed) And activeMaskInBed
+            WriteEnhancedPixelDirectInBed(destinationAddressInBed,
+                                          commandInBed.BytesPerPixel,
+                                          mixedInBed)
+
+            sourceAddressInBed += strideBytesInBed
+            destinationAddressInBed += strideBytesInBed
+        Next
+
+        Return True
+    End Function
+
+    Private Function TryFastPatternRopSpanInBed(commandInBed As EngineCommand928,
+                                                rowInBed As Integer,
+                                                columnInBed As Integer,
+                                                pixelCountInBed As Integer) As Boolean
+        If pixelCountInBed <= 0 Then Return True
+        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
+        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
+        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
+
+        Dim activeMaskInBed As UInteger =
+            PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
+        If activeMaskInBed = 0UI Then Return False
+        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then
+            Return False
+        End If
+
+        ' Preserve the existing type-7 coordinate semantics exactly: destination
+        ' advances +X/+Y by command progress, and the source repeats an 8x8 tile
+        ' rooted at CUR_X rounded down to an 8-pixel boundary.
+        Dim destinationYInBed As Integer =
+            CInt(commandInBed.DestY) + rowInBed
+        If destinationYInBed < 0 Then Return True
+        If destinationYInBed < commandInBed.TopScissors OrElse
+           destinationYInBed > commandInBed.BottomScissors Then
+            Return True
+        End If
+
+        Dim firstColumnInBed As Integer
+        Dim lastColumnInBed As Integer
+        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.DestX),
+                                                   1,
+                                                   columnInBed,
+                                                   pixelCountInBed,
+                                                   commandInBed.LeftScissors,
+                                                   commandInBed.RightScissors,
+                                                   firstColumnInBed,
+                                                   lastColumnInBed) Then
+            Return True
+        End If
+
+        Dim destinationFirstXInBed As Integer =
+            CInt(commandInBed.DestX) + firstColumnInBed
+        Dim destinationLastXInBed As Integer =
+            CInt(commandInBed.DestX) + lastColumnInBed
+        Dim destinationStartAddressInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(destinationFirstXInBed) * commandInBed.BytesPerPixel
+        Dim destinationEndInBed As Long =
+            commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(destinationLastXInBed + 1) * commandInBed.BytesPerPixel
+        If destinationStartAddressInBed < 0 OrElse
+           destinationEndInBed > VramSize Then
+            Return False
+        End If
+
+        Dim mixInBed As UInt16 = commandInBed.ForegroundMix
+        Dim sourceSelectorInBed As Integer = (mixInBed >> 5) And 3US
+        Dim constantSourceInBed As UInteger = 0UI
+        If sourceSelectorInBed <> 3 Then
+            constantSourceInBed =
+                SelectCommandMixColor(commandInBed,
+                                      mixInBed,
+                                      0UI,
+                                      0UI)
+        End If
+
+        Dim patternBaseXInBed As Integer =
+            CInt(commandInBed.CurX) And Not 7
+        Dim patternYInBed As Integer =
+            CInt(commandInBed.CurY) + (rowInBed And 7)
+        Dim destinationAddressInBed As Integer =
+            CInt(destinationStartAddressInBed)
+
+        For logicalColumnInBed As Integer = firstColumnInBed To lastColumnInBed
+            Dim operationSourceInBed As UInteger = constantSourceInBed
+            If sourceSelectorInBed = 3 Then
+                Dim patternXInBed As Integer =
+                    patternBaseXInBed + (logicalColumnInBed And 7)
+                operationSourceInBed =
+                    ReadEnhancedPixelForAddressSafeInBed(
+                        commandInBed.SourceBaseAddress +
+                        CLng(patternYInBed) * commandInBed.PitchBytes +
+                        CLng(patternXInBed) * commandInBed.BytesPerPixel,
+                        commandInBed.BytesPerPixel)
+            End If
+
+            Dim destinationInBed As UInteger =
+                ReadEnhancedPixelDirectInBed(destinationAddressInBed,
+                                             commandInBed.BytesPerPixel)
+            Dim mixedInBed As UInteger =
+                ApplyMixFunction(operationSourceInBed,
+                                 destinationInBed,
+                                 mixInBed) And activeMaskInBed
+            WriteEnhancedPixelDirectInBed(destinationAddressInBed,
+                                          commandInBed.BytesPerPixel,
+                                          mixedInBed)
+            destinationAddressInBed += commandInBed.BytesPerPixel
+        Next
+
+        Return True
+    End Function
+
+    Private Function TryFastSourceCopySpanInBed(commandInBed As EngineCommand928,
+                                                rowInBed As Integer,
+                                                columnInBed As Integer,
+                                                pixelCountInBed As Integer,
+                                                xDirectionInBed As Integer,
+                                                yDirectionInBed As Integer) As Boolean
+        If pixelCountInBed <= 0 Then Return True
+        If (commandInBed.MultifunctionMisc And &H20US) <> 0 Then Return False
+        If (commandInBed.MultifunctionMisc And &H100US) <> 0 Then Return False
+        If ((commandInBed.PixelControl >> 6) And 3US) >= 2US Then Return False
+        If (commandInBed.ForegroundMix And &HFUS) <> &H7US Then Return False
+        If ((commandInBed.ForegroundMix >> 5) And 3US) <> 3US Then Return False
+
+        Dim activeMaskInBed As UInteger = PixelMaskForBytesInBed(commandInBed.BytesPerPixel)
+        If activeMaskInBed = 0UI Then Return False
+        If (commandInBed.WriteMask And activeMaskInBed) <> activeMaskInBed Then Return False
+
+        Dim destinationYInBed As Integer =
+            CInt(commandInBed.DestY) + rowInBed * yDirectionInBed
+        If destinationYInBed < 0 Then Return True
+        If destinationYInBed < commandInBed.TopScissors OrElse
+           destinationYInBed > commandInBed.BottomScissors Then
+            Return True
+        End If
+
+        Dim sourceYInBed As Integer =
+            CInt(commandInBed.CurY) + rowInBed * yDirectionInBed
+        If sourceYInBed < 0 Then Return False
+
+        Dim firstColumnInBed As Integer
+        Dim lastColumnInBed As Integer
+        If Not TryGetNormalClippedColumnRangeInBed(CInt(commandInBed.DestX),
+                                                   xDirectionInBed,
+                                                   columnInBed,
+                                                   pixelCountInBed,
+                                                   commandInBed.LeftScissors,
+                                                   commandInBed.RightScissors,
+                                                   firstColumnInBed,
+                                                   lastColumnInBed) Then
+            Return True
+        End If
+
+        Dim sourceXFirstInBed As Integer =
+            CInt(commandInBed.CurX) + firstColumnInBed * xDirectionInBed
+        Dim sourceXLastInBed As Integer =
+            CInt(commandInBed.CurX) + lastColumnInBed * xDirectionInBed
+        If sourceXFirstInBed < 0 OrElse sourceXLastInBed < 0 Then Return False
+
+        Dim destinationXFirstInBed As Integer =
+            CInt(commandInBed.DestX) + firstColumnInBed * xDirectionInBed
+        Dim destinationXLastInBed As Integer =
+            CInt(commandInBed.DestX) + lastColumnInBed * xDirectionInBed
+
+        Dim sourceMinimumXInBed As Integer = Math.Min(sourceXFirstInBed, sourceXLastInBed)
+        Dim destinationMinimumXInBed As Integer =
+            Math.Min(destinationXFirstInBed, destinationXLastInBed)
+        Dim pixelsToCopyInBed As Integer = lastColumnInBed - firstColumnInBed + 1
+        Dim byteCountInBed As Integer = pixelsToCopyInBed * commandInBed.BytesPerPixel
+
+        Dim sourceAddressInBed As Long = commandInBed.SourceBaseAddress +
+            CLng(sourceYInBed) * commandInBed.PitchBytes +
+            CLng(sourceMinimumXInBed) * commandInBed.BytesPerPixel
+        Dim destinationAddressInBed As Long = commandInBed.DestinationBaseAddress +
+            CLng(destinationYInBed) * commandInBed.PitchBytes +
+            CLng(destinationMinimumXInBed) * commandInBed.BytesPerPixel
+
+        If sourceAddressInBed < 0 OrElse
+           sourceAddressInBed + byteCountInBed > VramSize OrElse
+           destinationAddressInBed < 0 OrElse
+           destinationAddressInBed + byteCountInBed > VramSize Then
+            Return False
+        End If
+
+        If sourceAddressInBed = destinationAddressInBed Then Return True
+
+        Dim sourceEndInBed As Long = sourceAddressInBed + byteCountInBed
+        Dim destinationEndInBed As Long = destinationAddressInBed + byteCountInBed
+        Dim overlapsInBed As Boolean =
+            sourceAddressInBed < destinationEndInBed AndAlso
+            destinationAddressInBed < sourceEndInBed
+
+        If Not overlapsInBed Then
+            ' Non-overlapping SRCCOPY can use the CLR's contiguous byte-array copy.
+            ' Source/destination X advance by the same amount, so ascending memory
+            ' order represents the same pixel mapping even when CMD requests -X.
+            Array.Copy(_vram,
+                       CInt(sourceAddressInBed),
+                       _vram,
+                       CInt(destinationAddressInBed),
+                       byteCountInBed)
+            Return True
+        End If
+
+        ' Overlap is intentionally copied in the S3-programmed pixel direction,
+        ' not with memmove semantics.  This preserves the real engine's smear if
+        ' software selects the wrong blit direction for an overlapping rectangle.
+        For columnOffsetInBed As Integer = firstColumnInBed To lastColumnInBed
+            Dim sourceXInBed As Integer =
+                CInt(commandInBed.CurX) + columnOffsetInBed * xDirectionInBed
+            Dim destinationXInBed As Integer =
+                CInt(commandInBed.DestX) + columnOffsetInBed * xDirectionInBed
+            Dim sourcePixelAddressInBed As Integer = CInt(commandInBed.SourceBaseAddress +
+                CLng(sourceYInBed) * commandInBed.PitchBytes +
+                CLng(sourceXInBed) * commandInBed.BytesPerPixel)
+            Dim destinationPixelAddressInBed As Integer = CInt(commandInBed.DestinationBaseAddress +
+                CLng(destinationYInBed) * commandInBed.PitchBytes +
+                CLng(destinationXInBed) * commandInBed.BytesPerPixel)
+            CopyEnhancedPixelDirectInBed(sourcePixelAddressInBed,
+                                         destinationPixelAddressInBed,
+                                         commandInBed.BytesPerPixel)
+        Next
+
+        Return True
+    End Function
+
+    Private Shared Function TryGetNormalClippedColumnRangeInBed(baseXInBed As Integer,
+                                                                xDirectionInBed As Integer,
+                                                                columnInBed As Integer,
+                                                                pixelCountInBed As Integer,
+                                                                leftScissorsInBed As UInt16,
+                                                                rightScissorsInBed As UInt16,
+                                                                ByRef firstColumnInBed As Integer,
+                                                                ByRef lastColumnInBed As Integer) As Boolean
+        firstColumnInBed = columnInBed
+        lastColumnInBed = columnInBed + pixelCountInBed - 1
+
+        If xDirectionInBed >= 0 Then
+            firstColumnInBed = Math.Max(firstColumnInBed,
+                                        CInt(leftScissorsInBed) - baseXInBed)
+            firstColumnInBed = Math.Max(firstColumnInBed, -baseXInBed)
+            lastColumnInBed = Math.Min(lastColumnInBed,
+                                       CInt(rightScissorsInBed) - baseXInBed)
+        Else
+            firstColumnInBed = Math.Max(firstColumnInBed,
+                                        baseXInBed - CInt(rightScissorsInBed))
+            lastColumnInBed = Math.Min(lastColumnInBed,
+                                       baseXInBed - CInt(leftScissorsInBed))
+            lastColumnInBed = Math.Min(lastColumnInBed, baseXInBed)
+        End If
+
+        Return firstColumnInBed <= lastColumnInBed
+    End Function
+
+    Private Shared Function PixelMaskForBytesInBed(bytesPerPixelInBed As Integer) As UInteger
+        Select Case bytesPerPixelInBed
+            Case 1 : Return &HFFUI
+            Case 2 : Return &HFFFFUI
+            Case 4 : Return &HFFFFFFFFUI
+            Case Else : Return 0UI
+        End Select
+    End Function
+
+    Private Sub FillEnhancedVramSpanInBed(addressInBed As Integer,
+                                          pixelCountInBed As Integer,
+                                          bytesPerPixelInBed As Integer,
+                                          colorInBed As UInteger)
+        Select Case bytesPerPixelInBed
+            Case 1
+                Array.Fill(Of Byte)(_vram,
+                                    CByte(colorInBed And &HFFUI),
+                                    addressInBed,
+                                    pixelCountInBed)
+
+            Case 2
+                Dim lowInBed As Byte = CByte(colorInBed And &HFFUI)
+                Dim highInBed As Byte = CByte((colorInBed >> 8) And &HFFUI)
+                Dim indexInBed As Integer = addressInBed
+                For pixelInBed As Integer = 0 To pixelCountInBed - 1
+                    _vram(indexInBed) = lowInBed
+                    _vram(indexInBed + 1) = highInBed
+                    indexInBed += 2
+                Next
+
+            Case 4
+                Dim b0InBed As Byte = CByte(colorInBed And &HFFUI)
+                Dim b1InBed As Byte = CByte((colorInBed >> 8) And &HFFUI)
+                Dim b2InBed As Byte = CByte((colorInBed >> 16) And &HFFUI)
+                Dim b3InBed As Byte = CByte((colorInBed >> 24) And &HFFUI)
+                Dim indexInBed As Integer = addressInBed
+                For pixelInBed As Integer = 0 To pixelCountInBed - 1
+                    _vram(indexInBed) = b0InBed
+                    _vram(indexInBed + 1) = b1InBed
+                    _vram(indexInBed + 2) = b2InBed
+                    _vram(indexInBed + 3) = b3InBed
+                    indexInBed += 4
+                Next
+        End Select
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function ReadEnhancedPixelDirectInBed(addressInBed As Integer,
+                                                  bytesPerPixelInBed As Integer) As UInteger
+        Select Case bytesPerPixelInBed
+            Case 1
+                Return CUInt(_vram(addressInBed))
+            Case 2
+                Return CUInt(_vram(addressInBed)) Or
+                       (CUInt(_vram(addressInBed + 1)) << 8)
+            Case 4
+                Return CUInt(_vram(addressInBed)) Or
+                       (CUInt(_vram(addressInBed + 1)) << 8) Or
+                       (CUInt(_vram(addressInBed + 2)) << 16) Or
+                       (CUInt(_vram(addressInBed + 3)) << 24)
+            Case Else
+                Return 0UI
+        End Select
+    End Function
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function ReadEnhancedPixelForAddressSafeInBed(addressInBed As Long,
+                                                          bytesPerPixelInBed As Integer) As UInteger
+        If addressInBed < 0 OrElse
+           addressInBed + bytesPerPixelInBed > VramSize Then
+            Return 0UI
+        End If
+        Return ReadEnhancedPixelDirectInBed(CInt(addressInBed),
+                                            bytesPerPixelInBed)
+    End Function
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Sub WriteEnhancedPixelDirectInBed(addressInBed As Integer,
+                                              bytesPerPixelInBed As Integer,
+                                              valueInBed As UInteger)
+        Select Case bytesPerPixelInBed
+            Case 1
+                _vram(addressInBed) = CByte(valueInBed And &HFFUI)
+            Case 2
+                _vram(addressInBed) =
+                    CByte(valueInBed And &HFFUI)
+                _vram(addressInBed + 1) =
+                    CByte((valueInBed >> 8) And &HFFUI)
+            Case 4
+                _vram(addressInBed) =
+                    CByte(valueInBed And &HFFUI)
+                _vram(addressInBed + 1) =
+                    CByte((valueInBed >> 8) And &HFFUI)
+                _vram(addressInBed + 2) =
+                    CByte((valueInBed >> 16) And &HFFUI)
+                _vram(addressInBed + 3) =
+                    CByte((valueInBed >> 24) And &HFFUI)
+        End Select
+    End Sub
+
+    Private Sub CopyEnhancedPixelDirectInBed(sourceAddressInBed As Integer,
+                                             destinationAddressInBed As Integer,
+                                             bytesPerPixelInBed As Integer)
+        Select Case bytesPerPixelInBed
+            Case 1
+                Dim b0InBed As Byte = _vram(sourceAddressInBed)
+                _vram(destinationAddressInBed) = b0InBed
+
+            Case 2
+                Dim b0InBed As Byte = _vram(sourceAddressInBed)
+                Dim b1InBed As Byte = _vram(sourceAddressInBed + 1)
+                _vram(destinationAddressInBed) = b0InBed
+                _vram(destinationAddressInBed + 1) = b1InBed
+
+            Case 4
+                Dim b0InBed As Byte = _vram(sourceAddressInBed)
+                Dim b1InBed As Byte = _vram(sourceAddressInBed + 1)
+                Dim b2InBed As Byte = _vram(sourceAddressInBed + 2)
+                Dim b3InBed As Byte = _vram(sourceAddressInBed + 3)
+                _vram(destinationAddressInBed) = b0InBed
+                _vram(destinationAddressInBed + 1) = b1InBed
+                _vram(destinationAddressInBed + 2) = b2InBed
+                _vram(destinationAddressInBed + 3) = b3InBed
+        End Select
     End Sub
 
     Private Function StepEnhancedCommand(commandInBed As EngineCommand928) As Boolean
@@ -4286,9 +5513,9 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
 
     Public Sub RequestFrame()
         If _disposedInBed OrElse Volatile.Read(_stopRequestedInBed) <> 0 Then Return
-        Interlocked.Increment(_requestCountInBed)
+        If RuntimeDiagnostics.Enabled Then Interlocked.Increment(_requestCountInBed)
         If Interlocked.Exchange(_requestOutstandingInBed, 1) <> 0 Then
-            Interlocked.Increment(_coalescedRequestCountInBed)
+            If RuntimeDiagnostics.Enabled Then Interlocked.Increment(_coalescedRequestCountInBed)
         End If
     End Sub
 
@@ -4302,7 +5529,7 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
         If Volatile.Read(_requestOutstandingInBed) = 0 Then Return
 
         If Interlocked.CompareExchange(_snapshotBusyInBed, 1, 0) <> 0 Then
-            Interlocked.Increment(_boundaryBusyDeferralCountInBed)
+            If RuntimeDiagnostics.Enabled Then Interlocked.Increment(_boundaryBusyDeferralCountInBed)
             Return
         End If
 
@@ -4316,11 +5543,15 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
                 Return
             End If
 
-            Dim captureStartInBed As Long = Stopwatch.GetTimestamp()
-            sourceInBed.CopyPresentationStateTo(_rendererInBed)
-            Interlocked.Exchange(_lastCaptureTicksInBed,
-                                 Stopwatch.GetTimestamp() - captureStartInBed)
-            Interlocked.Increment(_boundaryCaptureCountInBed)
+            If RuntimeDiagnostics.Enabled Then
+                Dim captureStartInBed As Long = Stopwatch.GetTimestamp()
+                sourceInBed.CopyPresentationStateTo(_rendererInBed)
+                Interlocked.Exchange(_lastCaptureTicksInBed,
+                                     Stopwatch.GetTimestamp() - captureStartInBed)
+                Interlocked.Increment(_boundaryCaptureCountInBed)
+            Else
+                sourceInBed.CopyPresentationStateTo(_rendererInBed)
+            End If
             Interlocked.Exchange(_snapshotReadyInBed, 1)
             _requestInBed.Set()
             ownsSnapshotInBed = False
@@ -4363,19 +5594,29 @@ Public NotInheritable Class DiamondStealthPro928PresentationWorker
                 If Interlocked.Exchange(_snapshotReadyInBed, 0) = 0 Then Continue While
 
                 Try
-                    Dim renderStartInBed As Long = Stopwatch.GetTimestamp()
-                    Dim renderedInBed As Bitmap = _rendererInBed.RenderFrame()
-                    Dim presentedInBed As Bitmap =
-                        _crtPresenterInBed.Present(renderedInBed,
-                                                   _rendererInBed.GetScanoutTiming())
-                    Interlocked.Exchange(_lastRenderTicksInBed,
-                                         Stopwatch.GetTimestamp() - renderStartInBed)
+                    Dim renderedInBed As Bitmap
+                    Dim presentedInBed As Bitmap
+                    If RuntimeDiagnostics.Enabled Then
+                        Dim renderStartInBed As Long = Stopwatch.GetTimestamp()
+                        renderedInBed = _rendererInBed.RenderFrame()
+                        presentedInBed =
+                            _crtPresenterInBed.Present(renderedInBed,
+                                                       _rendererInBed.GetScanoutTiming())
+                        Interlocked.Exchange(_lastRenderTicksInBed,
+                                             Stopwatch.GetTimestamp() - renderStartInBed)
 
-                    Dim publishStartInBed As Long = Stopwatch.GetTimestamp()
-                    PublishFrameInBed(presentedInBed)
-                    Interlocked.Exchange(_lastPublishTicksInBed,
-                                         Stopwatch.GetTimestamp() - publishStartInBed)
-                    Interlocked.Increment(_renderedFrameCountInBed)
+                        Dim publishStartInBed As Long = Stopwatch.GetTimestamp()
+                        PublishFrameInBed(presentedInBed)
+                        Interlocked.Exchange(_lastPublishTicksInBed,
+                                             Stopwatch.GetTimestamp() - publishStartInBed)
+                        Interlocked.Increment(_renderedFrameCountInBed)
+                    Else
+                        renderedInBed = _rendererInBed.RenderFrame()
+                        presentedInBed =
+                            _crtPresenterInBed.Present(renderedInBed,
+                                                       _rendererInBed.GetScanoutTiming())
+                        PublishFrameInBed(presentedInBed)
+                    End If
                 Finally
                     ' Only now may a future machine boundary overwrite the replica.
                     Interlocked.Exchange(_snapshotBusyInBed, 0)

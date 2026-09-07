@@ -1,0 +1,46 @@
+PERFORMANCE / TIMING BRICK 12 — 80286 LOADALL = 195 CLOCKS
+
+What jumped out
+---------------
+The current CPU implements undocumented 80286 opcode 0F 05h (LOADALL), but
+ProcessorTiming.vb falls through the default extended-opcode timing case and
+bills it as only TWO T-states.
+
+That is dramatically wrong for a real 80286.
+
+Intel's "Undocumented iAPX 286 Test Instruction" material describes LOADALL as:
+  * 195 clocks
+  * 51 word bus cycles
+  * 102 bytes read from physical 000800h
+
+The current execution implementation already performs the actual physical
+LOADALL table reads and state loads.  This brick changes only the nominal CPU
+timing ledger from 2 to 195 T-states.
+
+Why Windows matters
+-------------------
+Windows 3.1 Standard Mode / DOS extender transition machinery is exactly the
+kind of software that exercises the 286's LOADALL behavior.
+
+If an expensive host implementation of LOADALL is credited as only 2 virtual
+clocks, the emulator has to execute vastly too many such transitions to advance
+a given amount of guest time.  Correcting the clock identity can therefore
+improve real-time ratio on that workload while simultaneously making the
+virtual 286 MORE accurate.
+
+Preserved
+---------
+* opcode 0F 05 decode
+* LOADALL memory layout
+* all physical memory reads / READY waits
+* hidden descriptor-cache loading
+* prefetch flushing
+* current MSW/PE semantics that have already been validated against this
+  project's Windows behavior
+* every other instruction timing
+
+File changed
+------------
+ProcessorTiming.vb
+
+This is intentionally a tiny build/boot gate before the next S3 brick.

@@ -5008,7 +5008,7 @@ Public NotInheritable Class SneakerNetForm
         }
 
         Dim refreshInBed As New Button() With {.Text = "Refresh", .AutoSize = True}
-        Dim attachInBed As New Button() With {.Text = "Attach Primary", .AutoSize = True}
+        Dim attachInBed As New Button() With {.Text = "Attach to Target", .AutoSize = True}
         Dim ejectInBed As New Button() With {.Text = "Disconnect", .AutoSize = True}
         Dim inspectInBed As New Button() With {.Text = "Inspect", .AutoSize = True}
         Dim cloneInBed As New Button() With {.Text = "Clone...", .AutoSize = True}
@@ -5041,9 +5041,10 @@ Public NotInheritable Class SneakerNetForm
         _hddListInBed.MultiSelect = False
         _hddListInBed.HideSelection = False
         _hddListInBed.Columns.Add("ID", 48)
-        _hddListInBed.Columns.Add("Image", 300)
-        _hddListInBed.Columns.Add("Size", 105)
-        _hddListInBed.Columns.Add("State", 125)
+        _hddListInBed.Columns.Add("Image", 245)
+        _hddListInBed.Columns.Add("Drive Model", 220)
+        _hddListInBed.Columns.Add("Size", 95)
+        _hddListInBed.Columns.Add("State", 95)
 
         _hddDetailsInBed.Dock = DockStyle.Fill
         _hddDetailsInBed.Multiline = True
@@ -5088,8 +5089,9 @@ Public NotInheritable Class SneakerNetForm
             For Each entryInBed As IdeDriveShelfEntry In _ideShelf.GetEntries()
                 Dim itemInBed As New ListViewItem(entryInBed.Id.ToString()) With {.Tag = entryInBed}
                 itemInBed.SubItems.Add(Path.GetFileName(entryInBed.FullPath))
+                itemInBed.SubItems.Add(HardDiskModelForShelfInBed(entryInBed.FullPath))
                 itemInBed.SubItems.Add(FormatBytes(New FileInfo(entryInBed.FullPath).Length))
-                itemInBed.SubItems.Add(If(entryInBed.Id = mountedIdInBed, "Primary Master", "Shelf"))
+                itemInBed.SubItems.Add(If(entryInBed.Id = mountedIdInBed, "Attached", "Shelf"))
                 _hddListInBed.Items.Add(itemInBed)
             Next
             If _hddListInBed.Items.Count = 0 Then
@@ -5101,6 +5103,17 @@ Public NotInheritable Class SneakerNetForm
             _hddListInBed.EndUpdate()
         End Try
     End Sub
+
+    Private Shared Function HardDiskModelForShelfInBed(imagePathInBed As String) As String
+        Try
+            Dim lengthInBed As Long = New FileInfo(imagePathInBed).Length
+            If lengthInBed <= 0 OrElse (lengthInBed Mod 512L) <> 0 Then Return "Invalid image"
+            Dim identityInBed As HardDiskIdentity = HardDiskIdentity.LoadOrCreate(imagePathInBed, lengthInBed \ 512L)
+            Return identityInBed.Manufacturer & " " & identityInBed.Model
+        Catch
+            Return "Metadata error"
+        End Try
+    End Function
 
     Private Sub SelectMountedHardDriveForUtilitiesInBed()
         If _mountedIdeShelfDriveId Is Nothing Then Return
@@ -5128,7 +5141,7 @@ Public NotInheritable Class SneakerNetForm
         Try
             _attachIdeShelfDrive(entryInBed.Id)
             RefreshHardDrivesInBed()
-            _hddDetailsInBed.Text = "Attached as Primary Master:" & Environment.NewLine & entryInBed.FullPath
+            _hddDetailsInBed.Text = "Attached to the selected IDE socket:" & Environment.NewLine & entryInBed.FullPath
         Catch ex As Exception
             _hddDetailsInBed.Text = ex.Message
         End Try
@@ -5139,7 +5152,7 @@ Public NotInheritable Class SneakerNetForm
         Try
             _ejectIdeShelfDrive()
             RefreshHardDrivesInBed()
-            _hddDetailsInBed.Text = "Primary Master disconnected."
+            _hddDetailsInBed.Text = "Selected IDE socket disconnected."
         Catch ex As Exception
             _hddDetailsInBed.Text = ex.Message
         End Try
@@ -5149,11 +5162,46 @@ Public NotInheritable Class SneakerNetForm
         Dim entryInBed As IdeDriveShelfEntry = SelectedHardDriveInBed()
         If entryInBed Is Nothing Then Return
         Try
-            _hddDetailsInBed.Text = DiskImageInspector.BuildReport(entryInBed.FullPath)
+            _hddDetailsInBed.Text = BuildHardDiskIdentityReportInBed(entryInBed.FullPath) &
+                                    Environment.NewLine &
+                                    DiskImageInspector.BuildReport(entryInBed.FullPath)
         Catch ex As Exception
             _hddDetailsInBed.Text = ex.Message
         End Try
     End Sub
+
+    Private Shared Function BuildHardDiskIdentityReportInBed(imagePathInBed As String) As String
+        Dim imageLengthInBed As Long = New FileInfo(imagePathInBed).Length
+        If imageLengthInBed <= 0 OrElse (imageLengthInBed Mod 512L) <> 0 Then
+            Throw New InvalidDataException("Hard-disk image length is not a positive multiple of 512 bytes.")
+        End If
+
+        Dim identityInBed As HardDiskIdentity =
+            HardDiskIdentity.LoadOrCreate(imagePathInBed, imageLengthInBed \ 512L)
+        Dim builderInBed As New StringBuilder()
+        builderInBed.AppendLine("PHYSICAL DRIVE IDENTITY")
+        builderInBed.AppendLine("-----------------------")
+        builderInBed.AppendLine("Metadata: " & HardDiskIdentity.MetadataPath(imagePathInBed))
+        builderInBed.AppendLine("Manufacturer: " & identityInBed.Manufacturer)
+        builderInBed.AppendLine("Model: " & identityInBed.Model)
+        builderInBed.AppendLine("Serial: " & identityInBed.SerialNumber)
+        builderInBed.AppendLine("Firmware: " & identityInBed.FirmwareRevision)
+        builderInBed.AppendLine("Capacity sectors: " & identityInBed.TotalSectors.ToString("N0"))
+        builderInBed.AppendLine("Native CHS: " & identityInBed.NativeCylinders.ToString() & "/" &
+                                identityInBed.NativeHeads.ToString() & "/" &
+                                identityInBed.NativeSectorsPerTrack.ToString())
+        builderInBed.AppendLine("BIOS CHS: " & identityInBed.BiosCylinders.ToString() & "/" &
+                                identityInBed.BiosHeads.ToString() & "/" &
+                                identityInBed.BiosSectorsPerTrack.ToString())
+        builderInBed.AppendLine("ATA major version: " & identityInBed.AtaMajorVersion.ToString())
+        builderInBed.AppendLine("LBA28: " & If(identityInBed.SupportsLba28, "yes", "no"))
+        builderInBed.AppendLine("Max PIO mode: " & identityInBed.MaximumPioMode.ToString())
+        builderInBed.AppendLine("Multiple sectors: " & identityInBed.MaximumMultipleSectors.ToString())
+        builderInBed.AppendLine("Spindle: " & identityInBed.RotationRpm.ToString() & " RPM")
+        builderInBed.AppendLine("Average seek: " & identityInBed.AverageSeekMilliseconds.ToString("0.0") & " ms")
+        builderInBed.AppendLine()
+        Return builderInBed.ToString()
+    End Function
 
     Private Async Sub CloneSelectedHardDriveInBed()
         Dim entryInBed As IdeDriveShelfEntry = SelectedHardDriveInBed()
@@ -5169,12 +5217,27 @@ Public NotInheritable Class SneakerNetForm
             If pickerInBed.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
                 _hddDetailsInBed.Text = "Cloning " & entryInBed.FullPath & Environment.NewLine & "to " & pickerInBed.FileName & "..."
+                Dim sourceLengthInBed As Long = New FileInfo(entryInBed.FullPath).Length
+                If sourceLengthInBed <= 0 OrElse (sourceLengthInBed Mod 512L) <> 0 Then
+                    Throw New InvalidDataException("Hard-disk image length is not a positive multiple of 512 bytes.")
+                End If
+                Dim sourceIdentityInBed As HardDiskIdentity =
+                    HardDiskIdentity.LoadOrCreate(entryInBed.FullPath, sourceLengthInBed \ 512L)
+                Dim destinationMetadataInBed As String = HardDiskIdentity.MetadataPath(pickerInBed.FileName)
+                If File.Exists(destinationMetadataInBed) Then
+                    Throw New IOException("Refusing to overwrite existing drive identity: " & destinationMetadataInBed)
+                End If
+
                 Using leaseInBed As IDisposable = AcquireMediaQuiesceInBed()
                     Using cancellationInBed As New CancellationTokenSource()
                         Await MediaImagingEngine.CloneFileNoOverwriteAsync(entryInBed.FullPath, pickerInBed.FileName, Nothing, cancellationInBed.Token)
                     End Using
+                    ' The raw image and its adjacent identity record together describe
+                    ' one virtual physical hard drive.  Keep them together when cloning.
+                    sourceIdentityInBed.Save(pickerInBed.FileName)
                 End Using
-                _hddDetailsInBed.Text &= Environment.NewLine & "Clone complete. Source was not modified."
+                _hddDetailsInBed.Text &= Environment.NewLine &
+                    "Clone complete. Drive identity sidecar was cloned with the image; source was not modified."
                 RefreshHardDrivesInBed()
             Catch ex As Exception
                 _hddDetailsInBed.Text = ex.Message

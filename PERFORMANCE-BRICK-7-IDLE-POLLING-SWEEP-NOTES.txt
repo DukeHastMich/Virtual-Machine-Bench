@@ -1,0 +1,90 @@
+PERFORMANCE BRICK 7 — NO-OP POLLING / IDLE CLOCK SWEEP
+
+This brick follows the "walk down what Windows touches" strategy.  It removes
+host work performed repeatedly when a device has no time-dependent state to
+advance.  It does NOT suppress guest polling or change hardware timing.
+
+1. 8042 + AT keyboard idle clock path
+-------------------------------------
+The 8042 is a wake source and clocked device.  Even with:
+  * no active keyboard serial frame
+  * no controller input-buffer delay
+  * no keyboard-response timeout
+  * no BAT/reset delay
+  * no typematic key
+  * no serial byte waiting to start
+
+the old HardwareBus clock commit still entered the 8042 state machine and then
+AtKeyboard101.AdvanceTime().
+
+AtKeyboard101 now exposes HasTimedActivity, and KeyboardController8042 has one
+cheap HasActiveTimingInBed predicate used by both:
+  * PicosecondsUntilNextWakeEvent()
+  * AdvanceTime()
+
+If nothing can change merely because time passes, both paths return immediately.
+A CPU/host action that queues a byte, presses a key, starts BAT, starts typematic,
+or writes the controller makes the existing timed path active again.
+
+No scan-code, IRQ1, 8042 command, serial-frame, BAT, or typematic timing changes.
+
+2. Idle LPT1/LPT2
+-----------------
+Both SPP ports are clocked solely while a Centronics STROBE/ACK handshake is
+active.  The old AdvanceTime() still initialized its generic loop every machine
+clock commit while handshakePhase=0.
+
+It now returns immediately when no handshake is active.
+
+No STROBE, BUSY, ACK, IRQ, printer, or port-register behavior changes.
+
+3. Disconnected NE2000 host transport
+-------------------------------------
+The NE2000 UDP tunnel currently polls a host socket every 1 ms of guest time when
+connected.  That explicit connected-tunnel polling is deliberately NOT changed
+in this brick because replacing it correctly requires a host receive queue/wake
+boundary.
+
+However, when the UDP tunnel is disconnected, the old NIC still:
+  * took _sync in every AdvanceTime()
+  * took _sync in every scheduler wake-source query
+only to discover _udp Is Nothing.
+
+A volatile host-cable-presence mirror now allows those disconnected fast paths
+to return before taking the lock.  _udp under _sync remains authoritative.
+
+The guest NE2000 register file, packet RAM, IRQ, remote DMA, and port decode are
+unchanged.
+
+What is still legitimately "polling"
+------------------------------------
+* Guest IDE/ATAPI status polling: REAL guest software behavior. Do not remove it.
+* Guest UART LSR/IIR polling: REAL guest software behavior. Brick 6 only made the
+  device-side host bookkeeping cheaper.
+* PIT and RTC advancement: free-running hardware clocks, not polling.
+* Connected NE2000 UDP transport: still a real 1-ms HOST polling loop. That is
+  now the largest explicit host poll left in this source and should be converted
+  separately to a host receiver queue + machine-boundary delivery if networking
+  is enabled often.
+* SB16 host transducer clock: periodic clock work, not a poll. It deserves a
+  separate idle-activity audit because the card can have sustained OPL/MIDI
+  voices after the CPU stops writing it.
+
+Files changed
+-------------
+  AtKeyboard101.vb
+  MotherboardDevices.vb
+  LegacyIoPorts.vb
+  Ne2000Isa.vb
+
+Patch stacking
+--------------
+* MotherboardDevices.vb is based on Brick 3 (NEAT READY cache preserved).
+* LegacyIoPorts.vb is based on Brick 6 (UART/mouse optimizations preserved).
+* Bricks 1/2/4/5 touch other files and are unaffected.
+
+Expected gain
+-------------
+Probably modest at DOS and Windows idle, but this is intentionally a clean sweep
+of repeated no-op device work.  If the NIC tunnel is disconnected, the NE2000
+lock removal happens at every clock commit and every wake scan.

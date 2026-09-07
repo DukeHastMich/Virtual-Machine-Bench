@@ -1,0 +1,168 @@
+--- a/AtKeyboard101.vb
++++ b/AtKeyboard101.vb
+@@ -265,10 +265,26 @@
+     ' keyboard's bounded FIFO while the host holds CLOCK low.
+     Public Sub SetHostTransmissionInhibited(inhibited As Boolean)
+         _hostTransmissionInhibited = inhibited
+     End Sub
+ 
++    ' Cheap idle predicate for the 8042 motherboard wrapper.  This does not
++    ' suppress keyboard state; it only says whether elapsed time by itself can
++    ' change the keyboard before another host/guest action occurs.
++    Public ReadOnly Property HasTimedActivity As Boolean
++        Get
++            If _resetAcceptanceDelayRemaining > 0 Then Return True
++            If _batDelayRemaining > 0 Then Return True
++            If _typematicKey <> AtPhysicalKey.None AndAlso
++               _scanningEnabled AndAlso
++               _typematicDelayRemaining > 0 Then
++                Return True
++            End If
++            Return False
++        End Get
++    End Property
++
+     ' Event-aware motherboard scheduler hook.  This reports only keyboard-side
+     ' transitions which can create a new serial byte without a CPU access.
+     Public ReadOnly Property PicosecondsUntilNextEvent As Long
+         Get
+             Dim earliest As Long = Long.MaxValue
+--- a/MotherboardDevices.vb
++++ b/MotherboardDevices.vb
+@@ -1021,11 +1021,30 @@
+         _pendingInputPort = port
+         _pendingInputValue = value
+         _inputDelayRemaining = ControllerInputDelayPicoseconds
+     End Sub
+ 
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
++    Private Function HasActiveTimingInBed() As Boolean
++        If _linkDirection <> LinkDirection.None Then Return True
++        If _awaitingKeyboardResponse OrElse _inputBufferFull Then Return True
++        If _keyboard.HasTimedActivity Then Return True
++
++        ' A queued serial byte can begin only while the controller clock is
++        ' enabled.  If the guest holds it low, no elapsed-time transition exists
++        ' until software changes the command byte / controller state.
++        If Not ControllerKeyboardClockDisabled AndAlso
++           (_hostToKeyboardQueue.Count > 0 OrElse _keyboard.HasByteToTransmit) Then
++            Return True
++        End If
++
++        Return False
++    End Function
++
+     Public Function PicosecondsUntilNextWakeEvent() As Long Implements IClockWakeSource.PicosecondsUntilNextWakeEvent
++        If Not HasActiveTimingInBed() Then Return Long.MaxValue
++
+         Dim earliest As Long = Long.MaxValue
+ 
+         Dim keyboardEvent As Long = _keyboard.PicosecondsUntilNextEvent
+         If keyboardEvent > 0 AndAlso keyboardEvent < earliest Then earliest = keyboardEvent
+ 
+@@ -1076,10 +1095,16 @@
+     End Function
+ 
+     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
+         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+         If elapsedPicoseconds = 0 Then Return
++
++        ' HardwareBus advances every registered clocked device at each committed
++        ' motherboard interval.  An idle 8042 + keyboard has no free-running
++        ' counter whose passage changes guest-visible state, so avoid the full
++        ' link/keyboard state machine until some timed activity is actually armed.
++        If Not HasActiveTimingInBed() Then Return
+ 
+         ' Advance only serial activity which existed at the beginning of this
+         ' interval. Keyboard/BAT/IBF events which mature at the endpoint may start
+         ' a new frame, but that new frame must not consume time which elapsed
+         ' before it existed.
+--- a/LegacyIoPorts.vb
++++ b/LegacyIoPorts.vb
+@@ -1418,10 +1418,12 @@
+         _errorOk = errorOk
+     End Sub
+ 
+     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
+         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
++        If _handshakePhase = 0 OrElse elapsedPicoseconds = 0 Then Return
++
+         Dim remaining As Long = elapsedPicoseconds
+         While _handshakePhase <> 0 AndAlso remaining >= _handshakeRemaining
+             remaining -= _handshakeRemaining
+             If _handshakePhase = 1 Then
+                 _ackLow = True
+--- a/Ne2000Isa.vb
++++ b/Ne2000Isa.vb
+@@ -73,10 +73,16 @@
+     Private _pollAccumulator As Long
+     Private _disposed As Boolean
+ 
+     Private _udp As UdpClient
+     Private _udpPeer As IPEndPoint
++
++    ' Host-side cable-presence mirror used only to avoid taking _sync on every
++    ' machine clock commit when no UDP tunnel exists.  _udp under _sync remains
++    ' authoritative; this flag is published after connect and before disconnect.
++    Private _udpConnectedInBed As Integer
++
+     Private _capturePath As String
+     Private _captureStream As FileStream
+     Private _framesTransmitted As ULong
+     Private _framesReceived As ULong
+     Private _framesDropped As ULong
+@@ -599,20 +605,25 @@
+         SyncLock _sync
+             CloseUdpLocked()
+             _udp = New UdpClient(New IPEndPoint(IPAddress.Any, localPort))
+             _udp.Client.Blocking = False
+             _udpPeer = New IPEndPoint(address, peerPort)
++            Threading.Volatile.Write(_udpConnectedInBed, 1)
+         End SyncLock
+     End Sub
+ 
+     Public Sub DisconnectUdpTunnel()
+         SyncLock _sync
+             CloseUdpLocked()
+         End SyncLock
+     End Sub
+ 
+     Private Sub CloseUdpLocked()
++        ' Publish "cable absent" first.  Machine-thread fast paths may then stop
++        ' entering the host transport lock while this close completes.
++        Threading.Volatile.Write(_udpConnectedInBed, 0)
++
+         If _udp IsNot Nothing Then
+             Try : _udp.Close() : Catch : End Try
+         End If
+         _udp = Nothing
+         _udpPeer = Nothing
+@@ -676,10 +687,15 @@
+     End Sub
+ 
+     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
+         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+         If elapsedPicoseconds = 0 OrElse _disposed Then Return
++
++        ' The NIC itself has no free-running guest state in this host transport
++        ' path.  With no UDP cable attached, the old code acquired _sync at every
++        ' motherboard clock commit solely to rediscover _udp Is Nothing.
++        If Threading.Volatile.Read(_udpConnectedInBed) = 0 Then Return
+ 
+         SyncLock _sync
+             If _udp Is Nothing Then Return
+             _pollAccumulator += elapsedPicoseconds
+             If _pollAccumulator < HostPollPicoseconds Then Return
+@@ -702,10 +718,12 @@
+             Next
+         End SyncLock
+     End Sub
+ 
+     Public Function PicosecondsUntilNextWakeEvent() As Long Implements IClockWakeSource.PicosecondsUntilNextWakeEvent
++        If Threading.Volatile.Read(_udpConnectedInBed) = 0 Then Return Long.MaxValue
++
+         SyncLock _sync
+             If _udp Is Nothing Then Return Long.MaxValue
+             Dim remaining As Long = HostPollPicoseconds - _pollAccumulator
+             If remaining <= 0 Then Return 1
+             Return remaining

@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Diagnostics
 Imports System.Threading
 
@@ -33,6 +33,7 @@ End Enum
 ' host stalls and turbo changes, so changing CPU frequency cannot alter the
 ' amount of motherboard time already owed.
 Public NotInheritable Class MachineClock286
+    Implements ITimeBatchSynchronizer286
     Private _speedMode As ProcessorSpeedMode = ProcessorSpeedMode.Turbo25MHz
     Private _hostPicosecondNumeratorRemainder As Long
     Private _hostRateNumeratorRemainder As Long
@@ -49,6 +50,30 @@ Public NotInheritable Class MachineClock286
     Private _lastClockBatchCeilingFlushCount As Long
     Private _lastClockBatchEndFlushCount As Long
     Private _lastClockBatchExplicitFlushCount As Long
+
+    ' ACTIVE RUNSLICE COORDINATOR
+    ' ---------------------------
+    ' These fields used to live in compiler-generated closure objects allocated
+    ' inside every RunSlice().  MachineClock286 is single-owner on the machine
+    ' worker, so one reusable state frame is sufficient and keeps the exact same
+    ' motherboard-time algorithm without per-slice closure allocation or
+    ' per-instruction Action.Invoke dispatch.
+    Private _batchBusInBed As HardwareBus
+    Private _batchTStatePicosecondsInBed As Long
+    Private _batchMaximumPicosecondsInBed As Long
+    Private _batchAdvancedPicosecondsInBed As Long
+    Private _batchPendingPicosecondsInBed As Long
+    Private _batchNextWakePicosecondsInBed As Long = Long.MaxValue
+    Private _batchDeadlineDirtyInBed As Boolean
+
+    Private _batchFlushCountInBed As Long
+    Private _batchLargestFlushTStatesInBed As Long
+    Private _batchPortFlushCountInBed As Long
+    Private _batchMemoryFlushCountInBed As Long
+    Private _batchWakeFlushCountInBed As Long
+    Private _batchCeilingFlushCountInBed As Long
+    Private _batchEndFlushCountInBed As Long
+    Private _batchExplicitFlushCountInBed As Long
 
     ' Host-only dyno telemetry; none of these values are guest-visible.
     Private Const PreferredMaximumBatchTStates As Long = 32768L
@@ -244,127 +269,192 @@ Public NotInheritable Class MachineClock286
             If(bus.HasUnclassifiedClockedDevices, LegacyMaximumBatchTStates, PreferredMaximumBatchTStates)
         Dim maximumBatchPicoseconds As Long = maximumBatchTStates * tStatePs
 
-        Dim advancedPicoseconds As Long
-        Dim pendingBatchPicoseconds As Long
-        Dim flushCount As Long
-        Dim largestFlushTStates As Long
-        Dim portFlushCount As Long
-        Dim memoryFlushCount As Long
-        Dim wakeFlushCount As Long
-        Dim ceilingFlushCount As Long
-        Dim endFlushCount As Long
-        Dim explicitFlushCount As Long
-        Dim deadlineDirty As Boolean = True
-        Dim nextWakePicoseconds As Long = Long.MaxValue
+        BeginClockBatchInBed(bus,
+                             tStatePs,
+                             maximumBatchPicoseconds)
 
-        Dim refreshDeadline As Action =
-            Sub()
-                nextWakePicoseconds = bus.PicosecondsUntilNextWakeEvent()
-                deadlineDirty = False
-            End Sub
-
-        Dim flushPending As Action(Of ClockBatchFlushReason) = Nothing
-        flushPending =
-            Sub(reason As ClockBatchFlushReason)
-                If pendingBatchPicoseconds > 0 Then
-                    Dim elapsedPicoseconds As Long = pendingBatchPicoseconds
-                    Dim flushedTStates As Long = elapsedPicoseconds \ tStatePs
-                    pendingBatchPicoseconds = 0
-                    bus.AdvanceTime(elapsedPicoseconds)
-                    advancedPicoseconds += elapsedPicoseconds
-                    flushCount += 1
-                    If flushedTStates > largestFlushTStates Then largestFlushTStates = flushedTStates
-
-                    Select Case reason
-                        Case ClockBatchFlushReason.PortAccess
-                            portFlushCount += 1
-                        Case ClockBatchFlushReason.MemoryAccess
-                            memoryFlushCount += 1
-                        Case ClockBatchFlushReason.WakeDeadline
-                            wakeFlushCount += 1
-                        Case ClockBatchFlushReason.BatchCeiling
-                            ceilingFlushCount += 1
-                        Case ClockBatchFlushReason.EndOfSlice
-                            endFlushCount += 1
-                        Case Else
-                            explicitFlushCount += 1
-                    End Select
-                End If
-                refreshDeadline.Invoke()
-            End Sub
-
-        Dim topologyChanged As Action =
-            Sub()
-                deadlineDirty = True
-            End Sub
-
-        Dim timeAdvanced As Action(Of Long) =
-            Sub(tStates As Long)
-                If tStates <= 0 Then Return
-                pendingBatchPicoseconds += tStates * tStatePs
-                If deadlineDirty Then refreshDeadline.Invoke()
-
-                If nextWakePicoseconds <> Long.MaxValue AndAlso
-                   pendingBatchPicoseconds >= nextWakePicoseconds Then
-                    flushPending.Invoke(ClockBatchFlushReason.WakeDeadline)
-                ElseIf pendingBatchPicoseconds >= maximumBatchPicoseconds Then
-                    flushPending.Invoke(ClockBatchFlushReason.BatchCeiling)
-                End If
-            End Sub
-
-        Dim haltedStepBudget As Func(Of Long, Long) =
-            Function(remainingTStates As Long) As Long
-                If remainingTStates <= 0 Then Return 0
-
-                If bus.HasUnclassifiedClockedDevices Then
-                    Return Math.Min(LegacyMaximumBatchTStates, remainingTStates)
-                End If
-
-                If deadlineDirty Then refreshDeadline.Invoke()
-                If nextWakePicoseconds = Long.MaxValue Then Return remainingTStates
-
-                Dim untilWakePicoseconds As Long = nextWakePicoseconds - pendingBatchPicoseconds
-                If untilWakePicoseconds <= 0 Then
-                    flushPending.Invoke(ClockBatchFlushReason.WakeDeadline)
-                    If nextWakePicoseconds = Long.MaxValue Then Return remainingTStates
-                    untilWakePicoseconds = nextWakePicoseconds
-                End If
-
-                Dim untilWakeTStates As Long =
-                    Math.Max(1L, (untilWakePicoseconds + tStatePs - 1L) \ tStatePs)
-                Return Math.Min(remainingTStates, untilWakeTStates)
-            End Function
-
-        bus.InstallTimeBatchSynchronizer(flushPending, topologyChanged)
+        bus.InstallTimeBatchSynchronizer(Me)
         Dim consumed As Long
         Try
-            refreshDeadline.Invoke()
-            consumed = cpu.RunForTStates(requested, timeAdvanced, haltedStepBudget)
-            flushPending.Invoke(ClockBatchFlushReason.EndOfSlice)
+            RefreshBatchDeadlineInBed()
+            consumed = cpu.RunForTStates(requested, Me)
+            FlushPendingBatchInBed(ClockBatchFlushReason.EndOfSlice)
         Finally
             bus.ClearTimeBatchSynchronizer()
         End Try
 
         If consumed <= 0 Then Return 0
 
-        _lastClockBatchFlushCount = flushCount
-        _lastClockBatchMaximumTStates = maximumBatchTStates
-        _lastClockBatchConsumedTStates = consumed
-        _lastClockBatchLargestFlushTStates = largestFlushTStates
-        _lastClockBatchPortFlushCount = portFlushCount
-        _lastClockBatchMemoryFlushCount = memoryFlushCount
-        _lastClockBatchWakeFlushCount = wakeFlushCount
-        _lastClockBatchCeilingFlushCount = ceilingFlushCount
-        _lastClockBatchEndFlushCount = endFlushCount
-        _lastClockBatchExplicitFlushCount = explicitFlushCount
+        If RuntimeDiagnostics.Enabled Then
+            _lastClockBatchFlushCount = _batchFlushCountInBed
+            _lastClockBatchMaximumTStates = maximumBatchTStates
+            _lastClockBatchConsumedTStates = consumed
+            _lastClockBatchLargestFlushTStates = _batchLargestFlushTStatesInBed
+            _lastClockBatchPortFlushCount = _batchPortFlushCountInBed
+            _lastClockBatchMemoryFlushCount = _batchMemoryFlushCountInBed
+            _lastClockBatchWakeFlushCount = _batchWakeFlushCountInBed
+            _lastClockBatchCeilingFlushCount = _batchCeilingFlushCountInBed
+            _lastClockBatchEndFlushCount = _batchEndFlushCountInBed
+            _lastClockBatchExplicitFlushCount = _batchExplicitFlushCountInBed
+        End If
 
-        _pendingPicoseconds -= advancedPicoseconds
-        _totalPicoseconds += advancedPicoseconds
+        _pendingPicoseconds -= _batchAdvancedPicosecondsInBed
+        _totalPicoseconds += _batchAdvancedPicosecondsInBed
+        EndClockBatchInBed()
 
         ' Preserve the host-only front-panel telemetry from the diagnostics branch.
         RaiseEvent CpuStateSampled(cpu.LastRunStateByte)
         Return consumed
     End Function
+
+    Private Sub BeginClockBatchInBed(busInBed As HardwareBus,
+                                     tStatePicosecondsInBed As Long,
+                                     maximumBatchPicosecondsInBed As Long)
+        _batchBusInBed = busInBed
+        _batchTStatePicosecondsInBed = tStatePicosecondsInBed
+        _batchMaximumPicosecondsInBed = maximumBatchPicosecondsInBed
+        _batchAdvancedPicosecondsInBed = 0
+        _batchPendingPicosecondsInBed = 0
+        _batchNextWakePicosecondsInBed = Long.MaxValue
+        _batchDeadlineDirtyInBed = True
+
+        If RuntimeDiagnostics.Enabled Then
+            _batchFlushCountInBed = 0
+            _batchLargestFlushTStatesInBed = 0
+            _batchPortFlushCountInBed = 0
+            _batchMemoryFlushCountInBed = 0
+            _batchWakeFlushCountInBed = 0
+            _batchCeilingFlushCountInBed = 0
+            _batchEndFlushCountInBed = 0
+            _batchExplicitFlushCountInBed = 0
+        End If
+    End Sub
+
+    Private Sub EndClockBatchInBed()
+        _batchBusInBed = Nothing
+        _batchPendingPicosecondsInBed = 0
+        _batchNextWakePicosecondsInBed = Long.MaxValue
+        _batchDeadlineDirtyInBed = True
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Friend Sub AdvanceCpuTStatesInBed(tStatesInBed As Long)
+        If tStatesInBed <= 0 Then Return
+
+        _batchPendingPicosecondsInBed +=
+            tStatesInBed * _batchTStatePicosecondsInBed
+
+        If _batchDeadlineDirtyInBed Then
+            RefreshBatchDeadlineInBed()
+        End If
+
+        If _batchNextWakePicosecondsInBed <> Long.MaxValue AndAlso
+           _batchPendingPicosecondsInBed >= _batchNextWakePicosecondsInBed Then
+            FlushPendingBatchInBed(ClockBatchFlushReason.WakeDeadline)
+        ElseIf _batchPendingPicosecondsInBed >= _batchMaximumPicosecondsInBed Then
+            FlushPendingBatchInBed(ClockBatchFlushReason.BatchCeiling)
+        End If
+    End Sub
+
+    Friend Function HaltedStepBudgetInBed(remainingTStatesInBed As Long) As Long
+        If remainingTStatesInBed <= 0 Then Return 0
+
+        Dim busInBed As HardwareBus = _batchBusInBed
+        If busInBed Is Nothing Then
+            Return Math.Min(LegacyMaximumBatchTStates, remainingTStatesInBed)
+        End If
+
+        If busInBed.HasUnclassifiedClockedDevices Then
+            Return Math.Min(LegacyMaximumBatchTStates, remainingTStatesInBed)
+        End If
+
+        If _batchDeadlineDirtyInBed Then
+            RefreshBatchDeadlineInBed()
+        End If
+        If _batchNextWakePicosecondsInBed = Long.MaxValue Then
+            Return remainingTStatesInBed
+        End If
+
+        Dim untilWakePicosecondsInBed As Long =
+            _batchNextWakePicosecondsInBed - _batchPendingPicosecondsInBed
+        If untilWakePicosecondsInBed <= 0 Then
+            FlushPendingBatchInBed(ClockBatchFlushReason.WakeDeadline)
+            If _batchNextWakePicosecondsInBed = Long.MaxValue Then
+                Return remainingTStatesInBed
+            End If
+            untilWakePicosecondsInBed = _batchNextWakePicosecondsInBed
+        End If
+
+        Dim untilWakeTStatesInBed As Long =
+            Math.Max(
+                1L,
+                (untilWakePicosecondsInBed +
+                 _batchTStatePicosecondsInBed - 1L) \
+                _batchTStatePicosecondsInBed)
+
+        Return Math.Min(remainingTStatesInBed, untilWakeTStatesInBed)
+    End Function
+
+    Private Sub RefreshBatchDeadlineInBed()
+        Dim busInBed As HardwareBus = _batchBusInBed
+        If busInBed Is Nothing Then
+            _batchNextWakePicosecondsInBed = Long.MaxValue
+        Else
+            _batchNextWakePicosecondsInBed =
+                busInBed.PicosecondsUntilNextWakeEvent()
+        End If
+        _batchDeadlineDirtyInBed = False
+    End Sub
+
+    Private Sub FlushPendingBatchInBed(reasonInBed As ClockBatchFlushReason)
+        Dim busInBed As HardwareBus = _batchBusInBed
+        If busInBed Is Nothing Then Return
+
+        If _batchPendingPicosecondsInBed > 0 Then
+            Dim elapsedPicosecondsInBed As Long =
+                _batchPendingPicosecondsInBed
+            Dim flushedTStatesInBed As Long =
+                elapsedPicosecondsInBed \ _batchTStatePicosecondsInBed
+
+            _batchPendingPicosecondsInBed = 0
+            busInBed.AdvanceTime(elapsedPicosecondsInBed)
+            _batchAdvancedPicosecondsInBed += elapsedPicosecondsInBed
+
+            If RuntimeDiagnostics.Enabled Then
+                _batchFlushCountInBed += 1
+                If flushedTStatesInBed > _batchLargestFlushTStatesInBed Then
+                    _batchLargestFlushTStatesInBed = flushedTStatesInBed
+                End If
+
+                Select Case reasonInBed
+                    Case ClockBatchFlushReason.PortAccess
+                        _batchPortFlushCountInBed += 1
+                    Case ClockBatchFlushReason.MemoryAccess
+                        _batchMemoryFlushCountInBed += 1
+                    Case ClockBatchFlushReason.WakeDeadline
+                        _batchWakeFlushCountInBed += 1
+                    Case ClockBatchFlushReason.BatchCeiling
+                        _batchCeilingFlushCountInBed += 1
+                    Case ClockBatchFlushReason.EndOfSlice
+                        _batchEndFlushCountInBed += 1
+                    Case Else
+                        _batchExplicitFlushCountInBed += 1
+                End Select
+            End If
+        End If
+
+        RefreshBatchDeadlineInBed()
+    End Sub
+
+    Private Sub SynchronizePendingTime(
+        reasonInBed As ClockBatchFlushReason) Implements ITimeBatchSynchronizer286.SynchronizePendingTime
+
+        FlushPendingBatchInBed(reasonInBed)
+    End Sub
+
+    Private Sub TimingTopologyChanged() Implements ITimeBatchSynchronizer286.TimingTopologyChanged
+        _batchDeadlineDirtyInBed = True
+    End Sub
 
     Private Sub AccumulateHostTime(elapsedStopwatchTicks As Long)
         If elapsedStopwatchTicks = 0 Then Return
@@ -386,10 +476,21 @@ Public NotInheritable Class MachineClock286
         unscaledPicosecondsInBed += fractionalNumerator \ frequency
         _hostPicosecondNumeratorRemainder = fractionalNumerator Mod frequency
 
-        Dim scaledNumeratorInBed As Long =
-            unscaledPicosecondsInBed * CLng(_hostExecutionRatePercentInBed) + _hostRateNumeratorRemainder
-        _pendingPicoseconds += scaledNumeratorInBed \ 100L
-        _hostRateNumeratorRemainder = scaledNumeratorInBed Mod 100L
+        ' Scale by the host pacing percentage without forming
+        ' unscaledPicoseconds * ratePercent as one Int64 product.  A single
+        ' long host discontinuity (sleep/suspend/debugger pause) can make that
+        ' intermediate overflow even though the final /100 result is nowhere
+        ' near Int64.MaxValue.  Divide by 100 first, then carry the exact
+        ' hundredth-picosecond remainder across calls.
+        Dim ratePercentInBed As Long = CLng(_hostExecutionRatePercentInBed)
+        Dim wholeHundredsInBed As Long = unscaledPicosecondsInBed \ 100L
+        Dim remainderPicosecondsInBed As Long = unscaledPicosecondsInBed Mod 100L
+        Dim scaledPicosecondsInBed As Long = wholeHundredsInBed * ratePercentInBed
+        Dim scaledRemainderNumeratorInBed As Long =
+            remainderPicosecondsInBed * ratePercentInBed + _hostRateNumeratorRemainder
+        scaledPicosecondsInBed += scaledRemainderNumeratorInBed \ 100L
+        _hostRateNumeratorRemainder = scaledRemainderNumeratorInBed Mod 100L
+        _pendingPicoseconds += scaledPicosecondsInBed
     End Sub
 End Class
 

@@ -1,0 +1,361 @@
+--- a/Ne2000Isa.vb
++++ b/Ne2000Isa.vb
+@@ -1,7 +1,9 @@
+ Imports System
+ Imports System.Collections.Generic
++Imports System.Collections.Concurrent
++Imports System.Threading
+ Imports System.IO
+ Imports System.Net
+ Imports System.Net.Sockets
+ 
+ ' Novell NE2000-compatible 16-bit ISA Ethernet adapter.
+@@ -22,11 +24,12 @@
+     Implements IPortDevice, IWordPortDevice, IPortDecodeCandidateProvider, IClockedDevice, IClockWakeSource, IResettableDevice, IDisposable
+ 
+     Private Const NicRamStart As Integer = &H4000
+     Private Const NicRamEndExclusive As Integer = &H8000
+     Private Const PacketRamBytes As Integer = NicRamEndExclusive - NicRamStart
+-    Private Const HostPollPicoseconds As Long = 1000000000L ' 1 ms
++    Private Const HostReceiveQueueCapacityInBed As Integer = 256
++    Private Const HostReceiveDrainLimitPerBoundaryInBed As Integer = 32
+ 
+     Private Const IsrPrx As Byte = &H1
+     Private Const IsrPtx As Byte = &H2
+     Private Const IsrRxe As Byte = &H4
+     Private Const IsrTxe As Byte = &H8
+@@ -68,20 +71,42 @@
+     Private _collisionCount As Byte
+     Private _tally0 As Byte
+     Private _tally1 As Byte
+     Private _tally2 As Byte
+     Private _irqAsserted As Boolean
+-    Private _pollAccumulator As Long
+     Private _disposed As Boolean
+ 
+     Private _udp As UdpClient
+     Private _udpPeer As IPEndPoint
+ 
+-    ' Host-side cable-presence mirror used only to avoid taking _sync on every
+-    ' machine clock commit when no UDP tunnel exists.  _udp under _sync remains
+-    ' authoritative; this flag is published after connect and before disconnect.
++    ' HOST TRANSPORT BOUNDARY
++    ' -----------------------
++    ' The UDP receiver thread is deliberately host-only.  It NEVER touches NIC
++    ' packet RAM, registers, ISR/IMR, CURR/BNRY, or PIC lines.  It may only copy
++    ' an accepted UDP datagram into this bounded queue.
++    '
++    ' The machine owner drains the queue from AdvanceTime(), and only there is
++    ' ReceiveFrameLocked() allowed to mutate the guest-visible DP8390.
++    Private ReadOnly _hostReceiveQueueInBed As New ConcurrentQueue(Of HostReceivedFrameInBed)()
++    Private _hostReceiveQueuedCountInBed As Integer
++    Private _hostReceiveQueueDropsInBed As Long
++    Private _udpReceiveThreadInBed As Thread
++    Private _udpGenerationInBed As Integer
++
++    ' Host-side cable-presence mirror.  _udp under _sync remains authoritative.
+     Private _udpConnectedInBed As Integer
++
++    Private Structure HostReceivedFrameInBed
++        Public Generation As Integer
++        Public Frame As Byte()
++    End Structure
++
++    Private NotInheritable Class UdpReceiveThreadStateInBed
++        Public Client As UdpClient
++        Public Peer As IPEndPoint
++        Public Generation As Integer
++    End Class
+ 
+     Private _capturePath As String
+     Private _captureStream As FileStream
+     Private _framesTransmitted As ULong
+     Private _framesReceived As ULong
+@@ -585,11 +610,10 @@
+         _localNextPacket = 0
+         _addressCounter = 0
+         _fifo = 0
+         _collisionCount = 0
+         _tally0 = 0 : _tally1 = 0 : _tally2 = 0
+-        _pollAccumulator = 0
+         Array.Clear(_ram, 0, _ram.Length)
+         Array.Clear(_multicast, 0, _multicast.Length)
+         UpdateIrq()
+     End Sub
+ 
+@@ -602,33 +626,160 @@
+         Dim address As IPAddress = Array.Find(addresses, Function(a) a.AddressFamily = AddressFamily.InterNetwork)
+         If address Is Nothing Then Throw New InvalidOperationException("The NE2000 UDP tunnel currently requires an IPv4 peer.")
+ 
+         SyncLock _sync
+             CloseUdpLocked()
+-            _udp = New UdpClient(New IPEndPoint(IPAddress.Any, localPort))
+-            _udp.Client.Blocking = False
+-            _udpPeer = New IPEndPoint(address, peerPort)
+-            Threading.Volatile.Write(_udpConnectedInBed, 1)
++
++            Dim clientInBed As New UdpClient(New IPEndPoint(IPAddress.Any, localPort))
++            Dim peerInBed As New IPEndPoint(address, peerPort)
++            Dim generationInBed As Integer =
++                Interlocked.Increment(_udpGenerationInBed)
++
++            _udp = clientInBed
++            _udpPeer = peerInBed
++            Volatile.Write(_udpConnectedInBed, 1)
++
++            Dim stateInBed As New UdpReceiveThreadStateInBed With {
++                .Client = clientInBed,
++                .Peer = peerInBed,
++                .Generation = generationInBed
++            }
++            _udpReceiveThreadInBed =
++                New Thread(
++                    Sub() UdpReceiveLoopInBed(stateInBed)) With {
++                    .IsBackground = True,
++                    .Name = "Virtual Machine Bench NE2000 UDP RX"
++                }
++            _udpReceiveThreadInBed.Start()
+         End SyncLock
+     End Sub
+ 
+     Public Sub DisconnectUdpTunnel()
+         SyncLock _sync
+             CloseUdpLocked()
+         End SyncLock
+     End Sub
+ 
+     Private Sub CloseUdpLocked()
+-        ' Publish "cable absent" first.  Machine-thread fast paths may then stop
+-        ' entering the host transport lock while this close completes.
+-        Threading.Volatile.Write(_udpConnectedInBed, 0)
+-
+-        If _udp IsNot Nothing Then
+-            Try : _udp.Close() : Catch : End Try
+-        End If
++        ' Invalidate the old receive generation BEFORE closing the socket.  A
++        ' datagram that was already returning from the host kernel can therefore
++        ' never leak from an old tunnel into a newly configured virtual cable.
++        Volatile.Write(_udpConnectedInBed, 0)
++        Interlocked.Increment(_udpGenerationInBed)
++
++        Dim oldClientInBed As UdpClient = _udp
++        Dim oldThreadInBed As Thread = _udpReceiveThreadInBed
+         _udp = Nothing
+         _udpPeer = Nothing
++        _udpReceiveThreadInBed = Nothing
++
++        If oldClientInBed IsNot Nothing Then
++            Try
++                oldClientInBed.Close()
++            Catch
++            End Try
++        End If
++
++        ' Receive() is blocked in the host kernel and Close() wakes it.  The
++        ' worker never enters _sync, so joining here cannot deadlock the card.
++        If oldThreadInBed IsNot Nothing AndAlso
++           oldThreadInBed IsNot Thread.CurrentThread Then
++            oldThreadInBed.Join(500)
++        End If
++
++        ClearHostReceiveQueueInBed()
++    End Sub
++
++    Private Sub ClearHostReceiveQueueInBed()
++        Dim ignoredInBed As HostReceivedFrameInBed
++        While _hostReceiveQueueInBed.TryDequeue(ignoredInBed)
++            Interlocked.Decrement(_hostReceiveQueuedCountInBed)
++        End While
++        Interlocked.Exchange(_hostReceiveQueuedCountInBed, 0)
++    End Sub
++
++    Private Shared Function SameUdpEndpointInBed(leftInBed As IPEndPoint,
++                                                 rightInBed As IPEndPoint) As Boolean
++        If leftInBed Is Nothing OrElse rightInBed Is Nothing Then Return False
++        Return leftInBed.Port = rightInBed.Port AndAlso
++               leftInBed.Address.Equals(rightInBed.Address)
++    End Function
++
++    Private Sub UdpReceiveLoopInBed(stateInBed As UdpReceiveThreadStateInBed)
++        ' Blocking host receive is intentional: this thread sleeps in the kernel
++        ' until a frame arrives.  There is no guest-time 1-ms polling wake.
++        Try
++            While Volatile.Read(_disposed) = False AndAlso
++                  stateInBed.Generation = Volatile.Read(_udpGenerationInBed) AndAlso
++                  Volatile.Read(_udpConnectedInBed) <> 0
++
++                Dim sourceInBed As IPEndPoint = Nothing
++                Dim frameInBed As Byte()
++
++                Try
++                    frameInBed = stateInBed.Client.Receive(sourceInBed)
++                Catch ex As ObjectDisposedException
++                    Exit While
++                Catch ex As SocketException
++                    ' Closing/reconfiguring the tunnel interrupts Receive().
++                    If stateInBed.Generation <> Volatile.Read(_udpGenerationInBed) OrElse
++                       Volatile.Read(_udpConnectedInBed) = 0 Then
++                        Exit While
++                    End If
++                    If RuntimeDiagnostics.Enabled Then
++                        Interlocked.Increment(_hostReceiveQueueDropsInBed)
++                    End If
++                    Continue While
++                Catch
++                    If stateInBed.Generation <> Volatile.Read(_udpGenerationInBed) OrElse
++                       Volatile.Read(_udpConnectedInBed) = 0 Then
++                        Exit While
++                    End If
++                    If RuntimeDiagnostics.Enabled Then
++                        Interlocked.Increment(_hostReceiveQueueDropsInBed)
++                    End If
++                    Continue While
++                End Try
++
++                If frameInBed Is Nothing Then Continue While
++
++                ' Tunnel peer filtering belongs on the HOST side of the card
++                ' boundary.  A packet from any other UDP endpoint is not a frame
++                ' that arrived on this configured virtual Ethernet cable.
++                If Not SameUdpEndpointInBed(sourceInBed, stateInBed.Peer) Then
++                    If RuntimeDiagnostics.Enabled Then
++                        Interlocked.Increment(_hostReceiveQueueDropsInBed)
++                    End If
++                    Continue While
++                End If
++
++                If stateInBed.Generation <> Volatile.Read(_udpGenerationInBed) Then
++                    Exit While
++                End If
++
++                Dim queuedInBed As Integer =
++                    Interlocked.Increment(_hostReceiveQueuedCountInBed)
++                If queuedInBed > HostReceiveQueueCapacityInBed Then
++                    Interlocked.Decrement(_hostReceiveQueuedCountInBed)
++                    If RuntimeDiagnostics.Enabled Then
++                        Interlocked.Increment(_hostReceiveQueueDropsInBed)
++                    End If
++                    Continue While
++                End If
++
++                _hostReceiveQueueInBed.Enqueue(
++                    New HostReceivedFrameInBed With {
++                        .Generation = stateInBed.Generation,
++                        .Frame = frameInBed
++                    })
++            End While
++        Catch
++            ' Host transport failure must not kill the virtual machine thread.
++            If RuntimeDiagnostics.Enabled Then
++                Interlocked.Increment(_hostReceiveQueueDropsInBed)
++            End If
++        End Try
+     End Sub
+ 
+     Public Sub SetPcapCapture(PathWay As String)
+         SyncLock _sync
+             CloseCaptureLocked()
+@@ -686,50 +837,42 @@
+         _capturePath = Nothing
+     End Sub
+ 
+     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
+         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+-        If elapsedPicoseconds = 0 OrElse _disposed Then Return
+-
+-        ' The NIC itself has no free-running guest state in this host transport
+-        ' path.  With no UDP cable attached, the old code acquired _sync at every
+-        ' motherboard clock commit solely to rediscover _udp Is Nothing.
+-        If Threading.Volatile.Read(_udpConnectedInBed) = 0 Then Return
+-
+-        SyncLock _sync
+-            If _udp Is Nothing Then Return
+-            _pollAccumulator += elapsedPicoseconds
+-            If _pollAccumulator < HostPollPicoseconds Then Return
+-            _pollAccumulator = _pollAccumulator Mod HostPollPicoseconds
+-
+-            For packetIndex As Integer = 0 To 31
+-                Try
+-                    If _udp.Available <= 0 Then Exit For
+-                    Dim source As IPEndPoint = Nothing
+-                    Dim frame() As Byte = _udp.Receive(source)
+-                    ReceiveFrameLocked(frame)
+-                Catch ex As SocketException
+-                    If ex.SocketErrorCode = SocketError.WouldBlock Then Exit For
+-                    _framesDropped += 1UL
+-                    Exit For
+-                Catch
+-                    _framesDropped += 1UL
+-                    Exit For
+-                End Try
++        If elapsedPicoseconds = 0 OrElse Volatile.Read(_disposed) Then Return
++
++        ' The host RX thread may only enqueue immutable frame byte arrays.  This
++        ' machine-owner boundary is where arrival becomes a DP8390 receive-ring
++        ' mutation and may consequently assert the modeled NIC IRQ.
++        If Volatile.Read(_hostReceiveQueuedCountInBed) <= 0 Then Return
++
++        SyncLock _sync
++            Dim currentGenerationInBed As Integer =
++                Volatile.Read(_udpGenerationInBed)
++
++            For packetIndexInBed As Integer = 0 To HostReceiveDrainLimitPerBoundaryInBed - 1
++                Dim receivedInBed As HostReceivedFrameInBed
++                If Not _hostReceiveQueueInBed.TryDequeue(receivedInBed) Then Exit For
++                Interlocked.Decrement(_hostReceiveQueuedCountInBed)
++
++                If receivedInBed.Generation <> currentGenerationInBed Then
++                    Continue For
++                End If
++                If receivedInBed.Frame Is Nothing Then Continue For
++
++                ReceiveFrameLocked(receivedInBed.Frame)
+             Next
+         End SyncLock
+     End Sub
+ 
+     Public Function PicosecondsUntilNextWakeEvent() As Long Implements IClockWakeSource.PicosecondsUntilNextWakeEvent
+-        If Threading.Volatile.Read(_udpConnectedInBed) = 0 Then Return Long.MaxValue
+-
+-        SyncLock _sync
+-            If _udp Is Nothing Then Return Long.MaxValue
+-            Dim remaining As Long = HostPollPicoseconds - _pollAccumulator
+-            If remaining <= 0 Then Return 1
+-            Return remaining
+-        End SyncLock
++        ' No host wall-clock poll is a virtual NIC event.  An already-arrived
++        ' host frame requests synchronization at the next machine opportunity;
++        ' otherwise the NIC has no spontaneous guest-time deadline in this model.
++        If Volatile.Read(_hostReceiveQueuedCountInBed) > 0 Then Return 1
++        Return Long.MaxValue
+     End Function
+ 
+     Public Function DiagnosticText() As String
+         SyncLock _sync
+             Return "Novell NE2000 / DP8390" & Environment.NewLine &
+@@ -737,17 +880,22 @@
+                    "  MAC                   : " & MacAddressText & Environment.NewLine &
+                    "  CR / ISR / IMR        : " & _command.ToString("X2") & " / " & _interruptStatus.ToString("X2") & " / " & _interruptMask.ToString("X2") & Environment.NewLine &
+                    "  PSTART/PSTOP/BNRY/CURR: " & _pageStart.ToString("X2") & "/" & _pageStop.ToString("X2") & "/" & _boundary.ToString("X2") & "/" & _currentPage.ToString("X2") & Environment.NewLine &
+                    "  remote addr/count     : " & _remoteAddress.ToString("X4") & " / " & _remoteCount.ToString() & Environment.NewLine &
+                    "  TX / RX / dropped     : " & _framesTransmitted.ToString("N0") & " / " & _framesReceived.ToString("N0") & " / " & _framesDropped.ToString("N0") & Environment.NewLine &
+-                   "  host cable            : " & If(_udp Is Nothing, "disconnected", "UDP tunnel connected")
++                   "  host cable            : " & If(_udp Is Nothing, "disconnected", "UDP tunnel connected") & Environment.NewLine &
++                   "  host RX queue         : " & Volatile.Read(_hostReceiveQueuedCountInBed).ToString() &
++                   " / " & HostReceiveQueueCapacityInBed.ToString() &
++                   If(RuntimeDiagnostics.Enabled,
++                      " (host drops " & Interlocked.Read(_hostReceiveQueueDropsInBed).ToString("N0") & ")",
++                      "")
+         End SyncLock
+     End Function
+ 
+     Public Sub Dispose() Implements IDisposable.Dispose
+-        If _disposed Then Return
+-        _disposed = True
++        If Volatile.Read(_disposed) Then Return
++        Volatile.Write(_disposed, True)
+         SyncLock _sync
+             If _irqAsserted Then DriveIrq(False)
+             _irqAsserted = False
+             CloseUdpLocked()
+             CloseCaptureLocked()

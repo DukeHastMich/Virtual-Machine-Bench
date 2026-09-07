@@ -1,0 +1,57 @@
+--- IdeController.vb.current
++++ IdeController.vb.SRST-fixed
+@@ -1562,6 +1562,10 @@
+         ' fabricates or copies a signature.
+         ResetDeviceStateForKindInBed(_master, _masterKind, True)
+         ResetDeviceStateForKindInBed(_slave, _slaveKind, True)
++
++        ' ATA software reset leaves device 0 selected.  Do this only at the reset
++        ' boundary; ordinary Device/Head writes still select either socket normally.
++        _driveHead = &HA0
+         _pic.ClearIrq(_picIrqLine)
+     End Sub
+ 
+@@ -1611,26 +1615,27 @@
+         state.LbaLow = 1
+         state.LbaMid = &H14
+         state.LbaHigh = &HEB
+-        ' Keep the known-good legacy ATAPI idle signature used by the original
+-        ' controller: 14h/EBh in the cylinder/byte-count registers with Status
+-        ' DRDY+DSC (50h).  This is guest-visible compatibility, not cosmetic state:
+-        ' the DOS ATAPI driver previously hung when DSC was omitted, and the dual-
+-        ' channel refactor regressed discovery by replacing this with 00h.
+-        state.Status = StatusReadyComplete
++
++        ' Preserve the known-good 50h idle/command-complete behavior which the
++        ' VIDE-CDD/VU-CCD path already proved it polls for.  SRST release is a
++        ' distinct transport-reset state: expose the ATAPI 01/01/14/EB signature
++        ' with DSC set but DRDY clear (10h).  The first real ATA/ATAPI command then
++        ' enters the normal 50h/58h/51h status family.
++        state.Status = If(softwareReset, StatusSeekComplete, StatusReadyComplete)
+         state.PacketByteLimit = 2048
+         state.MediumRemovalPrevented = False
+         ClearTransfer(state)
+ 
+-        ' A packet device may report reset as UNIT ATTENTION. Preserve an already
+-        ' pending media-change event; otherwise SRST creates the standard reset UA.
+-        If softwareReset AndAlso Not state.UnitAttentionPending Then
+-            state.SenseKey = SenseUnitAttention
+-            state.AdditionalSenseCode = &H29    ' power on, reset, or bus-device reset
+-            state.AdditionalSenseQualifier = 0
+-            state.UnitAttentionPending = True
+-        ElseIf Not state.UnitAttentionPending Then
+-            ClearSense(state)
+-        End If
++        ' Mount/eject already creates the one-shot 06/28/00 media-change UNIT
++        ' ATTENTION used by the working DOS path.  Do not replace or duplicate that
++        ' event merely because the ATA transport received SRST.  If no genuine
++        ' media-change condition is pending, leave packet sense clear.
++        If Not state.UnitAttentionPending Then ClearSense(state)
++
++        TraceAtaInBed("ATAPI " & If(softwareReset, "SRST", "RESET") &
++                      " signature SC/LBA=01/01/14/EB ST=" &
++                      state.Status.ToString("X2") &
++                      " UA=" & If(state.UnitAttentionPending, "pending", "clear"))
+     End Sub
+ 
+     ' -------------------------------------------------------------------------

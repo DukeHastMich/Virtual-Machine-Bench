@@ -1,0 +1,189 @@
+PERFORMANCE BRICK 9 — SB16 IDLE HOST-AUDIO CLOCK GATING
+
+Problem
+-------
+After Brick 6.1/6.1B moved waveform generation to a host worker, the MACHINE
+thread still posted a 48-kHz RenderInterval for every guest-time interval even
+when the entire card was audibly idle.
+
+That meant an idle SB16/wavetable configuration could still cause:
+
+  machine owner:
+    48-kHz host-frame arithmetic
+    mixer gain calculations
+    BlockingCollection render commands
+    wavetable PCM requests
+
+  host workers:
+    OPL GenerateSample() 48,000 times/virtual second
+    wavetable render requests / empty PCM reads
+    mix/clamp/round work for zero samples
+    WinMM staging checks
+
+With a wavetable board installed but no notes playing, MeltySynth could be asked
+to render silence continuously.
+
+Correctness rule
+----------------
+"No recent CPU write" is NOT an acceptable idle test.
+
+A real OPL or wavetable voice continues from its programmed state after the CPU
+stops touching the card.  Note-off can also leave a release tail.
+
+This brick therefore sleeps host waveform generation ONLY after the HOST
+renderer itself has produced at least 100 ms of near-zero mixed PCM.
+
+New activity immediately re-arms rendering.
+
+Activity triggers
+-----------------
+Host rendering is armed by:
+  * OPL DATA writes
+  * MPU UART MIDI bytes when a daughterboard host is attached
+  * direct-DAC output changes
+  * DSP speaker enable / disable changes
+  * ordinary mixer writes and mixer reset (can unmute a still-running source)
+  * accepted DSP PCM source frames while speaker output is enabled
+    (one host-wake level update per machine interval, NOT one interlocked event
+     per PCM sample)
+  * attaching a wavetable host
+  * audio reset transition
+
+OPL address-only writes do not wake rendering until data is written.
+
+Machine-clock behavior
+----------------------
+ALWAYS preserved:
+  * DSP DMA/sample clock
+  * DREQ / DMA bus activity
+  * DSP IRQ timing
+  * MPU guest register behavior
+  * OPL register state
+  * OPL guest-visible timers
+  * 48-kHz host sample CLOCK PHASE accumulator
+
+Only the expensive host transducer render request is suppressed while proven
+silent.
+
+The host sample-clock numerator continues advancing during silence.  Therefore a
+new sound resumes at the correct next 48-kHz sample boundary rather than
+restarting an arbitrary host phase.
+
+OPL timer micro-optimization
+----------------------------
+The guest-visible OPL timer state remains on the machine thread.  Opl3FmCore now
+exposes HasRunningTimers; when neither timer enable bit is set, SoundBlaster16Isa
+does not call the timer accumulator method at every motherboard clock batch.
+
+This is not timer emulation removal.  Enabling either timer immediately restores
+the same AdvanceTime() path.
+
+Muted DSP PCM
+-------------
+When the DSP speaker path is disabled, DMA playback still:
+  * consumes guest DMA
+  * advances sample timing
+  * changes the current DAC sample
+  * completes blocks
+  * raises the same IRQ
+
+But those muted historical samples are not copied into the HOST PCM ring.
+If the guest later enables the speaker, the then-current DAC state is presented;
+old samples that occurred while the analog path was disabled are not replayed.
+
+Sleep proof
+-----------
+The host worker tracks actual mixed left/right PCM.
+
+Only after 4,800 consecutive frames (~100 ms at 48 kHz) within +/-2 sample units
+does it clear NeedsContinuousRendering.
+
+An activity serial closes the race between:
+  worker proving silence
+and
+  guest posting a new OPL/MIDI/DAC/mixer event.
+
+If activity changes during or immediately after the silence proof, rendering is
+re-armed.
+
+Why 100 ms?
+-----------
+It is long enough to preserve ordinary release tails and avoid stopping on a
+zero crossing or quiet waveform segment.  It is a host transducer optimization,
+not a guest-visible hardware timeout.
+
+No game/program special cases
+-----------------------------
+There is no executable name, MIDI song, Windows mode, DOS program, sample rate,
+or content-specific check.
+
+File changed
+------------
+Expansion Cards/Audio Cards/Soundblaster 16-ISA/SoundBlaster16Isa.vb
+
+Expected impact
+---------------
+Largest when:
+  * SB16 is installed but idle
+  * wavetable daughterboard is installed but no MIDI voice is active
+  * Windows/DOS is doing non-audio work
+  * audio output has not yet opened
+
+During real OPL/wavetable/DSP playback the synthesis cost necessarily returns.
+
+
+CORRECTNESS HARDENING — ACTIVE SYNTH STATE
+------------------------------------------
+The first draft of this brick deliberately was not shipped as-is after review:
+"100 ms of mixed zero" by itself is not enough to prove that a synthesizer may
+stop advancing.
+
+Two cases matter:
+  * an OPL voice can be alive while mixer gain makes its current output zero;
+  * a SoundFont voice can be alive/releasing while current mixed output is zero.
+
+If synthesis stopped there, a later unmute would expose a frozen envelope/phase,
+which would be host-cheating rather than hardware emulation.
+
+The final brick therefore requires ALL of the following before sleeping:
+  1. at least 100 ms of actually rendered near-zero mixed PCM;
+  2. no active OPL operator envelope;
+  3. no active MeltySynth voice;
+  4. no renderer MIDI/reset event still pending;
+  5. no guest audio-activity event raced the silence proof.
+
+MeltySynth 2.4.1 specifically exposes Synthesizer.ActiveVoiceCount.  That
+property is queried ONLY on WavetableHost's renderer-owning worker, because
+MeltySynth 2.4.1 explicitly does not provide thread safety.  WavetableHost
+publishes only a Volatile mirror to the SB16 audio worker.
+
+Effect/reverb tails remain protected even after ActiveVoiceCount reaches zero:
+the mixed-output condition must still remain near-zero for the full silence
+window before sleeping.
+
+The silence detector is also block-based now.  It checks the output of each
+render block rather than calling a tracking method once per 48-kHz sample, so
+the optimization does not replace one idle hot path with another.
+
+Additional files changed by the final hardened Brick 9:
+  Expansion Cards/Audio Cards/Soundblaster 16-ISA/Wavetable/Host/WavetableHost.vb
+  Expansion Cards/Audio Cards/Soundblaster 16-ISA/Wavetable/Host/WavetableRenderer.vb
+
+
+SECOND HARDENING — RENDERER BACKLOG / SOUNDFONT LOAD
+----------------------------------------------------
+A pending MIDI/reset event is potential future sound even before a large
+SoundFont has finished loading.  Likewise, already-accepted RenderFrames work
+can contain a release/effect tail even if the PCM ring is temporarily empty.
+
+The final sleep predicate therefore also treats these as active:
+  * pending renderer MIDI/reset events, even while rendererReady=0;
+  * the existing _renderFramesOutstandingInBed count.
+
+WavetableHost already maintains renderFramesOutstanding as a functional
+back-pressure counter, so the sleep gate reuses that exact state rather than
+adding another duplicate counter.
+
+This prevents a slow bank load or temporarily lagging renderer from producing
+100 ms of host-side zero, falling asleep, and then stranding future queued audio
+with no new guest command to wake it.

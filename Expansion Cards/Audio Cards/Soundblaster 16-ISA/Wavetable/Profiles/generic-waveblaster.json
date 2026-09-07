@@ -1,0 +1,17 @@
+{
+  "id": "generic-waveblaster",
+  "displayName": "Generic Wave Blaster-compatible daughterboard",
+  "connector": "Wave Blaster-compatible MIDI daughterboard connector",
+  "generalMidiCompatible": true,
+  "drumChannelOneBased": 10,
+  "polyphonyLimit": 0,
+  "polyphonyLimitMeaning": "0 = intentionally unspecified until a real board profile is modeled",
+  "hostBankRepository": "<project-root>/Banks",
+  "defaultBank": "SB16.sf2",
+  "notes": [
+    "This generic profile does not claim to emulate a specific historical daughterboard.",
+    "SoundFont selection is host/chassis configuration and becomes active on power cycle.",
+    "Guest MIDI still must reach the future daughterboard through the emulated sound-card MIDI path."
+  ],
+  "defaultBankPolicy": "If SB16.sf2 is absent, host chooses the smallest .sf2 in <project-root>/Banks; an explicitly selected nondefault bank does not fall back."
+}

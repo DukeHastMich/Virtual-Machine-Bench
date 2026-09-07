@@ -1,0 +1,39 @@
+VMB 80286 SingleStepTests host integration - baseline verification
+
+Authoritative Library checkpoint: 9-6-26 vm 12:30 AM checkpoint full folder.zip
+Materialized checkpoint SHA-256: cfdbd459191a5d0561f43489523888206942dabfa4c127c059ec55fb7fc09a46
+
+This working tree was freshly extracted from that checkpoint before the host tester was applied.
+The stale nested "new source root.zip" carried inside the historical checkpoint archive was deliberately removed and was never used as a source authority.
+
+UNCHANGED emulator files (byte-identical to authoritative checkpoint extraction):
+  3bb14e829e8e91b4660b85eb4a4aa79d116573123756f261e9e3b2735efa9c43  ProcessorCore.vb
+  58b1376f819e6ec913b637f364f0b8aff7facecb29ae1e151721823a62690da2  HardwareBus.vb
+  24f6336751269c45330e2f56342bc488ccb5e6f95953e0e65295a47f861f5fd9  MachineConfiguration.vb
+  3ddceec460caa14b97f6b3dbd91282982bc5bbb96c345f30183509f33f78a840  IsaBackplane.vb
+  aecf9001d380118d7d7edfb4f4e58927494d41c0d03dc87b9c400b6157a0410e  SystemConfigurationDrawer.vb
+  7d42d88897d562f7c698668c499694e9a856d1f8b4f6cf94d60288c5c2149bfb  IsaCardJumperPanels.vb
+  d3d7529658d719e433ff6d96e928662606c0dee6c26cd5440e8a0bbd68d60193  Expansion Cards/Audio Cards/Soundblaster 16-ISA/SoundBlaster16Isa.vb
+  337f189a0484e0a423f86632752389d07b33201128405fec82d15e11502b2de6  Ne2000Isa.vb
+  b8d711de4a97035174566ce4cea4f726356cb2e548b26ff2448fe8b582118ff1  DiamondStealthPro928.vb
+
+BASE-SENSITIVE EDITS:
+  BASE 3a2b8724613d3983069b9c84406f2ce6669b37d96c6130095eb5137deed74e7a  Form1.vb
+  NEW  9f4f59b04b1f9d89c27d9f4ec7fcfecc02d70187d489ee4b43c50efeb29822a7  Form1.vb
+  BASE 0f512254a09142d6a48b044fbdac4bb75eedb7b4e2b0750601a4e8cee1501a5f  VirtualComputer.Modern.vbproj
+  NEW  75a1aa4b3a909b1a528010d21fea670417a20d6c69aad4d553e1f1990cc33ed9  VirtualComputer.Modern.vbproj
+
+NEW HOST FILES:
+  a694ac4f218d80df762a172e868a7e10da063b24efaa6c06e2ae36bf4d9a76ea  SingleStep80286TestHost.vb
+  b8964d4f5b87686e34675c444b671cdbf658381e5a882c362f4e1e64a4abc7d8  THIRD-PARTY-NOTICE-SINGLESTEPTESTS-80286.txt
+  63796ef283aae85d2237698bb1bd19bfa85d7b0b6e40157bb1bb3fd54e0dc65a  SINGLESTEP-80286-HOST-NOTES.md
+
+Project XML parsed successfully; 51 explicit Compile entries; 0 missing; 0 duplicates.
+SingleStep80286TestHost.vb appears exactly once in Compile items.
+Form1 diagnostics menu entry appears exactly once; launcher method appears exactly once.
+Test host constructs its own HardwareBus / NEAT memory / bridge / CPU local bus / Processor286.
+MOO .gz reader, revocation list handling, complete initial+final-delta register/RAM validation, and latched I/O trace replay anchors are present.
+
+Compiler status: this container has no dotnet/MSBuild/Mono/vbc, so no compile-success claim is made.
+
+Visual Studio follow-up: BC30577 at the Browse button handler was fixed by renaming the local button variable so it no longer shadows BrowseInBed.

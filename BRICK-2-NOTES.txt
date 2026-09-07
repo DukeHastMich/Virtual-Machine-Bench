@@ -1,0 +1,31 @@
+Virtual Machine Bench — Wavetable Brick 2
+2026-09-04
+
+Includes the Brick 1 correction requested by the user:
+- the shared SoundFont repository is now <project root>\Banks
+- no card-local Wavetable\Banks path is used by the configurator
+- uo_4mb_2.sf2 remains the default
+
+Brick 2 adds:
+- SoundFontCatalog.ResolveSharedBanksDirectory() as the single shared path resolver
+- WavetableConfigForm defaults to the shared repository for every sound card
+- a real reusable WavetableProfile / WavetableProfileCatalog model
+- generic-waveblaster profile metadata without inventing a specific historical board
+- SoundBlaster16Isa stores the active physical wavetable settings snapshot
+- Form1 applies that snapshot only through the existing staged ISA configuration / chassis power-cycle path
+- SB16 diagnostics show the active wavetable hardware selection
+- root .gitignore entries for large bank assets
+- handoff/story-arc notes updated for the new shared Banks location and Brick 2 stopping point
+
+Explicitly NOT in Brick 2:
+- no MPU-to-daughterboard connector behavior
+- no MIDI parser
+- no SF2 sample parsing/loading
+- no wavetable PCM rendering/mixing
+- no new guest IRQ/DMA behavior
+
+Next Brick:
+- WaveBlasterConnector + WaveBlasterDaughterboard shell attached to the existing SB16 MIDI/MPU transmit path, with no renderer yet.
+
+Build verification:
+- this environment has no dotnet/MSBuild/vbc command available, so compile verification must be done in Visual Studio on the user's tree.

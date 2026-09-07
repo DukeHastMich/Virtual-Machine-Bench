@@ -1,6 +1,14 @@
 ﻿Imports System
 Imports System.Diagnostics
 
+' PERFORMANCE BASELINE SWITCH
+' False means runtime trace/profiler/flight-recorder collection is compiled out
+' of hot paths.  On-demand state summaries still exist, but they do not collect
+' rolling history while this switch is False.
+Public Module RuntimeDiagnostics
+    Public Const Enabled As Boolean = False
+End Module
+
 ' A deliberately substrate-oriented 80286 real-address-mode core.  Physical
 ' memory is the machine's existing 16 x 64K RAM array; no private shadow RAM is
 ' used.  Protected-mode state is represented, but the first milestone is a
@@ -132,6 +140,9 @@ Partial Public Class Processor286
     End Function
 
     Public Function HotPathDiagnosticText() As String
+        If Not RuntimeDiagnostics.Enabled Then
+            Return "CPU runtime diagnostics  : DISABLED (performance baseline)"
+        End If
         Dim sampledTicksInBed As Long =
             _hotPathProbeTicksInBed + _hotPathCaptureTicksInBed +
             _hotPathExecuteTicksInBed + _hotPathTimingTicksInBed
@@ -634,6 +645,19 @@ Partial Public Class Processor286
     ' CROMWELL PCB REFIT PHASE 2 BRICK 8A
     Public Property PortBus As CpuLocalBus286
     Public Property InterruptAcknowledge As Func(Of Integer)
+
+    ' Physical 80286 INTR input pin.  The master 8259A drives this line
+    ' electrically; the CPU must not poll the PIC after every instruction just
+    ' to discover that INTR is low.
+    '
+    ' Deliberately NOT cleared by CPU Reset(): INTR is an external motherboard
+    ' signal.  A processor-only RESET does not magically deassert the PIC pin.
+    Private _interruptRequestLineInBed As Boolean
+
+    Public Sub SetInterruptRequestLine(assertedInBed As Boolean)
+        _interruptRequestLineInBed = assertedInBed
+    End Sub
+
     ' CROMWELL PCB REFIT PHASE 2 BRICK 8B
     ' The CPU consumes motherboard memory; it no longer owns the backing store.
     Private _memoryControllerInBed As NeatMemoryController286
@@ -889,6 +913,7 @@ Partial Public Class Processor286
     Private ReadOnly _prefetchIpsInBed(5) As UInt16
     Private ReadOnly _prefetchCsInBed(5) As UInt16
     Private ReadOnly _prefetchBasesInBed(5) As UInteger
+    Private _prefetchHeadInBed As Integer
     Private _prefetchCountInBed As Integer
     Private _interruptShadowRetirementsInBed As Integer
     Private _nmiShadowRetirementsInBed As Integer
@@ -1061,6 +1086,7 @@ Partial Public Class Processor286
         _diagnosticLdtWriteCountInBed = 0
         _currentInstructionActiveInBed = False : _currentInstructionAbortedInBed = False : _currentInstructionLengthInBed = 0
         _exceptionDeliveryActiveInBed = False : _exceptionDeliveryVectorInBed = -1
+        _prefetchHeadInBed = 0
         _prefetchCountInBed = 0
         _interruptShadowRetirementsInBed = 0 : _nmiShadowRetirementsInBed = 0
         _trapFlagSampleAtInstructionStartInBed = False
@@ -1101,13 +1127,17 @@ Partial Public Class Processor286
     End Sub
 
     Public Overridable Function RunForTStates(maxTStates As Long,
-                                              Optional timeAdvanced As Action(Of Long) = Nothing,
-                                              Optional haltedStepBudget As Func(Of Long, Long) = Nothing) As Long
+                                              Optional timeCoordinatorInBed As MachineClock286 = Nothing) As Long
         If maxTStates < 0 Then Throw New ArgumentOutOfRangeException(NameOf(maxTStates))
         Dim consumed As Long
-        Dim hotRunnerStartInBed As Long = System.Diagnostics.Stopwatch.GetTimestamp()
-        Dim hotRunnerInstructionStartInBed As ULong = _hotPathInstructionCounterInBed
-        Dim hotRunnerProfilerGenerationStartInBed As ULong = _hotPathProfilerGenerationInBed
+        Dim hotRunnerStartInBed As Long = 0
+        Dim hotRunnerInstructionStartInBed As ULong = 0UL
+        Dim hotRunnerProfilerGenerationStartInBed As ULong = 0UL
+        If RuntimeDiagnostics.Enabled Then
+            hotRunnerStartInBed = System.Diagnostics.Stopwatch.GetTimestamp()
+            hotRunnerInstructionStartInBed = _hotPathInstructionCounterInBed
+            hotRunnerProfilerGenerationStartInBed = _hotPathProfilerGenerationInBed
+        End If
         Dim activeTStatesInBed As Long
         Dim idleTStatesInBed As Long
         Dim stateByteInBed As Integer
@@ -1120,7 +1150,7 @@ Partial Public Class Processor286
                 _totalTStates += heldTStatesInBed
                 idleTStatesInBed += heldTStatesInBed
                 stateByteInBed = stateByteInBed Or CInt(ProcessorStateByte.Hold)
-                If timeAdvanced IsNot Nothing Then timeAdvanced.Invoke(heldTStatesInBed)
+                If timeCoordinatorInBed IsNot Nothing Then timeCoordinatorInBed.AdvanceCpuTStatesInBed(heldTStatesInBed)
                 Continue While
             End If
             If ServicePendingNmi() Then
@@ -1130,7 +1160,7 @@ Partial Public Class Processor286
                 Dim committedNmiTStatesInBed As Integer = _lastInstructionTStates
                 consumed += committedNmiTStatesInBed
                 activeTStatesInBed += committedNmiTStatesInBed
-                If timeAdvanced IsNot Nothing Then timeAdvanced.Invoke(committedNmiTStatesInBed)
+                If timeCoordinatorInBed IsNot Nothing Then timeCoordinatorInBed.AdvanceCpuTStatesInBed(committedNmiTStatesInBed)
                 Continue While
             End If
 
@@ -1141,7 +1171,7 @@ Partial Public Class Processor286
                 Dim committedInterruptTStatesInBed As Integer = _lastInstructionTStates
                 consumed += committedInterruptTStatesInBed
                 activeTStatesInBed += committedInterruptTStatesInBed
-                If timeAdvanced IsNot Nothing Then timeAdvanced.Invoke(committedInterruptTStatesInBed)
+                If timeCoordinatorInBed IsNot Nothing Then timeCoordinatorInBed.AdvanceCpuTStatesInBed(committedInterruptTStatesInBed)
                 Continue While
             End If
 
@@ -1157,17 +1187,18 @@ Partial Public Class Processor286
                 End If
                 Dim remainingTStates As Long = maxTStates - consumed
                 Dim idleTStates As Long
-                If haltedStepBudget Is Nothing Then
+                If timeCoordinatorInBed Is Nothing Then
                     idleTStates = Math.Min(64L, remainingTStates)
                 Else
-                    idleTStates = haltedStepBudget.Invoke(remainingTStates)
+                    idleTStates =
+                        timeCoordinatorInBed.HaltedStepBudgetInBed(remainingTStates)
                     If idleTStates <= 0 Then idleTStates = 1
                     If idleTStates > remainingTStates Then idleTStates = remainingTStates
                 End If
                 consumed += idleTStates
                 _totalTStates += idleTStates
                 idleTStatesInBed += idleTStates
-                If timeAdvanced IsNot Nothing Then timeAdvanced.Invoke(idleTStates)
+                If timeCoordinatorInBed IsNot Nothing Then timeCoordinatorInBed.AdvanceCpuTStatesInBed(idleTStates)
                 Continue While
             End If
 
@@ -1175,7 +1206,7 @@ Partial Public Class Processor286
             pStep()
             consumed += _lastInstructionTStates
             activeTStatesInBed += _lastInstructionTStates
-            If timeAdvanced IsNot Nothing Then timeAdvanced.Invoke(_lastInstructionTStates)
+            If timeCoordinatorInBed IsNot Nothing Then timeCoordinatorInBed.AdvanceCpuTStatesInBed(_lastInstructionTStates)
         End While
 
         If _interruptObservedThisRunInBed Then stateByteInBed = stateByteInBed Or CInt(ProcessorStateByte.Interrupt)
@@ -1191,7 +1222,8 @@ Partial Public Class Processor286
         _lastRunIdleTStates = idleTStatesInBed
         ' A guest-visible RESET# can reset the host profiler while this runner
         ' call is still active. Do not combine pre-reset and post-reset samples.
-        If _hotPathProfilerGenerationInBed = hotRunnerProfilerGenerationStartInBed Then
+        If RuntimeDiagnostics.Enabled AndAlso
+           _hotPathProfilerGenerationInBed = hotRunnerProfilerGenerationStartInBed Then
             _hotPathRunnerTicksInBed += System.Diagnostics.Stopwatch.GetTimestamp() - hotRunnerStartInBed
             _hotPathRunnerInstructionsInBed += _hotPathInstructionCounterInBed - hotRunnerInstructionStartInBed
             _hotPathRunnerCallsInBed += 1UL
@@ -1218,7 +1250,20 @@ Partial Public Class Processor286
     End Function
 
     Private Function ServicePendingHardwareInterrupt() As Boolean
-        If InterruptAcknowledge Is Nothing OrElse Not Flag(InterruptFlag) OrElse _interruptShadowRetirementsInBed > 0 Then Return False
+        ' INTR is a real processor input pin.  The overwhelmingly common path is
+        ' LOW, so reject it with one Boolean test instead of invoking the
+        ' motherboard INTA callback and making the 8259A recompute priority after
+        ' every guest instruction.
+        If Not _interruptRequestLineInBed Then Return False
+        If InterruptAcknowledge Is Nothing OrElse
+           Not Flag(InterruptFlag) OrElse
+           _interruptShadowRetirementsInBed > 0 Then
+            Return False
+        End If
+
+        ' Only an asserted INTR reaches the INTA bus cycle.  The PIC's
+        ' Acknowledge() routine retains its own spurious-IRQ7 behavior if a
+        ' request disappears in the narrow INTR->INTA window.
         Dim vector As Integer = InterruptAcknowledge.Invoke()
         If vector < 0 Then Return False
         _interruptObservedThisRunInBed = True
@@ -1229,12 +1274,15 @@ Partial Public Class Processor286
         ' Keep dormant forensic recorders off the ordinary instruction path.
         ' Their full routines are entered only while the corresponding bounded
         ' trace is armed and has work that can actually complete on this step.
-        If _diagnosticImportantIntTraceEnabled AndAlso _diagnosticDosFilePendingInBed.Count <> 0 Then
-            TraceDiagnosticDosFileReturnInBed()
+        If RuntimeDiagnostics.Enabled Then
+            If _diagnosticImportantIntTraceEnabled AndAlso _diagnosticDosFilePendingInBed.Count <> 0 Then
+                TraceDiagnosticDosFileReturnInBed()
+            End If
+            If _diagnosticQbExecTraceEnabledInBed Then TraceDiagnosticQbStepEntryInBed()
+            _hotPathInstructionCounterInBed += 1UL
         End If
-        If _diagnosticQbExecTraceEnabledInBed Then TraceDiagnosticQbStepEntryInBed()
-        _hotPathInstructionCounterInBed += 1UL
         Dim hotSampleInBed As Boolean =
+            RuntimeDiagnostics.Enabled AndAlso
             (_hotPathInstructionCounterInBed And HotPathSampleMaskInBed) = 0UL
         Dim hotStampInBed As Long = 0
         If hotSampleInBed Then
@@ -1282,6 +1330,7 @@ Partial Public Class Processor286
         End If
 
         CaptureInstructionStartStateInBed()
+        If RuntimeDiagnostics.Enabled Then
         ' Windows 3.1 deliberately executes 0F FF here to probe #UD delivery.
         ' Start a fresh, narrowly targeted stream before fetching it so the
         ' exception handler and every write that constructs its RETF frame are
@@ -1445,6 +1494,7 @@ Partial Public Class Processor286
                    linkHighInBed.ToString("X2") & "]",
                    " LINKBYTES=[unmapped]"))
         End If
+        End If
         _trapFlagSampleAtInstructionStartInBed = Flag(TF)
         _segOverride = -1 : _rep = 0 : _lockPrefixInBed = False
         _currentInstructionLengthInBed = 0
@@ -1454,6 +1504,7 @@ Partial Public Class Processor286
         ' Detailed datapath sample: one instruction every 4096, deliberately at an
         ' offset that does not coincide with Brick 4's 1/1024 Stopwatch sample.
         Dim dataPathSampleInBed As Boolean =
+            RuntimeDiagnostics.Enabled AndAlso
             (_hotPathInstructionCounterInBed And 4095UL) = 1536UL
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
@@ -1480,7 +1531,7 @@ Partial Public Class Processor286
                 End Select
             Loop
 
-            WriteForensicInstructionInBed(op)
+            If RuntimeDiagnostics.Enabled Then WriteForensicInstructionInBed(op)
 
             If dataPathSampleInBed Then
                 _dataPathOpcodeFetchTicksInBed +=
@@ -1495,7 +1546,7 @@ Partial Public Class Processor286
             End If
             RecordFusedPrimaryOpcodeInBed(op, _rep)
             Execute(op)
-            TraceDiagnosticQbFirstCsFFFFTransitionInBed()
+            If RuntimeDiagnostics.Enabled Then TraceDiagnosticQbFirstCsFFFFTransitionInBed()
         Catch abortInBed As InstructionAbortSignalInBed
             _currentInstructionAbortedInBed = True
         Finally
@@ -1601,7 +1652,17 @@ Partial Public Class Processor286
             Case &H50 To &H57 : Push(GetReg16(op And 7))
             Case &H58 To &H5F : SetReg16(op And 7, PopWord())
             Case &H60
-                Dim originalSp = SP : Push(AX) : Push(CX) : Push(DX) : Push(BX) : Push(originalSp) : Push(BP) : Push(SI) : Push(DI)
+                Dim originalSp = SP
+                ' Harris 80C286 real-address PUSHA prechecks the odd wrap cases
+                ' that would eventually place a word at offset FFFFh.  It raises
+                ' #GP(13) before any of the eight stack writes take place.
+                If Not ProtectedMode AndAlso
+                   (originalSp = 7US OrElse originalSp = 9US OrElse originalSp = 11US OrElse
+                    originalSp = 13US OrElse originalSp = 15US) Then
+                    RaiseCpuException(13, "PUSHA real-address stack wrap")
+                Else
+                    Push(AX) : Push(CX) : Push(DX) : Push(BX) : Push(originalSp) : Push(BP) : Push(SI) : Push(DI)
+                End If
             Case &H61
                 DI = PopWord() : SI = PopWord() : BP = PopWord() : PopWord() : BX = PopWord() : DX = PopWord() : CX = PopWord() : AX = PopWord()
             Case &H62 : ExecuteBound()
@@ -1649,11 +1710,48 @@ Partial Public Class Processor286
             Case &HC4, &HC5 : ExecuteLoadFarPointer(op)
             Case &HC6, &HC7 : ExecuteMovImmediateRM(op)
             Case &HC8
-                Dim size = FetchWord(), level = FetchByte() And &H1F : RecordFusedEnterLevelInBed(level) : Push(BP) : Dim frame = SP
-                For i = 1 To level - 1 : BP = CUShort((CInt(BP) - 2) And &HFFFF) : Push(ReadWord(SegmentAddress(2, BP))) : Next
-                If level > 0 Then Push(frame)
-                BP = frame : SP = CUShort((CInt(SP) - size) And &HFFFF)
-            Case &HC9 : SP = BP : BP = PopWord()
+                Dim size = FetchWord(), level = FetchByte() And &H1F
+                RecordFusedEnterLevelInBed(level)
+
+                ' The Harris real-address corpus requires ENTER's FFFFh
+                ' word-boundary fault to be restartable before frame-building
+                ' writes become architecturally visible.  Preflight only the
+                ' word offsets here; normal bus/read/write order remains unchanged.
+                If Not ProtectedMode Then
+                    Dim enterFaultInBed As Boolean = False
+                    Dim pushCountInBed As Integer = If(level = 0, 1, level + 1)
+                    For pushIndexInBed As Integer = 1 To pushCountInBed
+                        Dim pushOffsetInBed As UInt16 = CUShort((CInt(SP) - (2 * pushIndexInBed)) And &HFFFF)
+                        If pushOffsetInBed = &HFFFFUS Then enterFaultInBed = True : Exit For
+                    Next
+                    If Not enterFaultInBed AndAlso level > 1 Then
+                        For sourceIndexInBed As Integer = 1 To level - 1
+                            Dim sourceOffsetInBed As UInt16 = CUShort((CInt(BP) - (2 * sourceIndexInBed)) And &HFFFF)
+                            If sourceOffsetInBed = &HFFFFUS Then enterFaultInBed = True : Exit For
+                        Next
+                    End If
+                    If enterFaultInBed Then
+                        RaiseCpuException(13, "ENTER real-address frame wrap")
+                    Else
+                        Push(BP) : Dim frame = SP
+                        For i = 1 To level - 1 : BP = CUShort((CInt(BP) - 2) And &HFFFF) : Push(ReadWord(SegmentAddress(2, BP))) : Next
+                        If level > 0 Then Push(frame)
+                        BP = frame : SP = CUShort((CInt(SP) - size) And &HFFFF)
+                    End If
+                Else
+                    Push(BP) : Dim frame = SP
+                    For i = 1 To level - 1 : BP = CUShort((CInt(BP) - 2) And &HFFFF) : Push(ReadWord(SegmentAddress(2, BP))) : Next
+                    If level > 0 Then Push(frame)
+                    BP = frame : SP = CUShort((CInt(SP) - size) And &HFFFF)
+                End If
+            Case &HC9
+                ' LEAVE stages the SS:BP pop before committing SP=BP.  If the
+                ' word read faults (notably BP=FFFFh in 286 real-address mode),
+                ' the exception frame is therefore pushed using the original SP.
+                Dim leaveFrameInBed As UInt16 = BP
+                Dim leaveBpInBed As UInt16 = ReadWord(SegmentAddress(2, leaveFrameInBed, 2))
+                SP = CUShort((CInt(leaveFrameInBed) + 2) And &HFFFF)
+                BP = leaveBpInBed
             Case &HCA
                 Dim cleanup As UInt16 = FetchWord()
                 ExecuteFarReturnInBed(cleanup)
@@ -1664,7 +1762,8 @@ Partial Public Class Processor286
             Case &HCF : ExecuteIret()
             Case &HD4 : ExecuteAam()
             Case &HD5 : ExecuteAad()
-            Case &HD6 ' Intel 286 proprietary single-byte operation; documented emulation is NOP.
+            Case &HD6 ' SALC (undocumented 80286 behavior): AL=FFh when CF=1, else 00h; flags unchanged.
+                AL = If(Flag(CF), CByte(&HFF), CByte(0))
             Case &HD7 : AL = ReadByte(CurrentDataAddress(False, CUShort((CInt(BX) + AL) And &HFFFF)))
             Case &HD8 To &HDF : ExecuteEsc(op)
             Case &HE0 To &HE3 : ExecuteLoop(op)
@@ -1798,8 +1897,16 @@ Partial Public Class Processor286
     Private Sub ExecuteString(op As Byte)
         If _rep <> 0 AndAlso CX = 0US Then Return
 
-        Dim stepSize As Integer = If((op And 1) = 0, 1, 2)
-        If Flag(DF) Then stepSize = -stepSize
+        ' The 80286 has unusual restart-visible partial commits when a WORD
+        ' string element faults on a segment boundary.  Keep the already-green
+        ' byte forms on the simple path and model the 286 word micro-order
+        ' separately so SI/DI/CX match the actual silicon at #SS/#GP entry.
+        If (op And 1) <> 0 Then
+            ExecuteStringWord286InBed(op)
+            Return
+        End If
+
+        Dim stepSize As Integer = If(Flag(DF), -1, 1)
 
         ' One REP element per architectural retirement boundary.  Rewinding IP
         ' to the prefix byte makes INTR/NMI/TF restart the same string instruction
@@ -1809,26 +1916,14 @@ Partial Public Class Processor286
                 Dim destinationInBed As UInteger = SegmentAddress(0, DI, 1, True)
                 Dim sourceInBed As UInteger = CurrentDataAddress(False, SI)
                 WriteByte(destinationInBed, ReadByte(sourceInBed))
-            Case &HA5
-                Dim destinationInBed As UInteger = SegmentAddress(0, DI, 2, True)
-                Dim sourceInBed As UInteger = CurrentDataAddress(False, SI, 2)
-                WriteWord(destinationInBed, ReadWord(sourceInBed))
             Case &HA6
                 Sub8(ReadByte(CurrentDataAddress(False, SI)), ReadByte(SegmentAddress(0, DI)))
-            Case &HA7
-                Sub16(ReadWord(CurrentDataAddress(False, SI, 2)), ReadWord(SegmentAddress(0, DI, 2)))
             Case &HAA
                 WriteByte(SegmentAddress(0, DI, 1, True), AL)
-            Case &HAB
-                WriteWord(SegmentAddress(0, DI, 2, True), AX)
             Case &HAC
                 AL = ReadByte(CurrentDataAddress(False, SI))
-            Case &HAD
-                AX = ReadWord(CurrentDataAddress(False, SI, 2))
             Case &HAE
                 Sub8(AL, ReadByte(SegmentAddress(0, DI)))
-            Case &HAF
-                Sub16(AX, ReadWord(SegmentAddress(0, DI, 2)))
         End Select
 
         If op <= &HA7 OrElse (op >= &HAC AndAlso op <= &HAD) Then
@@ -1847,11 +1942,122 @@ Partial Public Class Processor286
         If repeatInBed Then RewindRepInstructionInBed()
     End Sub
 
+    Private Sub ExecuteStringWord286InBed(op As Byte)
+        Dim stepSizeInBed As Integer = If(Flag(DF), -2, 2)
+        Dim repeatedInBed As Boolean = _rep <> 0
+        Dim sourceValueInBed As UInt16
+        Dim destinationValueInBed As UInt16
+
+        Select Case op
+            Case &HA5 ' MOVSW
+                ' 286 restart state:
+                '   SI is committed before the source check.
+                '   If the source succeeds, DI is committed before the destination check.
+                '   REP consumes CX once per committed operand stage; the second consume
+                '   is fault residue only and is given back on a successful element.
+                Dim oldSiInBed As UInt16 = SI
+                Dim oldDiInBed As UInt16 = DI
+
+                SI = CUShort((CInt(SI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+                Dim sourceAddressInBed As UInteger = CurrentDataAddress(False, oldSiInBed, 2)
+                sourceValueInBed = ReadWord(sourceAddressInBed)
+
+                DI = CUShort((CInt(DI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+                Dim destinationAddressInBed As UInteger = SegmentAddress(0, oldDiInBed, 2, True)
+
+                If repeatedInBed Then CX = CUShort((CInt(CX) + 1) And &HFFFF)
+                WriteWord(destinationAddressInBed, sourceValueInBed)
+
+            Case &HA7 ' CMPSW
+                ' 286 restart order for CMPSW is asymmetric:
+                '   1) commit DI, then validate/read ES:DI;
+                '   2) only after that succeeds, commit SI and the single REP CX count;
+                '   3) then validate/read the source operand.
+                ' Thus a first-operand fault exposes changed DI with unchanged CX, while
+                ' a second-operand fault exposes changed DI/SI with CX decremented once.
+                Dim oldSiInBed As UInt16 = SI
+                Dim oldDiInBed As UInt16 = DI
+
+                DI = CUShort((CInt(DI) + stepSizeInBed) And &HFFFF)
+
+                Dim destinationAddressInBed As UInteger = SegmentAddress(0, oldDiInBed, 2)
+                destinationValueInBed = ReadWord(destinationAddressInBed)
+
+                SI = CUShort((CInt(SI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+                Dim sourceAddressInBed As UInteger = CurrentDataAddress(False, oldSiInBed, 2)
+                sourceValueInBed = ReadWord(sourceAddressInBed)
+
+                Sub16(sourceValueInBed, destinationValueInBed)
+
+            Case &HAB ' STOSW
+                ' STOS commits DI even when ES:DI faults.  On the 286 a repeated
+                ' faulting STOS word also leaves CX two counts lower; successful
+                ' elements net the architectural single decrement.
+                Dim oldDiInBed As UInt16 = DI
+                DI = CUShort((CInt(DI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 2) And &HFFFF)
+
+                Dim destinationAddressInBed As UInteger = SegmentAddress(0, oldDiInBed, 2, True)
+
+                If repeatedInBed Then CX = CUShort((CInt(CX) + 1) And &HFFFF)
+                WriteWord(destinationAddressInBed, AX)
+
+            Case &HAD ' LODSW
+                ' LODS commits SI (and one REP count) before the source segment
+                ' check, so those values are visible in the exception frame.
+                Dim oldSiInBed As UInt16 = SI
+                SI = CUShort((CInt(SI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+                Dim sourceAddressInBed As UInteger = CurrentDataAddress(False, oldSiInBed, 2)
+                AX = ReadWord(sourceAddressInBed)
+
+            Case &HAF ' SCASW
+                ' SCAS commits DI and one REP count before checking ES:DI.
+                Dim oldDiInBed As UInt16 = DI
+                DI = CUShort((CInt(DI) + stepSizeInBed) And &HFFFF)
+                If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+                Dim destinationAddressInBed As UInteger = SegmentAddress(0, oldDiInBed, 2)
+                Sub16(AX, ReadWord(destinationAddressInBed))
+
+            Case Else
+                RaiseCpuException(6, "Invalid word string opcode")
+                Return
+        End Select
+
+        If Not repeatedInBed Then Return
+
+        Dim repeatInBed As Boolean = CX <> 0US
+        If repeatInBed AndAlso (op = &HA7 OrElse op = &HAF) Then
+            If _rep = 3 Then repeatInBed = Flag(ZF) Else repeatInBed = Not Flag(ZF)
+        End If
+        If repeatInBed Then RewindRepInstructionInBed()
+    End Sub
+
     Private Sub ExecuteShift(op As Byte)
         Dim m = DecodeModRM(), word = (op And 1) <> 0
         Dim count As Integer = If(op = &HD0 Or op = &HD1, 1, If(op = &HD2 Or op = &HD3, CL, FetchByte())) And &H1F
         RecordFusedShiftCountInBed(count)
-        If count = 0 Then Return
+        If count = 0 Then
+            ' On the 286 a zero effective count suppresses the write and flag
+            ' updates, but a memory operand is still resolved/read.  This matters
+            ' for real-address word operands at FFFFh, which must still fault #13.
+            If m.ModValue <> 3 Then
+                If word Then
+                    Dim ignoredWordInBed As UInt16 = ReadRM16(m)
+                Else
+                    Dim ignoredByteInBed As Byte = ReadRM8(m)
+                End If
+            End If
+            Return
+        End If
         If word Then WriteRM16(m, Shift16(m.Reg, ReadRM16(m), count)) Else WriteRM8(m, Shift8(m.Reg, ReadRM8(m), count))
     End Sub
 
@@ -1930,17 +2136,19 @@ Partial Public Class Processor286
                 Dim target = ReadRM16(m) : Push(IP) : IP = target
             Case 3
                 If m.ModValue = 3 Then RaiseCpuException(6, "Far CALL requires memory")
-                Dim farCallAddressInBed As UInteger = ResolveModRmMemoryAddressInBed(m, 4)
-                Dim niInBed As UInt16 = ReadWord(farCallAddressInBed)
-                Dim ncInBed As UInt16 = ReadWord(farCallAddressInBed + 2UI)
+                Dim farCallAddressInBed As UInteger
+                Dim farCallPointerInBed As UInteger = ReadModRmDwordAsWordPair286InBed(m, farCallAddressInBed)
+                Dim niInBed As UInt16 = CUShort(farCallPointerInBed And &HFFFFUI)
+                Dim ncInBed As UInt16 = CUShort(farCallPointerInBed >> 16)
                 ExecuteFarControlTransferInBed(ncInBed, niInBed, True)
             Case 4
                 IP = ReadRM16(m)
             Case 5
                 If m.ModValue = 3 Then RaiseCpuException(6, "Far JMP requires memory")
-                Dim farJumpAddressInBed As UInteger = ResolveModRmMemoryAddressInBed(m, 4)
-                Dim niInBed As UInt16 = ReadWord(farJumpAddressInBed)
-                Dim ncInBed As UInt16 = ReadWord(farJumpAddressInBed + 2UI)
+                Dim farJumpAddressInBed As UInteger
+                Dim farJumpPointerInBed As UInteger = ReadModRmDwordAsWordPair286InBed(m, farJumpAddressInBed)
+                Dim niInBed As UInt16 = CUShort(farJumpPointerInBed And &HFFFFUI)
+                Dim ncInBed As UInt16 = CUShort(farJumpPointerInBed >> 16)
                 ExecuteFarControlTransferInBed(ncInBed, niInBed, False)
             Case 6
                 Push(ReadRM16(m))
@@ -1987,6 +2195,32 @@ Partial Public Class Processor286
                               writeAccessInBed)
     End Function
 
+    ' 80286 real-address dword-like operands (m16:16, BOUND's two words,
+    ' and 80287 m32real transfers) are performed as two 16-bit subaccesses.
+    ' The internal +2 offset wraps at 16 bits between those subaccesses.  Thus
+    ' EA=FFFEh reads FFFE:FFFF and then 0000:0001, while either individual
+    ' word still faults if it starts at FFFFh.  Protected mode retains the
+    ' existing contiguous four-byte limit check.
+    Private Function ReadModRmDwordAsWordPair286InBed(operandInBed As ModRM,
+                                                       ByRef firstAddressInBed As UInteger) As UInteger
+        If operandInBed.ModValue = 3 Then Throw New InvalidOperationException("Register ModR/M operand has no dword memory value")
+
+        Dim lowWordInBed As UInt16
+        Dim highWordInBed As UInt16
+        If Not ProtectedMode Then
+            firstAddressInBed = SegmentAddress(operandInBed.SegmentIndex, operandInBed.Offset, 2)
+            lowWordInBed = ReadWord(firstAddressInBed)
+            Dim secondOffsetInBed As UInt16 = CUShort((CInt(operandInBed.Offset) + 2) And &HFFFF)
+            highWordInBed = ReadWord(SegmentAddress(operandInBed.SegmentIndex, secondOffsetInBed, 2))
+        Else
+            firstAddressInBed = ResolveModRmMemoryAddressInBed(operandInBed, 4)
+            lowWordInBed = ReadWord(firstAddressInBed)
+            highWordInBed = ReadWord(firstAddressInBed + 2UI)
+        End If
+
+        Return CUInt(lowWordInBed) Or (CUInt(highWordInBed) << 16)
+    End Function
+
     Private Shared Function Signed16(value As UInt16) As Integer
         Return If(value < &H8000US, CInt(value), CInt(value) - &H10000)
     End Function
@@ -2025,14 +2259,36 @@ Partial Public Class Processor286
                                     offset As UInt16,
                                     Optional length As Integer = 1,
                                     Optional writeAccessInBed As Boolean = False) As UInteger
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
             dataPathStampInBed = System.Diagnostics.Stopwatch.GetTimestamp()
             _dataPathSegmentCallsInBed += 1UL
         End If
         Try
-            If ProtectedMode Then
+            If Not ProtectedMode Then
+                ' 80286 real-address mode still enforces the architectural
+                ' 64 KiB segment boundary for multi-byte operands. Effective
+                ' address arithmetic has already wrapped to 16 bits; however,
+                ' the operand itself may not wrap from FFFFh back to 0000h.
+                ' Unlike protected-mode limit faults, real-address segment
+                ' overrun is interrupt 13 with no error code (vectors 10-12 are
+                ' reserved in real-address mode).
+                Dim firstOffsetInBed As UInteger = CUInt(offset)
+                Dim lastOffsetInBed As UInteger =
+                    firstOffsetInBed + CUInt(Math.Max(1, length)) - 1UI
+                If lastOffsetInBed > &HFFFFUI Then
+                    Dim segmentNameInBed As String = {"ES", "CS", "SS", "DS"}(segmentIndex)
+                    _diagnosticFaultAccessContextInBed =
+                        "real-address " & segmentNameInBed &
+                        " seg=" & _segmentSelectors(segmentIndex).ToString("X4") &
+                        " base=" & _segmentBases(segmentIndex).ToString("X6") &
+                        " off=" & offset.ToString("X4") &
+                        " len=" & Math.Max(1, length).ToString() &
+                        " last=" & lastOffsetInBed.ToString("X5")
+                    RaiseCpuException(13, "Real-address segment overrun")
+                End If
+            Else
                 If Not _segmentValid(segmentIndex) Then
                     If segmentIndex = 2 Then
                         RaiseCpuException(12, "Use of an invalid stack segment", True, 0US)
@@ -2333,6 +2589,7 @@ Partial Public Class Processor286
     End Sub
 
     Private Sub BeginDiagnosticQbExecTraceInBed(programNameInBed As String)
+        If Not RuntimeDiagnostics.Enabled Then Return
         ResetDiagnosticQbWriteWatchInBed()
         _diagnosticQbFirstCsFFFFTransitionInBed = ""
         _diagnosticQbInstructionWriteIndexInBed = 0
@@ -2550,7 +2807,7 @@ Partial Public Class Processor286
         AppendDiagnosticQbEventInBed("TRACE FREEZE: " & reasonInBed &
                                      " at " & CS.ToString("X4") & ":" & IP.ToString("X4"))
         _diagnosticQbExecTraceEnabledInBed = False
-        Debug.Print(GetDiagnosticQbExecTrace())
+        If RuntimeDiagnostics.Enabled Then Debug.Print(GetDiagnosticQbExecTrace())
     End Sub
 
     Public Function GetDiagnosticQbExecTrace() As String
@@ -2644,6 +2901,7 @@ Partial Public Class Processor286
     End Function
 
     Public Sub BeginDiagnosticImportantIntTrace(Optional includeFullForensicInBed As Boolean = True)
+        If Not RuntimeDiagnostics.Enabled Then Return
         _diagnosticImportantIntTrace.Clear()
         _diagnosticDpmiTrace.Clear()
         _diagnosticDosFileTraceInBed.Clear()
@@ -3160,6 +3418,7 @@ Partial Public Class Processor286
     End Function
 
     Public Sub BeginDiagnosticBiosKeyboardTrace()
+        If Not RuntimeDiagnostics.Enabled Then Return
         _diagnosticBiosKeyboardTrace.Clear()
         _diagnosticBiosKeyboardTraceSequence = 0UL
         _diagnosticBiosKeyboardTraceEnabled = True
@@ -3326,7 +3585,7 @@ Partial Public Class Processor286
     End Sub
 
     Public Function ReadByte(address As UInteger) As Byte
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         Dim bridgeStampInBed As Long = 0
         If dataPathSampleInBed Then
@@ -3359,7 +3618,7 @@ Partial Public Class Processor286
     End Function
 
     Public Sub WriteByte(address As UInteger, value As Byte)
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         Dim bridgeStampInBed As Long = 0
         If dataPathSampleInBed Then
@@ -3374,10 +3633,12 @@ Partial Public Class Processor286
             End If
 
             Dim targetInBed As AtMemoryCycleTarget286
-            WriteForensicMemoryWriteInBed(address, 1, value)
-            TraceDiagnosticQbWriteByteInBed(address, value)
-            TraceDiagnosticSelectorWriteInBed(address, value, 1)
-            TraceDiagnosticLdtWriteInBed(address, value, 1)
+            If RuntimeDiagnostics.Enabled Then
+                WriteForensicMemoryWriteInBed(address, 1, value)
+                TraceDiagnosticQbWriteByteInBed(address, value)
+                TraceDiagnosticSelectorWriteInBed(address, value, 1)
+                TraceDiagnosticLdtWriteInBed(address, value, 1)
+            End If
             PortBus.WriteMemoryByte(address, value, targetInBed)
 
             If dataPathSampleInBed AndAlso targetInBed = AtMemoryCycleTarget286.MappedDevice Then
@@ -3391,7 +3652,7 @@ Partial Public Class Processor286
                 Dim normalizedInBed As UInteger =
                     _memoryControllerInBed.NormalizePhysicalAddress(address)
                 If normalizedInBed < &H100000UI Then
-                    TraceDiagnosticBiosKeyboardWrite(normalizedInBed, value)
+                    If RuntimeDiagnostics.Enabled Then TraceDiagnosticBiosKeyboardWrite(normalizedInBed, value)
                 End If
             End If
         Finally
@@ -3428,7 +3689,7 @@ Partial Public Class Processor286
     End Function
 
     Public Function ReadWord(address As UInteger) As UInt16
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
             dataPathStampInBed = System.Diagnostics.Stopwatch.GetTimestamp()
@@ -3465,7 +3726,7 @@ Partial Public Class Processor286
     End Function
 
     Public Sub WriteWord(address As UInteger, value As UInt16)
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
             dataPathStampInBed = System.Diagnostics.Stopwatch.GetTimestamp()
@@ -3480,10 +3741,12 @@ Partial Public Class Processor286
             Dim firstTargetInBed As AtMemoryCycleTarget286
             Dim secondTargetInBed As AtMemoryCycleTarget286
             Dim directWordInBed As Boolean
-            WriteForensicMemoryWriteInBed(address, 2, value)
-            TraceDiagnosticQbWriteWordInBed(address, value)
-            TraceDiagnosticSelectorWriteInBed(address, value, 2)
-            TraceDiagnosticLdtWriteInBed(address, value, 2)
+            If RuntimeDiagnostics.Enabled Then
+                WriteForensicMemoryWriteInBed(address, 2, value)
+                TraceDiagnosticQbWriteWordInBed(address, value)
+                TraceDiagnosticSelectorWriteInBed(address, value, 2)
+                TraceDiagnosticLdtWriteInBed(address, value, 2)
+            End If
             PortBus.WriteMemoryWord(address, value,
                                     firstTargetInBed,
                                     secondTargetInBed,
@@ -3496,11 +3759,11 @@ Partial Public Class Processor286
 
             If firstTargetInBed = AtMemoryCycleTarget286.LocalDram AndAlso
                firstInBed < &H100000UI Then
-                TraceDiagnosticBiosKeyboardWrite(firstInBed, CByte(value And &HFFUS))
+                If RuntimeDiagnostics.Enabled Then TraceDiagnosticBiosKeyboardWrite(firstInBed, CByte(value And &HFFUS))
             End If
             If secondTargetInBed = AtMemoryCycleTarget286.LocalDram AndAlso
                secondInBed < &H100000UI Then
-                TraceDiagnosticBiosKeyboardWrite(secondInBed, CByte(value >> 8))
+                If RuntimeDiagnostics.Enabled Then TraceDiagnosticBiosKeyboardWrite(secondInBed, CByte(value >> 8))
             End If
 
             If dataPathSampleInBed AndAlso directWordInBed AndAlso
@@ -3543,13 +3806,15 @@ Partial Public Class Processor286
             Return 0
         End If
 
-        Dim valueInBed As Byte = _prefetchBytesInBed(0)
-        For indexInBed As Integer = 1 To _prefetchCountInBed - 1
-            _prefetchBytesInBed(indexInBed - 1) = _prefetchBytesInBed(indexInBed)
-            _prefetchIpsInBed(indexInBed - 1) = _prefetchIpsInBed(indexInBed)
-            _prefetchCsInBed(indexInBed - 1) = _prefetchCsInBed(indexInBed)
-            _prefetchBasesInBed(indexInBed - 1) = _prefetchBasesInBed(indexInBed)
-        Next
+        ' Six-byte 80286 prefetch queue, represented as a ring.  The old host
+        ' implementation physically shifted four six-entry arrays for every code
+        ' byte consumed.  That did not model any guest-visible bus activity; it
+        ' was only expensive host bookkeeping.
+        Dim consumeIndexInBed As Integer = _prefetchHeadInBed
+        Dim valueInBed As Byte = _prefetchBytesInBed(consumeIndexInBed)
+        consumeIndexInBed += 1
+        If consumeIndexInBed = 6 Then consumeIndexInBed = 0
+        _prefetchHeadInBed = consumeIndexInBed
         _prefetchCountInBed -= 1
         IP = CUShort((CInt(IP) + 1) And &HFFFF)
         If _currentInstructionActiveInBed Then _currentInstructionLengthInBed += 1
@@ -3564,20 +3829,30 @@ Partial Public Class Processor286
         Return CUShort(CInt(lowInBed) Or (CInt(highInBed) << 8))
     End Function
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub EnsurePrefetchHeadMatchesExecutionInBed()
         If _prefetchCountInBed = 0 Then Return
-        If _prefetchIpsInBed(0) <> IP OrElse _prefetchCsInBed(0) <> CS OrElse _prefetchBasesInBed(0) <> _segmentBases(1) Then
-            _prefetchCountInBed = 0
+
+        Dim headInBed As Integer = _prefetchHeadInBed
+        If _prefetchIpsInBed(headInBed) <> IP OrElse
+           _prefetchCsInBed(headInBed) <> CS OrElse
+           _prefetchBasesInBed(headInBed) <> _segmentBases(1) Then
+            FlushPrefetchQueueInBed()
         End If
     End Sub
 
     Private Sub FillPrefetchQueueInBed()
         If _prefetchCountInBed >= 6 Then Return
+
         Dim nextIpInBed As UInt16
         If _prefetchCountInBed = 0 Then
             nextIpInBed = IP
         Else
-            nextIpInBed = CUShort((CInt(_prefetchIpsInBed(_prefetchCountInBed - 1)) + 1) And &HFFFF)
+            Dim lastIndexInBed As Integer =
+                _prefetchHeadInBed + _prefetchCountInBed - 1
+            If lastIndexInBed >= 6 Then lastIndexInBed -= 6
+            nextIpInBed =
+                CUShort((CInt(_prefetchIpsInBed(lastIndexInBed)) + 1) And &HFFFF)
         End If
 
         While _prefetchCountInBed < 6
@@ -3588,20 +3863,28 @@ Partial Public Class Processor286
                 End If
                 If CUInt(nextIpInBed) > _segmentLimits(1) Then Exit While
             End If
-            Dim physicalInBed As UInteger = (_segmentBases(1) + CUInt(nextIpInBed)) And &HFFFFFFUI
+
+            Dim physicalInBed As UInteger =
+                (_segmentBases(1) + CUInt(nextIpInBed)) And &HFFFFFFUI
             Dim targetInBed As AtMemoryCycleTarget286
-            Dim byteInBed As Byte = PortBus.ReadMemoryByte(physicalInBed, targetInBed)
-            _prefetchBytesInBed(_prefetchCountInBed) = byteInBed
-            _prefetchIpsInBed(_prefetchCountInBed) = nextIpInBed
-            _prefetchCsInBed(_prefetchCountInBed) = CS
-            _prefetchBasesInBed(_prefetchCountInBed) = _segmentBases(1)
+            Dim byteInBed As Byte =
+                PortBus.ReadMemoryByte(physicalInBed, targetInBed)
+
+            Dim writeIndexInBed As Integer =
+                _prefetchHeadInBed + _prefetchCountInBed
+            If writeIndexInBed >= 6 Then writeIndexInBed -= 6
+
+            _prefetchBytesInBed(writeIndexInBed) = byteInBed
+            _prefetchIpsInBed(writeIndexInBed) = nextIpInBed
+            _prefetchCsInBed(writeIndexInBed) = CS
+            _prefetchBasesInBed(writeIndexInBed) = _segmentBases(1)
             _prefetchCountInBed += 1
             nextIpInBed = CUShort((CInt(nextIpInBed) + 1) And &HFFFF)
         End While
     End Sub
 
     Private Sub Push(value As UInt16)
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
             dataPathStampInBed = System.Diagnostics.Stopwatch.GetTimestamp()
@@ -3621,7 +3904,7 @@ Partial Public Class Processor286
     End Sub
 
     Private Function PopWord() As UInt16
-        Dim dataPathSampleInBed As Boolean = _dataPathSampleActiveInBed
+        Dim dataPathSampleInBed As Boolean = RuntimeDiagnostics.Enabled AndAlso _dataPathSampleActiveInBed
         Dim dataPathStampInBed As Long = 0
         If dataPathSampleInBed Then
             dataPathStampInBed = System.Diagnostics.Stopwatch.GetTimestamp()
@@ -3666,6 +3949,7 @@ Partial Public Class Processor286
     End Sub
 
     Private Sub BeginForensicTraceInBed()
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _forensicTraceWriterInBed IsNot Nothing Then Return
         Try
             Dim outputDirectoryInBed As String =
@@ -4133,19 +4417,34 @@ Partial Public Class Processor286
         Next
         Dim result As Byte = CByte(work)
         If kind <= 3 Then
-            If count = 1 Then
-                If kind = 0 Then SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor Flag(CF))
-                If kind = 1 Then SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor ((result And &H40) <> 0))
-                If kind = 2 Then SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor Flag(CF))
-                If kind = 3 Then SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor ((result And &H40) <> 0))
+            ' Harris N80C286 hardware corpus exposes deterministic OF even where the
+            ' architectural manuals call multi-bit rotate OF undefined.  The value
+            ' follows the same final-state relation as the single-bit form.
+            If kind = 0 OrElse kind = 2 Then
+                SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor Flag(CF))
+            Else
+                SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor ((result And &H40) <> 0))
             End If
         Else
             Szp8(result)
-            If count = 1 Then
-                If kind = 4 OrElse kind = 6 Then SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor Flag(CF))
-                If kind = 5 Then SetFlag(OverflowFlag, (original And &H80) <> 0)
-                If kind = 7 Then SetFlag(OverflowFlag, False)
-            End If
+            Select Case kind
+                Case 4, 6
+                    ' Undefined flags on the real Harris part are deterministic:
+                    ' AF tracks result bit 4 and OF follows final sign XOR carry.
+                    SetFlag(AF, (result And &H10) <> 0)
+                    SetFlag(OverflowFlag, ((result And &H80) <> 0) Xor Flag(CF))
+                Case 5
+                    ' Hardware-corpus behavior: SHR asserts AF for every non-zero
+                    ' count.  OF is the original sign bit only for count 1; for a
+                    ' multi-bit shift the tested Harris part resolves undefined OF to 0.
+                    SetFlag(AF, True)
+                    SetFlag(OverflowFlag, count = 1 AndAlso (original And &H80) <> 0)
+                Case 7
+                    ' Hardware-corpus behavior: SAR asserts AF and resolves OF to 0
+                    ' for every non-zero count.
+                    SetFlag(AF, True)
+                    SetFlag(OverflowFlag, False)
+            End Select
         End If
         Return result
     End Function
@@ -4173,30 +4472,47 @@ Partial Public Class Processor286
         Next
         Dim result As UInt16 = CUShort(work)
         If kind <= 3 Then
-            If count = 1 Then
-                If kind = 0 Then SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor Flag(CF))
-                If kind = 1 Then SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor ((result And &H4000US) <> 0))
-                If kind = 2 Then SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor Flag(CF))
-                If kind = 3 Then SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor ((result And &H4000US) <> 0))
+            ' Harris N80C286 hardware corpus exposes deterministic OF even where the
+            ' architectural manuals call multi-bit rotate OF undefined.  The value
+            ' follows the same final-state relation as the single-bit form.
+            If kind = 0 OrElse kind = 2 Then
+                SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor Flag(CF))
+            Else
+                SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor ((result And &H4000US) <> 0))
             End If
         Else
             Szp16(result)
-            If count = 1 Then
-                If kind = 4 OrElse kind = 6 Then SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor Flag(CF))
-                If kind = 5 Then SetFlag(OverflowFlag, (original And &H8000UI) <> 0)
-                If kind = 7 Then SetFlag(OverflowFlag, False)
-            End If
+            Select Case kind
+                Case 4, 6
+                    ' Undefined flags on the real Harris part are deterministic:
+                    ' AF tracks result bit 4 and OF follows final sign XOR carry.
+                    SetFlag(AF, (result And &H10US) <> 0)
+                    SetFlag(OverflowFlag, ((result And &H8000US) <> 0) Xor Flag(CF))
+                Case 5
+                    ' Hardware-corpus behavior: SHR asserts AF for every non-zero
+                    ' count.  OF is the original sign bit only for count 1; for a
+                    ' multi-bit shift the tested Harris part resolves undefined OF to 0.
+                    SetFlag(AF, True)
+                    SetFlag(OverflowFlag, count = 1 AndAlso (original And &H8000UI) <> 0)
+                Case 7
+                    ' Hardware-corpus behavior: SAR asserts AF and resolves OF to 0
+                    ' for every non-zero count.
+                    SetFlag(AF, True)
+                    SetFlag(OverflowFlag, False)
+            End Select
         End If
         Return result
     End Function
 
     Private Sub SoftwareInterrupt(vector As Byte)
-        If Not ProtectedMode AndAlso vector = &H21 Then
+        If RuntimeDiagnostics.Enabled AndAlso Not ProtectedMode AndAlso vector = &H21 Then
             _diagnosticRealModeDosObservedInBed = True
         End If
-        TraceDiagnosticImportantSoftwareInterrupt(vector)
-        TraceDiagnosticDosFileServiceEntryInBed(vector)
-        TraceDiagnosticQbExecSoftwareInterruptInBed(vector)
+        If RuntimeDiagnostics.Enabled Then
+            TraceDiagnosticImportantSoftwareInterrupt(vector)
+            TraceDiagnosticDosFileServiceEntryInBed(vector)
+            TraceDiagnosticQbExecSoftwareInterruptInBed(vector)
+        End If
 
         ' Existing high-level firmware services remain an explicit machine boundary.
         Dim vectorAddress As UInteger = CUInt(vector) * 4UI
@@ -4331,7 +4647,7 @@ Partial Public Class Processor286
     End Sub
 
     Private Sub ExecuteIret()
-        If _diagnosticDpmiExceptionReturnPending Then
+        If RuntimeDiagnostics.Enabled AndAlso _diagnosticDpmiExceptionReturnPending Then
             Dim returnIpInBed As UInt16 = PeekStackWordInBed(0)
             Dim returnCsInBed As UInt16 = PeekStackWordInBed(2)
             Dim returnFlagsInBed As UInt16 = PeekStackWordInBed(4)
@@ -4368,7 +4684,7 @@ Partial Public Class Processor286
         Dim newIp As UInt16 = PeekStackWordInBed(0)
         Dim newCs As UInt16 = PeekStackWordInBed(2)
         Dim newFlags As UInt16 = PeekStackWordInBed(4)
-        If newIp = &H9F31US Then
+        If RuntimeDiagnostics.Enabled AndAlso newIp = &H9F31US Then
             If Not _diagnosticImportantIntTraceEnabled Then BeginDiagnosticImportantIntTrace()
             Dim entryInBed As String =
                 "IRET -> " & newCs.ToString("X4") & ":" & newIp.ToString("X4") &
@@ -4486,9 +4802,10 @@ Partial Public Class Processor286
     Private Sub ExecuteLoadFarPointer(op As Byte)
         Dim m As ModRM = DecodeModRM()
         If m.ModValue = 3 Then RaiseCpuException(6, "LES/LDS requires memory") : Return
-        Dim farPointerAddressInBed As UInteger = ResolveModRmMemoryAddressInBed(m, 4)
-        Dim newOffsetInBed As UInt16 = ReadWord(farPointerAddressInBed)
-        Dim newSelectorInBed As UInt16 = ReadWord(farPointerAddressInBed + 2UI)
+        Dim farPointerAddressInBed As UInteger
+        Dim farPointerInBed As UInteger = ReadModRmDwordAsWordPair286InBed(m, farPointerAddressInBed)
+        Dim newOffsetInBed As UInt16 = CUShort(farPointerInBed And &HFFFFUI)
+        Dim newSelectorInBed As UInt16 = CUShort(farPointerInBed >> 16)
         Dim targetSegmentInBed As Integer = If(op = &HC4, 0, 3)
         Dim stagedInBed As SegmentLoadStageInBed = StageSegmentLoadInBed(targetSegmentInBed, newSelectorInBed)
         SetReg16(m.Reg, newOffsetInBed)
@@ -4499,18 +4816,35 @@ Partial Public Class Processor286
         Dim m As ModRM = DecodeModRM()
         Dim immediate As Integer = If(op = &H69, Signed16(FetchWord()), Signed8(FetchByte()))
         Dim product As Integer = Signed16(ReadRM16(m)) * immediate
-        SetReg16(m.Reg, CUShort(product And &HFFFF))
+        Dim lowProductInBed As UInt16 = CUShort(product And &HFFFF)
+        SetReg16(m.Reg, lowProductInBed)
+
+        ' Harris 80C286 immediate IMUL exposes SZP from the upper half of the
+        ' signed 32-bit product.  For a fitting result this naturally yields
+        ' 0000h (positive: ZF/PF set) or FFFFh (negative: SF/PF set).  MOO v1.1
+        ' masks AF for these forms, so AF remains a raw-silicon-only detail.
+        Dim highProductInBed As UInt16 = CUShort((CLng(product) >> 16) And &HFFFFL)
+        Szp16(highProductInBed)
+        SetFlag(AF, True)
+
         Dim fits As Boolean = product >= Short.MinValue And product <= Short.MaxValue
         SetFlag(CF, Not fits) : SetFlag(OverflowFlag, Not fits)
     End Sub
 
     Private Sub ExecuteAam()
         Dim baseValue As Byte = FetchByte()
-        If baseValue = 0 Then RaiseCpuException(0, "AAM divide by zero") : Return
+        If baseValue = 0 Then
+            ' Harris 80C286 exposes the AAM flag-update stage before #DE for an
+            ' immediate base of zero.  AX is not adjusted, but SZP reflect the
+            ' pre-divide AL value; CF/AF/OF remain undefined and are left alone.
+            Szp8(AL)
+            RaiseCpuException(0, "AAM divide by zero")
+            Return
+        End If
         AH = CByte(AL \ baseValue) : AL = CByte(AL Mod baseValue) : Szp8(AL)
     End Sub
     Private Sub ExecuteAad()
-        Dim baseValue As Byte = FetchByte() : AL = CByte((AH * baseValue + AL) And &HFF) : AH = 0 : Szp8(AL)
+        Dim baseValue As UInt64 = FetchByte() : AL = CByte((AH * baseValue + AL) And &HFF) : AH = 0 : Szp8(AL)
     End Sub
     Private Sub ExecuteDecimalAdjust(op As Byte)
         Select Case op
@@ -4521,8 +4855,13 @@ Partial Public Class Processor286
                 Szp8(AL)
             Case &H2F ' DAS
                 Dim oldValue As Byte = AL : Dim oldCarry As Boolean = Flag(CF)
-                If (AL And &HF) > 9 OrElse Flag(AF) Then AL = CByte((CInt(AL) - 6) And &HFF) : SetFlag(AF, True) Else SetFlag(AF, False)
-                If oldValue > &H99 OrElse oldCarry Then AL = CByte((CInt(AL) - &H60) And &HFF) : SetFlag(CF, True) Else SetFlag(CF, False)
+                Dim lowAdjustInBed As Boolean = (AL And &HF) > 9 OrElse Flag(AF)
+                Dim lowBorrowInBed As Boolean = lowAdjustInBed AndAlso oldValue < 6
+                If lowAdjustInBed Then AL = CByte((CInt(AL) - 6) And &HFF) : SetFlag(AF, True) Else SetFlag(AF, False)
+                If oldValue > &H99 OrElse oldCarry Then AL = CByte((CInt(AL) - &H60) And &HFF)
+                ' DAS does not discard a borrow produced by the low-nibble -6
+                ' correction when the high correction is not taken.
+                SetFlag(CF, oldCarry OrElse oldValue > &H99 OrElse lowBorrowInBed)
                 Szp8(AL)
             Case &H37 ' AAA
                 If (AL And &HF) > 9 OrElse Flag(AF) Then AX = CUShort((CInt(AX) + &H106) And &HFFFF) : SetFlag(AF, True) : SetFlag(CF, True) Else SetFlag(AF, False) : SetFlag(CF, False)
@@ -4534,32 +4873,74 @@ Partial Public Class Processor286
     End Sub
     Private Sub ExecuteStringIo(op As Byte)
         If _rep <> 0 AndAlso CX = 0US Then Return
+
+        ' Preserve the already-green byte INS/OUTS path.  Word forms use the
+        ' 286-specific partial-commit ordering so real/protected segment faults
+        ' expose the same SI/DI/CX state as the hardware.
+        If (op And 1) <> 0 Then
+            ExecuteStringIoWord286InBed(op)
+            Return
+        End If
+
         RequireIoPrivilegeInBed()
 
-        Dim wordOperation As Boolean = (op And 1) <> 0
-        Dim increment As Integer = If(wordOperation, 2, 1)
-        If Flag(DF) Then increment = -increment
+        Dim increment As Integer = If(Flag(DF), -1, 1)
 
-        If op = &H6C OrElse op = &H6D Then
+        If op = &H6C Then
             ' Validate ES destination before the irreversible port read.
-            Dim destinationInBed As UInteger = SegmentAddress(0, DI, If(wordOperation, 2, 1), True)
-            If wordOperation Then
-                Dim valueInBed As UInt16 = InWord(DX)
-                WriteWord(destinationInBed, valueInBed)
-            Else
-                Dim valueInBed As Byte = InByte(DX)
-                WriteByte(destinationInBed, valueInBed)
-            End If
+            Dim destinationInBed As UInteger = SegmentAddress(0, DI, 1, True)
+            Dim valueInBed As Byte = InByte(DX)
+            WriteByte(destinationInBed, valueInBed)
             DI = CUShort((CInt(DI) + increment) And &HFFFF)
         Else
             ' Validate/read memory before the irreversible port write.
-            Dim sourceInBed As UInteger = CurrentDataAddress(False, SI, If(wordOperation, 2, 1))
-            If wordOperation Then OutWord(DX, ReadWord(sourceInBed)) Else OutByte(DX, ReadByte(sourceInBed))
+            Dim sourceInBed As UInteger = CurrentDataAddress(False, SI, 1)
+            OutByte(DX, ReadByte(sourceInBed))
             SI = CUShort((CInt(SI) + increment) And &HFFFF)
         End If
 
         If _rep = 0 Then Return
         CX = CUShort((CInt(CX) - 1) And &HFFFF)
+        If CX <> 0US Then RewindRepInstructionInBed()
+    End Sub
+
+    Private Sub ExecuteStringIoWord286InBed(op As Byte)
+        Dim stepSizeInBed As Integer = If(Flag(DF), -2, 2)
+        Dim repeatedInBed As Boolean = _rep <> 0
+
+        If op = &H6D Then ' INSW
+            ' DI is restart-visible even for an IOPL fault.  REP consumes one
+            ' count before the I/O privilege stage and a second before the ES
+            ' destination check.  The second count is fault residue only.
+            Dim oldDiInBed As UInt16 = DI
+            DI = CUShort((CInt(DI) + stepSizeInBed) And &HFFFF)
+            If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+            RequireIoPrivilegeInBed()
+
+            If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+            Dim destinationAddressInBed As UInteger = SegmentAddress(0, oldDiInBed, 2, True)
+
+            If repeatedInBed Then CX = CUShort((CInt(CX) + 1) And &HFFFF)
+            Dim valueInBed As UInt16 = InWord(DX)
+            WriteWord(destinationAddressInBed, valueInBed)
+        ElseIf op = &H6F Then ' OUTSW
+            ' OUTS commits SI and one REP count before either I/O privilege or
+            ' source-segment failure becomes architecturally visible.
+            Dim oldSiInBed As UInt16 = SI
+            SI = CUShort((CInt(SI) + stepSizeInBed) And &HFFFF)
+            If repeatedInBed Then CX = CUShort((CInt(CX) - 1) And &HFFFF)
+
+            RequireIoPrivilegeInBed()
+
+            Dim sourceAddressInBed As UInteger = CurrentDataAddress(False, oldSiInBed, 2)
+            OutWord(DX, ReadWord(sourceAddressInBed))
+        Else
+            RaiseCpuException(6, "Invalid word string I/O opcode")
+            Return
+        End If
+
+        If Not repeatedInBed Then Return
         If CX <> 0US Then RewindRepInstructionInBed()
     End Sub
 
@@ -4581,16 +4962,17 @@ Partial Public Class Processor286
         Dim operand As ModRM = DecodeModRM()
         If operand.ModValue = 3 Then RaiseCpuException(6, "BOUND requires a memory operand") : Return
         Dim value As Integer = Signed16(GetReg16(operand.Reg))
-        Dim boundsAddressInBed As UInteger = ResolveModRmMemoryAddressInBed(operand, 4)
-        Dim lowerBound As Integer = Signed16(ReadWord(boundsAddressInBed))
-        Dim upperBound As Integer = Signed16(ReadWord(boundsAddressInBed + 2UI))
+        Dim boundsAddressInBed As UInteger
+        Dim boundsInBed As UInteger = ReadModRmDwordAsWordPair286InBed(operand, boundsAddressInBed)
+        Dim lowerBound As Integer = Signed16(CUShort(boundsInBed And &HFFFFUI))
+        Dim upperBound As Integer = Signed16(CUShort(boundsInBed >> 16))
         If value < lowerBound OrElse value > upperBound Then RaiseCpuException(5, "BOUND range exceeded")
     End Sub
     Private Sub RequireNumericExtensionForEscInBed()
         ' MSW.EM or MSW.TS makes the first ESC trap through exception 7 so an OS
         ' can emulate or lazily restore the 80287 context.
         If (MachineStatusWord And &HCUS) <> 0US Then
-            _diagnosticEscNmTrapCountInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _diagnosticEscNmTrapCountInBed += 1UL
             RaiseCpuException(7, "Processor extension not available")
         End If
     End Sub
@@ -4620,11 +5002,13 @@ Partial Public Class Processor286
         ' Record at the 80286 ESC-decode boundary before EM/TS can raise #NM.
         ' This observes no extra guest bus cycles and does not falsely claim
         ' that a trapped instruction reached the physical 80287.
-        _diagnosticEscAttemptCountInBed += 1UL
-        _diagnosticLastEscCsInBed = _instructionStartCs
-        _diagnosticLastEscIpInBed = _instructionStartIp
-        _diagnosticLastEscOpcodeInBed = op
-        _diagnosticLastEscMswInBed = MachineStatusWord
+        If RuntimeDiagnostics.Enabled Then
+            _diagnosticEscAttemptCountInBed += 1UL
+            _diagnosticLastEscCsInBed = _instructionStartCs
+            _diagnosticLastEscIpInBed = _instructionStartIp
+            _diagnosticLastEscOpcodeInBed = op
+            _diagnosticLastEscMswInBed = MachineStatusWord
+        End If
         RequireNumericExtensionForEscInBed()
         Dim operand As ModRM = DecodeModRM()
         Dim instructionOffsetInBed As UShort = CUShort((CInt(IP) - 2) And &HFFFF)
@@ -4633,10 +5017,12 @@ Partial Public Class Processor286
                   ((operand.Reg And 7) << 3) Or
                   (operand.RM And 7))
         _lastFpuOpcodeWordInBed = CUShort(((op And 7) << 8) Or modRmByteInBed)
-        _numericCoprocessor.RecordDiagnosticInstruction(CS,
-                                                       instructionOffsetInBed,
-                                                       op,
-                                                       modRmByteInBed)
+        If RuntimeDiagnostics.Enabled Then
+            _numericCoprocessor.RecordDiagnosticInstruction(CS,
+                                                           instructionOffsetInBed,
+                                                           op,
+                                                           modRmByteInBed)
+        End If
         _lastFpuInstructionOffsetInBed = _instructionStartIp
         _lastFpuInstructionSelectorInBed = CS
         _lastFpuInstructionPhysicalInBed =
@@ -4884,6 +5270,23 @@ Partial Public Class Processor286
             _numericCoprocessor.ExecuteReservedEncoding()
             Return
         End If
+
+        ' D8 m32real is the same two-word real-address transfer family as
+        ' BOUND and m16:16 far pointers.  Preserve protected-mode contiguous
+        ' checking, but allow the second word to wrap from FFFE+2 to 0000 in
+        ' real-address mode.
+        If op = &HD8 AndAlso Not ProtectedMode Then
+            Dim firstAddressInBed As UInteger
+            Dim rawSingleInBed As UInteger = ReadModRmDwordAsWordPair286InBed(operand, firstAddressInBed)
+            operand.Address = firstAddressInBed
+            _lastFpuOperandPhysicalInBed = operand.Address And &HFFFFFUI
+            Dim singleBytesInBed As Byte() = BitConverter.GetBytes(rawSingleInBed)
+            _numericCoprocessor.ExecuteSt0Arithmetic(
+                operand.Reg,
+                CDbl(BitConverter.ToSingle(singleBytesInBed, 0)))
+            Return
+        End If
+
         operand.Address = ResolveModRmMemoryAddressInBed(operand,
                                                          operandLengthInBed,
                                                          writeOperandInBed)
@@ -5362,7 +5765,9 @@ Partial Public Class Processor286
         FlushPrefetchQueueInBed()
     End Sub
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub FlushPrefetchQueueInBed()
+        _prefetchHeadInBed = 0
         _prefetchCountInBed = 0
     End Sub
 
@@ -5432,7 +5837,8 @@ Partial Public Class Processor286
                 Dim enteringProtectedModeInBed As Boolean =
                     Not ProtectedMode AndAlso (requested And 1US) <> 0US
                 If enteringProtectedModeInBed Then _protectedModeCsLoadedInBed = False
-                If enteringProtectedModeInBed AndAlso
+                If RuntimeDiagnostics.Enabled AndAlso
+                   enteringProtectedModeInBed AndAlso
                    _diagnosticRealModeDosObservedInBed AndAlso
                    _forensicTraceWriterInBed Is Nothing Then
                     If Not _diagnosticImportantIntTraceEnabled Then
@@ -6190,7 +6596,7 @@ Partial Public Class Processor286
             diagnosticReturnDescriptorValidInBed =
                 TryReadDescriptor(newCsInBed, diagnosticReturnDescriptorInBed)
         End If
-        If ProtectedMode AndAlso
+        If RuntimeDiagnostics.Enabled AndAlso ProtectedMode AndAlso
            (newIpInBed = &H9F31US OrElse
             (_instructionStartCs = &H48FUS AndAlso _instructionStartIp = &H9F31US)) Then
             If Not _diagnosticImportantIntTraceEnabled Then BeginDiagnosticImportantIntTrace()
@@ -6250,7 +6656,8 @@ Partial Public Class Processor286
                                    CUShort((newCsInBed And &HFFFCUS) Or currentCplInBed),
                                    codeDescriptorInBed)
             IP = newIpInBed
-            If _instructionStartCs = &H48FUS AndAlso _instructionStartIp = &H9F31US Then
+            If RuntimeDiagnostics.Enabled AndAlso
+               _instructionStartCs = &H48FUS AndAlso _instructionStartIp = &H9F31US Then
                 EndForensicTraceInBed(
                     "048F:9F31 conforming RETF accepted: destination=" &
                     CS.ToString("X4") & ":" & IP.ToString("X4") &
@@ -6260,7 +6667,8 @@ Partial Public Class Processor286
         End If
 
         If returnRplInBed < currentCplInBed Then
-            If _instructionStartCs = &H48FUS AndAlso _instructionStartIp = &H9F31US Then
+            If RuntimeDiagnostics.Enabled AndAlso
+               _instructionStartCs = &H48FUS AndAlso _instructionStartIp = &H9F31US Then
                 WriteForensicEventInBed(
                     "048F:9F31 deliberate inward RETF raised #GP: destination=" &
                     newCsInBed.ToString("X4") & ":" & newIpInBed.ToString("X4") &
@@ -6602,6 +7010,7 @@ Partial Public Class Processor286
     End Function
 
     Private Sub TraceDiagnosticGpReturnStepInBed()
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _diagnosticCpuFaultSequenceInBed < 3UL OrElse _diagnosticGpReturnFrozenInBed.Count <> 0 Then Return
         If CS <> &H53US OrElse IP <> &H1E49US Then
             _diagnosticGpReturnObservedAwayInBed = True
@@ -6622,6 +7031,7 @@ Partial Public Class Processor286
     End Sub
 
     Private Sub TraceDiagnosticSelectorWriterStepInBed()
+        If Not RuntimeDiagnostics.Enabled Then Return
         If CS = &H5BUS AndAlso IP = &HB61US AndAlso _diagnosticSecondCliEntryFrozenInBed.Count = 0 Then
             Dim firstInBed As Integer =
                 (_diagnosticSelectorWriterIndexInBed - _diagnosticSelectorWriterCountInBed + DiagnosticSelectorWriterHistoryCapacityInBed) Mod
@@ -6663,6 +7073,7 @@ Partial Public Class Processor286
     End Function
 
     Private Sub TraceDiagnosticGpHandlerStepInBed()
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _diagnosticGpHandlerRemainingInBed <= 0 Then Return
         Dim bytesInBed As New System.Text.StringBuilder()
         For byteIndexInBed As Integer = 0 To 7
@@ -6723,8 +7134,10 @@ Partial Public Class Processor286
     Private Sub Fault(message As String)
         LastFault = message
         EnterHaltStateInBed(ProcessorHaltSourceInBed.FaultStop)
-        Debug.Print("CPU fault at " & CS.ToString("X4") & ":" & IP.ToString("X4") & " - " & message)
-        If _diagnosticQbExecTraceEnabledInBed Then FreezeDiagnosticQbExecTraceInBed("Fault: " & message)
+        If RuntimeDiagnostics.Enabled Then
+            Debug.Print("CPU fault at " & CS.ToString("X4") & ":" & IP.ToString("X4") & " - " & message)
+            If _diagnosticQbExecTraceEnabledInBed Then FreezeDiagnosticQbExecTraceInBed("Fault: " & message)
+        End If
     End Sub
 
     Private Sub RaiseCpuException(vector As Integer,
@@ -6738,6 +7151,7 @@ Partial Public Class Processor286
                                                         errorCodeInBed)
         End If
         LastFault = message
+        If RuntimeDiagnostics.Enabled Then
         _diagnosticCpuFaultSequenceInBed += 1UL
         If _diagnosticCpuFaultSequenceInBed = 2UL AndAlso _diagnosticGpHandlerTraceInBed.Count = 0 Then
             _diagnosticGpHandlerRemainingInBed = DiagnosticGpHandlerCapacityInBed
@@ -6837,6 +7251,9 @@ Partial Public Class Processor286
         End If
         _diagnosticCpuFaultTraceInBed.Enqueue(faultEntryInBed)
         _diagnosticFaultAccessContextInBed = ""
+        Else
+            _diagnosticFaultAccessContextInBed = ""
+        End If
         RestoreInstructionStartStateInBed()
         If HaltOnCpuException Then
             EnterHaltStateInBed(ProcessorHaltSourceInBed.FaultStop)

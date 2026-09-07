@@ -142,6 +142,13 @@ Public NotInheritable Class MediaBackupArchive
         Dim sourceFullInBed As String = Path.GetFullPath(sourcePathInBed)
         If Not File.Exists(sourceFullInBed) Then Throw New FileNotFoundException("The media image does not exist.", sourceFullInBed)
 
+        ' Hard-disk images can carry an adjacent physical-drive identity record
+        ' (<image>.meta).  Treat it as part of the media artifact for backup
+        ' purposes so changing drive model/serial/geometry cannot be lost merely
+        ' because the platter bytes themselves did not change.
+        Dim companionMetadataSourceInBed As String = sourceFullInBed & ".meta"
+        Dim hasCompanionMetadataInBed As Boolean = File.Exists(companionMetadataSourceInBed)
+
         Dim categorySafeInBed As String = If(String.IsNullOrWhiteSpace(categoryInBed), ClassifyMedia(sourceFullInBed), SanitizePathComponentInBed(categoryInBed))
         Dim backupRootInBed As String = HostMediaConfiguration.GetBackupRoot()
         Dim siloInBed As String = Path.Combine(backupRootInBed, categorySafeInBed, Path.GetFileName(sourceFullInBed))
@@ -161,10 +168,20 @@ Public NotInheritable Class MediaBackupArchive
         Next
 
         Dim sourceHashInBed As String = ComputeSha256InBed(sourceFullInBed)
+        Dim sourceCompanionHashInBed As String =
+            If(hasCompanionMetadataInBed, ComputeSha256InBed(companionMetadataSourceInBed), Nothing)
         If latestPathInBed IsNot Nothing Then
             Dim latestHashInBed As String = ComputeSha256InBed(latestPathInBed)
-            If sourceHashInBed.Equals(latestHashInBed, StringComparison.OrdinalIgnoreCase) Then
-                Return New MediaBackupResult(False, sourceFullInBed, latestPathInBed, latestGenerationInBed, sourceHashInBed, "Media is unchanged; no new backup generation was created.")
+            Dim latestCompanionInBed As String = latestPathInBed & ".meta"
+            Dim companionMatchesInBed As Boolean
+            If hasCompanionMetadataInBed Then
+                companionMatchesInBed = File.Exists(latestCompanionInBed) AndAlso
+                    sourceCompanionHashInBed.Equals(ComputeSha256InBed(latestCompanionInBed), StringComparison.OrdinalIgnoreCase)
+            Else
+                companionMatchesInBed = Not File.Exists(latestCompanionInBed)
+            End If
+            If sourceHashInBed.Equals(latestHashInBed, StringComparison.OrdinalIgnoreCase) AndAlso companionMatchesInBed Then
+                Return New MediaBackupResult(False, sourceFullInBed, latestPathInBed, latestGenerationInBed, sourceHashInBed, "Media and companion metadata are unchanged; no new backup generation was created.")
             End If
         End If
 
@@ -176,14 +193,25 @@ Public NotInheritable Class MediaBackupArchive
         If File.Exists(destinationInBed) Then Throw New IOException("Backup generation already exists and will not be overwritten: " & destinationInBed)
 
         Dim temporaryInBed As String = Path.Combine(siloInBed, "." & generationTextInBed & "." & Guid.NewGuid().ToString("N") & ".tmp")
+        Dim temporaryCompanionInBed As String = temporaryInBed & ".meta"
+        Dim destinationCompanionInBed As String = destinationInBed & ".meta"
         Try
             CopyFileDurablyInBed(sourceFullInBed, temporaryInBed)
             Dim temporaryHashInBed As String = ComputeSha256InBed(temporaryInBed)
             If Not sourceHashInBed.Equals(temporaryHashInBed, StringComparison.OrdinalIgnoreCase) Then
                 Throw New IOException("Backup verification failed: source and staged copy SHA-256 values differ.")
             End If
+            If hasCompanionMetadataInBed Then
+                CopyFileDurablyInBed(companionMetadataSourceInBed, temporaryCompanionInBed)
+                Dim temporaryCompanionHashInBed As String = ComputeSha256InBed(temporaryCompanionInBed)
+                If Not sourceCompanionHashInBed.Equals(temporaryCompanionHashInBed, StringComparison.OrdinalIgnoreCase) Then
+                    Throw New IOException("Backup verification failed: drive identity sidecar and staged copy SHA-256 values differ.")
+                End If
+            End If
             If File.Exists(destinationInBed) Then Throw New IOException("Backup generation appeared while the snapshot was being written; refusing to overwrite it.")
+            If File.Exists(destinationCompanionInBed) Then Throw New IOException("Backup identity sidecar already exists; refusing to overwrite it: " & destinationCompanionInBed)
             File.Move(temporaryInBed, destinationInBed)
+            If hasCompanionMetadataInBed Then File.Move(temporaryCompanionInBed, destinationCompanionInBed)
 
             Dim metadataPathInBed As String = Path.Combine(siloInBed, generationTextInBed & ".meta.txt")
             Using metadataInBed As New FileStream(metadataPathInBed, FileMode.CreateNew, FileAccess.Write, FileShare.Read)
@@ -193,6 +221,8 @@ Public NotInheritable Class MediaBackupArchive
                     writerInBed.WriteLine("Source=" & sourceFullInBed)
                     writerInBed.WriteLine("Length=" & New FileInfo(sourceFullInBed).Length.ToString(CultureInfo.InvariantCulture))
                     writerInBed.WriteLine("SHA256=" & sourceHashInBed)
+                    writerInBed.WriteLine("CompanionMetadata=" & If(hasCompanionMetadataInBed, Path.GetFileName(companionMetadataSourceInBed), String.Empty))
+                    writerInBed.WriteLine("CompanionMetadataSHA256=" & If(sourceCompanionHashInBed, String.Empty))
                 End Using
                 metadataInBed.Flush(True)
             End Using
@@ -200,6 +230,12 @@ Public NotInheritable Class MediaBackupArchive
             If File.Exists(temporaryInBed) Then
                 Try
                     File.Delete(temporaryInBed)
+                Catch
+                End Try
+            End If
+            If File.Exists(temporaryCompanionInBed) Then
+                Try
+                    File.Delete(temporaryCompanionInBed)
                 Catch
                 End Try
             End If

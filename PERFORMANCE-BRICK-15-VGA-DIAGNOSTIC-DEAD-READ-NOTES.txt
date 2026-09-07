@@ -1,0 +1,66 @@
+PERFORMANCE BRICK 15 — REMOVE VGA DIAGNOSTIC DEAD READ
+======================================================
+
+TEST CONTEXT
+------------
+Brick 14 changed the feel of Windows/mouse handling but did not produce the
+large throughput jump we were hunting.  The next VGA-path item is much simpler
+and has zero guest-visible timing intent.
+
+WHAT WAS WRONG
+--------------
+For every enabled VGA plane on every CPU VGA write, WriteVgaMemory did:
+
+    calculate final plane byte
+    ReadPlaneByte(plane, offset)       <-- unconditional
+    if diagnostics enabled:
+        compare old/new bits
+    WritePlaneByte(plane, offset)
+
+The old plane read exists ONLY for host diagnostic counters.
+
+With RuntimeDiagnostics.Enabled = False, the bit-transition counters are
+compiled/disabled, but the old-value ReadPlaneByte was still outside the gate
+and therefore still executed.
+
+ReadPlaneByte is not free:
+    ReadPlaneByte
+      -> PlaneLinearAddress
+      -> GetLegacyBankBaseBytes
+      -> bank/address arithmetic
+      -> Mod VramSize
+      -> VRAM array read
+
+Generic 640x480x16 Windows can issue a very large number of VGA plane writes,
+so this is precisely the kind of pointless per-plane tax worth deleting.
+
+CHANGE
+------
+The old-value ReadPlaneByte now occurs only inside:
+
+    If RuntimeDiagnostics.Enabled Then ...
+
+When diagnostics are OFF, the CPU performs the exact same modeled VGA write
+with no diagnostic read-back.
+
+PRESERVED
+---------
+* VGA write modes 0/1/2/3
+* VGA latches
+* set/reset
+* data rotate / logical operation
+* bit mask
+* sequencer map mask
+* chain-4 / odd-even addressing
+* physical VRAM layout
+* all guest-visible memory cycles and CPU timing
+* Brick 14 clock-batch classification
+* Brick 13 S3 ROP/pattern work
+* diagnostics behavior when RuntimeDiagnostics.Enabled = True
+
+FILE
+----
+DiamondStealthPro928.vb
+
+This brick deliberately does NOT combine further VGA address caching or
+datapath rewrites.  It is one dead host read, isolated for measurement.

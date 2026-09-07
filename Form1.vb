@@ -1,4 +1,4 @@
-﻿Imports System.IO 'for loading the ROM files
+Imports System.IO 'for loading the ROM files
 Imports System.Collections.Generic
 Imports System.Math 'For advanced Math Functions
 Imports System.ComponentModel
@@ -47,6 +47,13 @@ Public Class Form1
     Private _ideDriveShelf As IdeDriveShelf
     Private ideDriveShelfMenu As ToolStripMenuItem
     Private _mountedIdeDriveId As Integer = -1
+    Private _mountedPrimarySlaveIdeDriveId As Integer = -1
+    Private _mountedSecondaryIdeDriveId As Integer = -1
+    Private _mountedSecondarySlaveIdeDriveId As Integer = -1
+    Private _sneakerNetIdeTargetInBed As Integer
+    Private _sneakerNetIdeTargetSlaveInBed As Boolean
+    Private _sneakerNetOpticalTargetInBed As Integer
+    Private _sneakerNetOpticalTargetSlaveInBed As Boolean
     ' CROMWELL TECHNOLOGIES SNEAKER NET / FLOPPY BOX BRICK 1
     Private _floppyBox As FloppyBox
     Private _sneakerNetForm As SneakerNetForm
@@ -54,9 +61,9 @@ Public Class Form1
     Private _floppyBayAInBed As PictureBox
     Private _floppyBayBInBed As PictureBox
     Private _cdRomBayInBed As PictureBox
-    Private _reservedAtapiBayInBed As PictureBox
+    Private _cdRomBaySecondaryInBed As PictureBox
     Private _hardDiskBayInBed As PictureBox
-    Private _reservedIdeBayInBed As PictureBox
+    Private _hardDiskBaySecondaryInBed As PictureBox
     Private _driveBayToolTipInBed As ToolTip
     Private _driveBayPopupInBed As ContextMenuStrip
     Private _threeAndHalfDriveFaceInBed As Bitmap
@@ -76,6 +83,8 @@ Public Class Form1
     ' CROMWELL SYSTEM CONFIGURATION DRAWER BRICK 01
     Private _systemConfigurationDrawer As SystemConfigurationDrawer
     Private _pendingMemoryMb As Integer?
+    Private _ideHardwareConfiguration As IdeHardwareConfiguration
+    Private _pendingIdeHardwareConfiguration As IdeHardwareConfiguration
     Private _isaCardConfiguration As IsaExpansionCardConfiguration
     Private _pendingSoundBlaster16Jumpers As SoundBlaster16JumperSettings
     Private _pendingNe2000Jumpers As Ne2000JumperSettings
@@ -455,7 +464,9 @@ Public Class Form1
     End Sub
 
     Private Sub QueueSerialMouseHostMovementInBed(deltaXInBed As Integer, deltaYInBed As Integer)
-        Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        If RuntimeDiagnostics.Enabled Then
+            Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        End If
         Dim accumulatedXInBed As Integer = _serialMouseHostRemainderXInBed + deltaXInBed
         Dim accumulatedYInBed As Integer = _serialMouseHostRemainderYInBed + deltaYInBed
         Dim mouseCountXInBed As Integer = accumulatedXInBed \ SerialMouseHostPixelsPerCountInBed
@@ -486,7 +497,9 @@ Public Class Form1
         Dim boundedXInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaXInBed)))
         Dim boundedYInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaYInBed)))
         SerialMouse.AddHostMovement(boundedXInBed, boundedYInBed)
-        Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
+        If RuntimeDiagnostics.Enabled Then
+            Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
+        End If
     End Sub
 
     Friend Shared Function HostPhysicalKey(scan As Byte, extended As Boolean, virtualKey As Keys) As AtPhysicalKey
@@ -644,6 +657,7 @@ Public Class Form1
         ' JP-DIAG is a host service jumper, not guest-visible VGA hardware.
         ' Normal power-on state is OPEN: no forensic overlay.
         VideoCard.DiagnosticOverlayJumperClosed = False
+        InitializeIdeHardwareConfigurationInBed()
         InitializeIdeDriveShelf()
         InitializeFloppyBox()
         CreateMediaMenu()
@@ -854,8 +868,11 @@ Public Class Form1
         configurationMenuInBed.DropDownItems.Add(systemMenuInBed)
         Dim storageMenuInBed As New ToolStripMenuItem("Storage")
         storageMenuInBed.DropDownItems.Add("Floppy Drives", Nothing, Sub() OpenSystemConfigurationInBed("floppy"))
-        storageMenuInBed.DropDownItems.Add("Hard Drives", Nothing, Sub() OpenSystemConfigurationInBed("harddisk"))
-        storageMenuInBed.DropDownItems.Add("Optical Drives", Nothing, Sub() OpenSystemConfigurationInBed("optical"))
+        storageMenuInBed.DropDownItems.Add("IDE Controller", Nothing, Sub() OpenSystemConfigurationInBed("ide"))
+        storageMenuInBed.DropDownItems.Add("Channel 1 Drive 0", Nothing, Sub() OpenSystemConfigurationInBed("ide-c1d0"))
+        storageMenuInBed.DropDownItems.Add("Channel 1 Drive 1", Nothing, Sub() OpenSystemConfigurationInBed("ide-c1d1"))
+        storageMenuInBed.DropDownItems.Add("Channel 2 Drive 0", Nothing, Sub() OpenSystemConfigurationInBed("ide-c2d0"))
+        storageMenuInBed.DropDownItems.Add("Channel 2 Drive 1", Nothing, Sub() OpenSystemConfigurationInBed("ide-c2d1"))
         configurationMenuInBed.DropDownItems.Add(storageMenuInBed)
         Dim expansionMenuInBed As New ToolStripMenuItem("Expansion")
         expansionMenuInBed.DropDownItems.Add("Video", Nothing, Sub() OpenSystemConfigurationInBed("video"))
@@ -889,6 +906,7 @@ Public Class Form1
             Sub() DumpAllDiagnosticsInBed(dumpAllDiagnosticsMenuInBed)
         diagnosticsMenu.DropDownItems.Add(dumpAllDiagnosticsMenuInBed)
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
+        diagnosticsMenu.DropDownItems.Add("80286 hardware single-step tests...", Nothing, Sub() ShowSingleStep80286TestsInBed())
         diagnosticsMenu.DropDownItems.Add("CPU performance...", Nothing, Sub() ShowCpuPerformanceDiagnosticsInBed())
         diagnosticsMenu.DropDownItems.Add("CPU / PIC / PIT live state...", Nothing, Sub() ShowCpuInterruptLiveStateInBed())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
@@ -932,7 +950,7 @@ Public Class Form1
         media.DropDownItems.Add("Boot floppy A", Nothing, Sub() BootFloppyA())
         media.DropDownItems.Add(New ToolStripSeparator())
         media.DropDownItems.Add(ideDriveShelfMenu)
-        media.DropDownItems.Add("Create 64 MB IDE shelf drive...", Nothing, Sub() CreateHardDisk())
+        media.DropDownItems.Add("Create selected-model IDE shelf drive...", Nothing, Sub() CreateHardDisk())
         media.DropDownItems.Add("Eject hard disk", Nothing, Sub() EjectHardDisk())
         media.DropDownItems.Add("Boot hard disk", Nothing, Sub() BootHardDisk())
         media.DropDownItems.Add(New ToolStripSeparator())
@@ -1178,6 +1196,46 @@ Public Class Form1
         Return ReadMachineInBed(AddressOf GetSystemConfigurationSnapshotUnlockedInBed)
     End Function
 
+    Private Function DescribeIdeSlotInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+        Dim kindInBed As IdeDeviceKind = controllerInBed.GetDeviceKind(slaveInBed)
+
+        Select Case kindInBed
+            Case IdeDeviceKind.Empty
+                Return slotNameInBed & " — empty IDE socket"
+
+            Case IdeDeviceKind.AtapiCdRom
+                Return slotNameInBed & " — ATAPI CD-ROM — " &
+                       If(controllerInBed.IsCdRomMounted(slaveInBed), "ISO media inserted", "tray empty")
+
+            Case IdeDeviceKind.AtaHardDisk
+                If _ideDriveShelf Is Nothing Then Return slotNameInBed & " — ATA hard disk — IDE shelf unavailable"
+                Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                Dim identityInBed As HardDiskIdentity = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                Dim modelTextInBed As String = If(identityInBed Is Nothing, String.Empty, " — " & identityInBed.Model)
+                If configuredInBed < 0 Then
+                    Return slotNameInBed & " — ATA hard disk — no shelf image attached" & modelTextInBed
+                End If
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing Then
+                        Return slotNameInBed & ": shelf #" & configuredInBed.ToString() & " unavailable"
+                    End If
+                    Return slotNameInBed & ": shelf #" & entryInBed.Id.ToString() & " — " & entryInBed.Label &
+                           modelTextInBed &
+                           If(MountedIdeDriveIdInBed(channelInBed, slaveInBed) = entryInBed.Id,
+                              " — attached",
+                              " — configured, unavailable")
+                Catch ex As Exception
+                    Return slotNameInBed & " status unavailable — " & ex.Message
+                End Try
+
+            Case Else
+                Return slotNameInBed & " — unknown IDE device"
+        End Select
+    End Function
+
     Private Function GetSystemConfigurationSnapshotUnlockedInBed() As SystemConfigurationSnapshot
         Dim snapshotInBed As New SystemConfigurationSnapshot()
         snapshotInBed.Chassis = "AT chassis profile not yet modeled"
@@ -1214,24 +1272,21 @@ Public Class Form1
         snapshotInBed.FloppyMediaB = FloppyController.GetAttachmentStatus(1)
         snapshotInBed.FloppyMediaSourceIdA = If(String.IsNullOrWhiteSpace(FloppyController.GetMediaSourceId(0)), "empty", FloppyController.GetMediaSourceId(0))
         snapshotInBed.FloppyMediaSourceIdB = If(String.IsNullOrWhiteSpace(FloppyController.GetMediaSourceId(1)), "empty", FloppyController.GetMediaSourceId(1))
-        snapshotInBed.HardDiskController = "Primary ATA/IDE controller — 1F0h-1F7h, 3F6h"
-        If _ideDriveShelf Is Nothing OrElse _ideDriveShelf.PrimaryMasterId < 0 Then
-            snapshotInBed.HardDisk0 = "Primary master disconnected"
-        Else
-            Try
-                Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(_ideDriveShelf.PrimaryMasterId)
-                If entryInBed Is Nothing Then
-                    snapshotInBed.HardDisk0 = "Primary master: shelf #" & _ideDriveShelf.PrimaryMasterId.ToString() & " unavailable"
-                Else
-                    snapshotInBed.HardDisk0 = "Primary master: shelf #" & entryInBed.Id.ToString() & " — " & entryInBed.Label & If(_mountedIdeDriveId = entryInBed.Id, " — attached", " — configured, unavailable")
-                End If
-            Catch ex As Exception
-                snapshotInBed.HardDisk0 = "Primary master status unavailable — " & ex.Message
-            End Try
-        End If
-        snapshotInBed.Optical = If(Declares.IdeController.CdRomMounted,
-                                   "IDE/ATAPI CD-ROM — ISO media inserted",
-                                   "IDE/ATAPI CD-ROM — no media inserted")
+        snapshotInBed.HardDiskController =
+            "Dual-channel ISA ATA/IDE — primary 1F0h-1F7h + 3F6h, IRQ14; secondary 170h-177h + 376h, IRQ15"
+        Dim effectiveIdeInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        snapshotInBed.IdePrimaryMasterHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.PrimaryMasterKind)
+        snapshotInBed.IdePrimarySlaveHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.PrimarySlaveKind)
+        snapshotInBed.IdeSecondaryMasterHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.SecondaryMasterKind)
+        snapshotInBed.IdeSecondarySlaveHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.SecondarySlaveKind)
+        snapshotInBed.IdePrimaryMasterModelId = effectiveIdeInBed.PrimaryMasterModelId
+        snapshotInBed.IdePrimarySlaveModelId = effectiveIdeInBed.PrimarySlaveModelId
+        snapshotInBed.IdeSecondaryMasterModelId = effectiveIdeInBed.SecondaryMasterModelId
+        snapshotInBed.IdeSecondarySlaveModelId = effectiveIdeInBed.SecondarySlaveModelId
+        snapshotInBed.HardDisk0 = DescribeIdeSlotInBed(0, False)
+        snapshotInBed.HardDisk1 = DescribeIdeSlotInBed(1, False)
+        snapshotInBed.Optical = DescribeIdeSlotInBed(0, True)
+        snapshotInBed.Optical1 = DescribeIdeSlotInBed(1, True)
         snapshotInBed.Keyboard = "IBM AT 101-key keyboard + 8042 controller"
         snapshotInBed.Com1 = "NS16550A-compatible UART — 3F8h — IRQ4 — Microsoft serial mouse attached"
         snapshotInBed.Com2 = "NS16550A-compatible UART — 2F8h — IRQ3 — DB-9 connector"
@@ -1249,8 +1304,9 @@ Public Class Form1
             "PIT / speaker gate: 40h-43h + 61h" & Environment.NewLine &
             "RTC / CMOS: 70h/71h, IRQ8" & Environment.NewLine &
             "Keyboard: 60h/64h, IRQ1" & Environment.NewLine &
-            "Floppy: 3F2h-3F7h, IRQ6, DMA2" & Environment.NewLine &
+            "Floppy: 3F2h-3F5h + 3F7h, IRQ6, DMA2" & Environment.NewLine &
             "Primary IDE: 1F0h-1F7h + 3F6h, IRQ14" & Environment.NewLine &
+            "Secondary IDE: 170h-177h + 376h, IRQ15" & Environment.NewLine &
             "VGA/S3: legacy VGA I/O + A0000h-BFFFFh, option ROM C0000h-C7FFFh" & Environment.NewLine &
             "COM1: 3F8h-3FFh, IRQ4; COM2: 2F8h-2FFh, IRQ3" & Environment.NewLine &
             "LPT1: 378h-37Ah, IRQ7; LPT2: 278h-27Ah, IRQ5" & Environment.NewLine &
@@ -1386,6 +1442,7 @@ Public Class Form1
 
     Friend Sub RevertPendingSystemConfigurationInBed()
         _pendingMemoryMb = Nothing
+        _pendingIdeHardwareConfiguration = Nothing
         _pendingSoundBlaster16Jumpers = Nothing
         _pendingNe2000Jumpers = Nothing
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
@@ -1457,9 +1514,12 @@ Public Class Form1
 
     Private Shared Function SameSoundBlaster16JumpersInBed(aInBed As SoundBlaster16JumperSettings, bInBed As SoundBlaster16JumperSettings) As Boolean
         If aInBed Is Nothing OrElse bInBed Is Nothing Then Return False
+        Dim aWavetableInBed As WavetableAttachmentSettings = If(aInBed.Wavetable, New WavetableAttachmentSettings())
+        Dim bWavetableInBed As WavetableAttachmentSettings = If(bInBed.Wavetable, New WavetableAttachmentSettings())
         Return aInBed.BasePort = bInBed.BasePort AndAlso aInBed.Irq = bInBed.Irq AndAlso
                aInBed.Dma8 = bInBed.Dma8 AndAlso aInBed.Dma16 = bInBed.Dma16 AndAlso
-               aInBed.MpuPort = bInBed.MpuPort AndAlso aInBed.GamePortEnabled = bInBed.GamePortEnabled
+               aInBed.MpuPort = bInBed.MpuPort AndAlso aInBed.GamePortEnabled = bInBed.GamePortEnabled AndAlso
+               aWavetableInBed.SameAs(bWavetableInBed)
     End Function
 
     Private Shared Function SameNe2000JumpersInBed(aInBed As Ne2000JumperSettings, bInBed As Ne2000JumperSettings) As Boolean
@@ -1470,14 +1530,17 @@ Public Class Form1
     Private Function GetPendingHardwareSummaryInBed() As String
         Dim pendingInBed As New List(Of String)()
         If _pendingMemoryMb.HasValue Then pendingInBed.Add("memory " & _pendingMemoryMb.Value.ToString() & " MB")
+        If _pendingIdeHardwareConfiguration IsNot Nothing Then pendingInBed.Add("IDE " & _pendingIdeHardwareConfiguration.Summary())
         If _pendingSoundBlaster16Jumpers IsNot Nothing Then pendingInBed.Add("SB16 " & _pendingSoundBlaster16Jumpers.Summary())
         If _pendingNe2000Jumpers IsNot Nothing Then pendingInBed.Add("NE2000 " & _pendingNe2000Jumpers.Summary())
         Return String.Join("; ", pendingInBed)
     End Function
 
     Friend Sub ApplyPendingSystemConfigurationAndPowerCycleInBed()
-        Dim cardChangesInBed As Boolean = _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
-        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed Then Return
+        Dim cardChangesInBed As Boolean =
+            _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
+        Dim ideChangesInBed As Boolean = _pendingIdeHardwareConfiguration IsNot Nothing
+        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed Then Return
 
         Dim wasPoweredInBed As Boolean = _machinePoweredInBed
         If wasPoweredInBed Then SetMachinePowerInBed(False)
@@ -1489,6 +1552,65 @@ Public Class Form1
                 _ramBanks.InstalledMemoryMb = memoryMbInBed
                 _ramBanks.SaveConfiguration()
             End If
+        End If
+
+        If ideChangesInBed Then
+            Dim previousIdeInBed As IdeHardwareConfiguration =
+                If(_ideHardwareConfiguration Is Nothing,
+                   New IdeHardwareConfiguration(AppContext.BaseDirectory),
+                   _ideHardwareConfiguration.CloneConfiguration())
+            Dim nextIdeInBed As IdeHardwareConfiguration =
+                _pendingIdeHardwareConfiguration.CloneConfiguration()
+            _ideHardwareConfiguration = nextIdeInBed
+            _pendingIdeHardwareConfiguration = Nothing
+            _ideHardwareConfiguration.SaveConfiguration()
+            ApplyIdeHardwareConfigurationToDevicesInBed()
+
+            ' ATA model selection is real physical drive identity, not a cosmetic
+            ' label.  When the model changes, rewrite only the adjacent .meta sidecar
+            ' if the platter image has exactly the profile's capacity, then reattach
+            ' so IDENTIFY DEVICE observes the new hardware.  An incompatible image
+            ' is disconnected intact rather than resized or truncated.
+            For channelInBed As Integer = 0 To 1
+                For Each slaveInBed As Boolean In New Boolean() {False, True}
+                    Dim slotKeyInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+                    Dim oldKindInBed As IdeDeviceKind = previousIdeInBed.GetKind(slotKeyInBed)
+                    Dim newKindInBed As IdeDeviceKind = nextIdeInBed.GetKind(slotKeyInBed)
+                    Dim oldModelInBed As String = previousIdeInBed.GetModelId(slotKeyInBed)
+                    Dim newModelInBed As String = nextIdeInBed.GetModelId(slotKeyInBed)
+                    Dim modelChangedInBed As Boolean =
+                        Not String.Equals(oldModelInBed, newModelInBed, StringComparison.OrdinalIgnoreCase)
+
+                    If newKindInBed <> IdeDeviceKind.AtaHardDisk Then
+                        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+                        Continue For
+                    End If
+
+                    If oldKindInBed = IdeDeviceKind.AtaHardDisk AndAlso Not modelChangedInBed Then Continue For
+                    Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+                    WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+                    SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+                    If _ideDriveShelf Is Nothing Then Continue For
+
+                    Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                    If configuredInBed < 0 Then Continue For
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing Then Continue For
+                    Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(newModelInBed)
+                    If profileInBed Is Nothing Then Continue For
+
+                    If entryInBed.Identity Is Nothing OrElse entryInBed.Identity.TotalSectors <> profileInBed.TotalSectors Then
+                        _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
+                        _ideDriveShelf.SaveConfiguration()
+                        Continue For
+                    End If
+
+                    Dim updatedIdentityInBed As HardDiskIdentity = HardDiskIdentity.LoadOrCreate(entryInBed.FullPath, entryInBed.Identity.TotalSectors)
+                    updatedIdentityInBed.ApplyProfile(profileInBed, preserveSerialInBed:=True)
+                    updatedIdentityInBed.Save(entryInBed.FullPath)
+                    AttachConfiguredIdeDiskInBed(channelInBed, slaveInBed, silent:=True)
+                Next
+            Next
         End If
 
         If _isaCardConfiguration IsNot Nothing Then
@@ -1509,6 +1631,7 @@ Public Class Form1
         If wasPoweredInBed Then SetMachinePowerInBed(True)
 
         RebuildRamBanksMenu()
+        UpdateMediaStatus()
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
     End Sub
 
@@ -1532,6 +1655,7 @@ Public Class Form1
         Dim sbInBed As SoundBlaster16JumperSettings = _isaCardConfiguration.SoundBlaster16
         Dim neInBed As Ne2000JumperSettings = _isaCardConfiguration.Ne2000
         SoundBlaster16.ConfigureHardware(sbInBed.BasePort, sbInBed.Irq, sbInBed.Dma8, sbInBed.Dma16, sbInBed.MpuPort, sbInBed.GamePortEnabled)
+        SoundBlaster16.ConfigureWavetableHardware(sbInBed.Wavetable)
         Ne2000.ConfigureHardware(neInBed.BasePort, neInBed.Irq)
     End Sub
 
@@ -1582,30 +1706,291 @@ Public Class Form1
         StageMemoryConfigurationInBed(megabytes)
         ApplyPendingSystemConfigurationAndPowerCycleInBed()
     End Sub
+    Private Sub InitializeIdeHardwareConfigurationInBed()
+        _ideHardwareConfiguration = New IdeHardwareConfiguration(AppContext.BaseDirectory)
+        _ideHardwareConfiguration.LoadConfiguration()
+        _ideHardwareConfiguration.SaveConfiguration()
+        ApplyIdeHardwareConfigurationToDevicesInBed()
+    End Sub
+
+    Private Sub ApplyIdeHardwareConfigurationToDevicesInBed()
+        If _ideHardwareConfiguration Is Nothing Then Return
+        WithMachineInBed(
+            Sub()
+                Declares.IdeController.ConfigureDeviceKinds(
+                    _ideHardwareConfiguration.PrimaryMasterKind,
+                    _ideHardwareConfiguration.PrimarySlaveKind)
+                Declares.SecondaryIdeController.ConfigureDeviceKinds(
+                    _ideHardwareConfiguration.SecondaryMasterKind,
+                    _ideHardwareConfiguration.SecondarySlaveKind)
+            End Sub)
+    End Sub
+
+    Private Function EffectiveIdeHardwareConfigurationInBed() As IdeHardwareConfiguration
+        If _pendingIdeHardwareConfiguration IsNot Nothing Then Return _pendingIdeHardwareConfiguration.CloneConfiguration()
+        If _ideHardwareConfiguration Is Nothing Then
+            Dim fallbackInBed As New IdeHardwareConfiguration(AppContext.BaseDirectory)
+            Return fallbackInBed
+        End If
+        Return _ideHardwareConfiguration.CloneConfiguration()
+    End Function
+
+    Friend Sub StageIdeHardwareKindInBed(slotInBed As String, kindIdInBed As String)
+        If _ideHardwareConfiguration Is Nothing Then Return
+
+        Dim stagedInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        Dim currentKindInBed As IdeDeviceKind = stagedInBed.GetKind(slotInBed)
+        Dim nextKindInBed As IdeDeviceKind = IdeHardwareConfiguration.ParseKind(kindIdInBed, currentKindInBed)
+        stagedInBed.SetKind(slotInBed, nextKindInBed)
+
+        If stagedInBed.SamePopulation(_ideHardwareConfiguration) Then
+            _pendingIdeHardwareConfiguration = Nothing
+        Else
+            _pendingIdeHardwareConfiguration = stagedInBed
+        End If
+
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Sub StageIdeDriveModelInBed(slotInBed As String, modelIdInBed As String)
+        If _ideHardwareConfiguration Is Nothing Then Return
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(modelIdInBed)
+        If profileInBed Is Nothing Then Return
+
+        Dim stagedInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        If stagedInBed.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Return
+
+        Dim channelInBed As Integer = If(slotInBed.StartsWith("secondary-", StringComparison.OrdinalIgnoreCase), 1, 0)
+        Dim slaveInBed As Boolean = slotInBed.EndsWith("-slave", StringComparison.OrdinalIgnoreCase)
+        If _ideDriveShelf IsNot Nothing Then
+            Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+            If configuredInBed >= 0 Then
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed IsNot Nothing AndAlso entryInBed.Identity IsNot Nothing AndAlso
+                       entryInBed.Identity.TotalSectors <> profileInBed.TotalSectors Then
+                        Dim answerInBed As DialogResult = MessageBox.Show(
+                            Me,
+                            profileInBed.DisplayName & " requires " & profileInBed.TotalSectors.ToString() &
+                            " sectors (" & profileInBed.CapacityDescription & ")." & Environment.NewLine & Environment.NewLine &
+                            "The currently configured shelf drive #" & configuredInBed.ToString() & " contains " &
+                            entryInBed.Identity.TotalSectors.ToString() & " sectors and cannot physically become that model." &
+                            Environment.NewLine & Environment.NewLine &
+                            "Stage the model change and disconnect that incompatible drive at the next power cycle? The image will not be resized or deleted.",
+                            "IDE drive model capacity mismatch",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning)
+                        If answerInBed <> DialogResult.Yes Then Return
+                    End If
+                Catch ex As Exception
+                    MessageBox.Show(Me, ex.Message, "Unable to inspect IDE drive identity", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    Return
+                End Try
+            End If
+        End If
+
+        stagedInBed.SetModelId(slotInBed, profileInBed.Id)
+        If stagedInBed.SamePopulation(_ideHardwareConfiguration) Then
+            _pendingIdeHardwareConfiguration = Nothing
+        Else
+            _pendingIdeHardwareConfiguration = stagedInBed
+        End If
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Function GetIdeDriveModelDetailsInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Dim slotInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+        Dim effectiveInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        If effectiveInBed.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Return "Not an ATA hard-disk socket."
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(effectiveInBed.GetModelId(slotInBed))
+        Dim textInBed As String = IdeDriveModelCatalog.Describe(profileInBed)
+
+        If _ideDriveShelf Is Nothing Then Return textInBed & Environment.NewLine & "IDE Drive Shelf unavailable."
+        Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+        If configuredInBed < 0 Then Return textInBed & Environment.NewLine & "Backing drive: none attached."
+        Try
+            Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+            If entryInBed Is Nothing Then Return textInBed & Environment.NewLine & "Backing drive: shelf #" & configuredInBed.ToString() & " is unavailable."
+            Dim identityInBed As HardDiskIdentity = entryInBed.Identity
+            Dim matchTextInBed As String = String.Empty
+            If profileInBed IsNot Nothing AndAlso identityInBed IsNot Nothing Then
+                matchTextInBed = If(profileInBed.TotalSectors = identityInBed.TotalSectors,
+                                    "capacity compatible",
+                                    "CAPACITY MISMATCH — will detach on power cycle")
+            End If
+            Return textInBed & Environment.NewLine &
+                   "Backing drive: #" & entryInBed.Id.ToString() & " — " & entryInBed.Label & Environment.NewLine &
+                   "Sidecar identity: " & If(identityInBed Is Nothing, "unavailable", identityInBed.Manufacturer & " " & identityInBed.Model) &
+                   If(matchTextInBed.Length = 0, String.Empty, " — " & matchTextInBed)
+        Catch ex As Exception
+            Return textInBed & Environment.NewLine & "Backing drive status unavailable: " & ex.Message
+        End Try
+    End Function
+
+    ' Compatibility shim for the first population-only configurator implementation.
+    Friend Sub StageIdeHardwarePopulationInBed(slotInBed As String, installedInBed As Boolean)
+        Dim fallbackKindInBed As String =
+            If(slotInBed IsNot Nothing AndAlso slotInBed.EndsWith("slave", StringComparison.OrdinalIgnoreCase),
+               "atapi",
+               "ata")
+        StageIdeHardwareKindInBed(slotInBed, If(installedInBed, fallbackKindInBed, "empty"))
+    End Sub
+
+    Private Function IdeControllerForChannelInBed(channelInBed As Integer) As IdeController
+        Select Case channelInBed
+            Case 0
+                Return Declares.IdeController
+            Case 1
+                Return Declares.SecondaryIdeController
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Function IdeChannelDisplayNameInBed(channelInBed As Integer) As String
+        Select Case channelInBed
+            Case 0
+                Return "Primary"
+            Case 1
+                Return "Secondary"
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Function IdeSlotKeyInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        If channelInBed <> 0 AndAlso channelInBed <> 1 Then Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        Return If(channelInBed = 0, "primary-", "secondary-") & If(slaveInBed, "slave", "master")
+    End Function
+
+    Private Function IdeSlotDisplayNameInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Return "Channel " & (channelInBed + 1).ToString() & " Drive " & If(slaveInBed, "1 (Slave)", "0 (Master)")
+    End Function
+
+    Private Function MountedIdeDriveIdInBed(channelInBed As Integer,
+                                               Optional slaveInBed As Boolean = False) As Integer
+        Select Case channelInBed
+            Case 0
+                Return If(slaveInBed, _mountedPrimarySlaveIdeDriveId, _mountedIdeDriveId)
+            Case 1
+                Return If(slaveInBed, _mountedSecondarySlaveIdeDriveId, _mountedSecondaryIdeDriveId)
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Sub SetMountedIdeDriveIdInBed(channelInBed As Integer,
+                                          driveIdInBed As Integer,
+                                          Optional slaveInBed As Boolean = False)
+        Select Case channelInBed
+            Case 0
+                If slaveInBed Then _mountedPrimarySlaveIdeDriveId = driveIdInBed Else _mountedIdeDriveId = driveIdInBed
+            Case 1
+                If slaveInBed Then _mountedSecondarySlaveIdeDriveId = driveIdInBed Else _mountedSecondaryIdeDriveId = driveIdInBed
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Sub
+
+    Private Function FindMountedIdeSlotForDriveInBed(driveIdInBed As Integer,
+                                                       excludeChannelInBed As Integer,
+                                                       excludeSlaveInBed As Boolean,
+                                                       ByRef foundChannelInBed As Integer,
+                                                       ByRef foundSlaveInBed As Boolean) As Boolean
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                If channelInBed = excludeChannelInBed AndAlso slaveInBed = excludeSlaveInBed Then Continue For
+                If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then
+                    foundChannelInBed = channelInBed
+                    foundSlaveInBed = slaveInBed
+                    Return True
+                End If
+            Next
+        Next
+        Return False
+    End Function
+
     Private Sub InitializeIdeDriveShelf()
         _ideDriveShelf = New IdeDriveShelf(AppContext.BaseDirectory)
         _ideDriveShelf.EnsureShelfExists()
         _ideDriveShelf.LoadConfiguration()
-        AttachConfiguredPrimaryMaster(silent:=True)
+        For channelInBed As Integer = 0 To 1
+            AttachConfiguredIdeDiskInBed(channelInBed, False, silent:=True)
+            AttachConfiguredIdeDiskInBed(channelInBed, True, silent:=True)
+        Next
+        SynchronizeIdeModelConfigurationFromAttachedDrivesInBed()
     End Sub
 
-    Private Sub AttachConfiguredPrimaryMaster(silent As Boolean)
-        _mountedIdeDriveId = -1
-        WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-        If _ideDriveShelf Is Nothing OrElse _ideDriveShelf.PrimaryMasterId < 0 Then Return
+    Private Sub SynchronizeIdeModelConfigurationFromAttachedDrivesInBed()
+        If _ideHardwareConfiguration Is Nothing OrElse _ideDriveShelf Is Nothing Then Return
+        Dim changedInBed As Boolean = False
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim slotInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+                If _ideHardwareConfiguration.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Continue For
+                Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                If configuredInBed < 0 Then Continue For
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing OrElse entryInBed.Identity Is Nothing OrElse
+                       String.IsNullOrWhiteSpace(entryInBed.Identity.ProfileId) Then Continue For
+                    If IdeDriveModelCatalog.FindById(entryInBed.Identity.ProfileId) Is Nothing Then Continue For
+                    If Not String.Equals(_ideHardwareConfiguration.GetModelId(slotInBed), entryInBed.Identity.ProfileId, StringComparison.OrdinalIgnoreCase) Then
+                        _ideHardwareConfiguration.SetModelId(slotInBed, entryInBed.Identity.ProfileId)
+                        changedInBed = True
+                    End If
+                Catch
+                    ' Attachment/status reporting will surface malformed sidecars.
+                End Try
+            Next
+        Next
+        If changedInBed Then _ideHardwareConfiguration.SaveConfiguration()
+    End Sub
+
+    Private Sub AttachConfiguredIdeDiskInBed(channelInBed As Integer,
+                                              slaveInBed As Boolean,
+                                              silent As Boolean)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then Return
+        If _ideDriveShelf Is Nothing Then Return
+
+        Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+        If configuredInBed < 0 Then Return
+
+        Dim otherChannelInBed As Integer = -1
+        Dim otherSlaveInBed As Boolean = False
+        If FindMountedIdeSlotForDriveInBed(configuredInBed, channelInBed, slaveInBed, otherChannelInBed, otherSlaveInBed) Then
+            If Not silent Then
+                MessageBox.Show(
+                    Me,
+                    "Shelf drive #" & configuredInBed.ToString() &
+                    " is already attached to " &
+                    IdeSlotDisplayNameInBed(otherChannelInBed, otherSlaveInBed).ToLowerInvariant() &
+                    ". A writable disk image cannot be plugged into two IDE sockets at once.",
+                    "IDE drive already attached",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+            End If
+            Return
+        End If
 
         Try
-            Dim entry As IdeDriveShelfEntry = _ideDriveShelf.FindById(_ideDriveShelf.PrimaryMasterId)
-            If entry Is Nothing Then Return
-            WithMachineInBed(Sub() MountHardDiskImage(entry.FullPath))
-            _mountedIdeDriveId = entry.Id
+            Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+            If entryInBed Is Nothing Then Return
+            WithMachineInBed(Sub() MountHardDiskImage(entryInBed.FullPath, False, channelInBed, slaveInBed))
+            SetMountedIdeDriveIdInBed(channelInBed, entryInBed.Id, slaveInBed)
         Catch ex As Exception
-            WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-            _mountedIdeDriveId = -1
+            WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+            SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
             If Not silent Then
-                MessageBox.Show(Me,
-                    "Shelf drive #" & _ideDriveShelf.PrimaryMasterId.ToString() & " could not be attached:" & Environment.NewLine & ex.Message,
-                    "IDE primary master",
+                MessageBox.Show(
+                    Me,
+                    "Shelf drive #" & configuredInBed.ToString() & " could not be attached:" &
+                    Environment.NewLine & ex.Message,
+                    IdeSlotDisplayNameInBed(channelInBed, slaveInBed),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error)
             End If
@@ -1614,82 +1999,117 @@ Public Class Form1
 
     Private Sub RebuildIdeDriveShelfMenu()
         If ideDriveShelfMenu Is Nothing Then Return
-        PopulateIdeDriveShelfMenuInBed(ideDriveShelfMenu)
+        ideDriveShelfMenu.DropDownItems.Clear()
+
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim slotMenuInBed As New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed))
+                PopulateIdeDriveShelfMenuInBed(slotMenuInBed, channelInBed, slaveInBed)
+                ideDriveShelfMenu.DropDownItems.Add(slotMenuInBed)
+            Next
+        Next
     End Sub
 
-    Private Sub PopulateIdeDriveShelfMenuInBed(menuInBed As ToolStripMenuItem)
+    Private Sub PopulateIdeDriveShelfMenuInBed(menuInBed As ToolStripMenuItem,
+                                               Optional channelInBed As Integer = 0,
+                                               Optional slaveInBed As Boolean = False)
         If menuInBed Is Nothing Then Return
         menuInBed.DropDownItems.Clear()
 
         If _ideDriveShelf Is Nothing Then
-            Dim unavailableInBed As New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False}
-            menuInBed.DropDownItems.Add(unavailableInBed)
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False})
+            Return
+        End If
+
+        Dim kindInBed As IdeDeviceKind =
+            ReadMachineInBed(Function() IdeControllerForChannelInBed(channelInBed).GetDeviceKind(slaveInBed))
+        If kindInBed <> IdeDeviceKind.AtaHardDisk Then
+            menuInBed.DropDownItems.Add(
+                New ToolStripMenuItem(
+                    IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " contains " &
+                    If(kindInBed = IdeDeviceKind.AtapiCdRom, "an ATAPI CD-ROM", "no device") &
+                    " — select ATA hard disk in System Configuration") With {.Enabled = False})
             Return
         End If
 
         Try
             Dim entriesInBed As List(Of IdeDriveShelfEntry) = _ideDriveShelf.GetEntries()
-            Dim configuredInBed As Integer = _ideDriveShelf.PrimaryMasterId
-            Dim configuredTextInBed As String = If(configuredInBed < 0,
-                "Primary Master: disconnected",
-                "Primary Master: shelf #" & configuredInBed.ToString() &
-                If(_mountedIdeDriveId = configuredInBed, " (attached)", " (not attached)"))
-            menuInBed.DropDownItems.Add(
-                New ToolStripMenuItem(configuredTextInBed) With {.Enabled = False})
+            Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+            Dim mountedInBed As Integer = MountedIdeDriveIdInBed(channelInBed, slaveInBed)
+            Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+            Dim configuredTextInBed As String =
+                If(configuredInBed < 0,
+                   slotNameInBed & ": disconnected",
+                   slotNameInBed & ": shelf #" & configuredInBed.ToString() &
+                   If(mountedInBed = configuredInBed, " (attached)", " (not attached)"))
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem(configuredTextInBed) With {.Enabled = False})
             menuInBed.DropDownItems.Add(New ToolStripSeparator())
 
             If entriesInBed.Count = 0 Then
-                menuInBed.DropDownItems.Add(
-                    New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
+                menuInBed.DropDownItems.Add(New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
             Else
                 For Each entryInBed As IdeDriveShelfEntry In entriesInBed
                     Dim driveIdInBed As Integer = entryInBed.Id
                     Dim itemInBed As New ToolStripMenuItem(
                         entryInBed.Id.ToString() & " - " & entryInBed.Label) With {
-                        .Checked = (entryInBed.Id = _mountedIdeDriveId)
+                        .Checked = (entryInBed.Id = mountedInBed)
                     }
                     itemInBed.ToolTipText = entryInBed.FullPath
-                    AddHandler itemInBed.Click, Sub() SelectIdeShelfDrive(driveIdInBed)
+                    AddHandler itemInBed.Click, Sub() SelectIdeShelfDrive(driveIdInBed, channelInBed, slaveInBed)
                     menuInBed.DropDownItems.Add(itemInBed)
                 Next
             End If
 
             menuInBed.DropDownItems.Add(New ToolStripSeparator())
-            menuInBed.DropDownItems.Add(
-                "Rescan IDE-Drives",
-                Nothing,
-                Sub() PopulateIdeDriveShelfMenuInBed(menuInBed))
-            menuInBed.DropDownItems.Add(
-                "Open IDE-Drives folder",
-                Nothing,
-                Sub() OpenIdeDriveShelfFolder())
-            menuInBed.DropDownItems.Add(
-                "Disconnect Primary Master",
-                Nothing,
-                Sub() EjectHardDisk())
+            menuInBed.DropDownItems.Add("Rescan IDE-Drives", Nothing, Sub() PopulateIdeDriveShelfMenuInBed(menuInBed, channelInBed, slaveInBed))
+            menuInBed.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Add("Disconnect " & slotNameInBed, Nothing, Sub() EjectHardDisk(channelInBed, slaveInBed))
         Catch ex As Exception
             menuInBed.DropDownItems.Clear()
-            menuInBed.DropDownItems.Add(
-                New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
             menuInBed.DropDownItems.Add(New ToolStripSeparator())
-            menuInBed.DropDownItems.Add(
-                "Open IDE-Drives folder",
-                Nothing,
-                Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
         End Try
     End Sub
 
-    Private Sub SelectIdeShelfDrive(driveId As Integer)
+    Private Sub SelectIdeShelfDrive(driveIdInBed As Integer,
+                                    Optional channelInBed As Integer = 0,
+                                    Optional slaveInBed As Boolean = False)
         If _ideDriveShelf Is Nothing Then Return
-        _ideDriveShelf.PrimaryMasterId = driveId
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(
+                Me,
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                "ATA hard disk not installed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim otherChannelInBed As Integer = -1
+        Dim otherSlaveInBed As Boolean = False
+        If FindMountedIdeSlotForDriveInBed(driveIdInBed, channelInBed, slaveInBed, otherChannelInBed, otherSlaveInBed) Then
+            MessageBox.Show(
+                Me,
+                "Shelf drive #" & driveIdInBed.ToString() &
+                " is already attached to " &
+                IdeSlotDisplayNameInBed(otherChannelInBed, otherSlaveInBed).ToLowerInvariant() &
+                ". A writable disk image cannot be plugged into two IDE sockets at once.",
+                "IDE drive already attached",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+            Return
+        End If
+
+        _ideDriveShelf.SetConfiguredDriveId(channelInBed, driveIdInBed, slaveInBed)
         _ideDriveShelf.SaveConfiguration()
-        AttachConfiguredPrimaryMaster(silent:=False)
+        AttachConfiguredIdeDiskInBed(channelInBed, slaveInBed, silent:=False)
         UpdateMediaStatus()
         RebuildIdeDriveShelfMenu()
 
-        If _mountedIdeDriveId = driveId Then
-            ' Treat changing the chassis attachment as a powered-reset event from
-            ' the guest's perspective.  The BIOS must rediscover the drive via ATA.
+        If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then
             ResetThroughFirmware()
         End If
     End Sub
@@ -1710,8 +2130,10 @@ Public Class Form1
         Dim floppyBTextInBed As String = String.Empty
         Dim floppyAGeometryInBed As Integer() = Nothing
         Dim floppyBGeometryInBed As Integer() = Nothing
-        Dim hardDiskPresentInBed As Boolean
-        Dim cdPresentInBed As Boolean
+        Dim attachedHardDisksInBed As Integer
+        Dim installedHardDisksInBed As Integer
+        Dim mountedCdMediaInBed As Integer
+        Dim installedCdDrivesInBed As Integer
 
         WithMachineInBed(
             Sub()
@@ -1721,8 +2143,19 @@ Public Class Form1
                 floppyBTextInBed = FloppyController.GetAttachmentStatus(1)
                 floppyAGeometryInBed = FloppyController.GetGeometry(0)
                 floppyBGeometryInBed = FloppyController.GetGeometry(1)
-                hardDiskPresentInBed = Declares.IdeController.HardDiskSectorCount > 0
-                cdPresentInBed = Declares.IdeController.CdRomMounted
+                For channelInBed As Integer = 0 To 1
+                    Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+                    For Each slaveInBed As Boolean In New Boolean() {False, True}
+                        Select Case controllerInBed.GetDeviceKind(slaveInBed)
+                            Case IdeDeviceKind.AtaHardDisk
+                                installedHardDisksInBed += 1
+                                If controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0 Then attachedHardDisksInBed += 1
+                            Case IdeDeviceKind.AtapiCdRom
+                                installedCdDrivesInBed += 1
+                                If controllerInBed.IsCdRomMounted(slaveInBed) Then mountedCdMediaInBed += 1
+                        End Select
+                    Next
+                Next
             End Sub)
 
         If floppyAStatus IsNot Nothing Then
@@ -1734,18 +2167,15 @@ Public Class Form1
             floppyBStatus.Text = floppyBTextInBed
         End If
         If hardDiskStatus IsNot Nothing Then
-            hardDiskStatus.Checked = hardDiskPresentInBed
-            If _ideDriveShelf IsNot Nothing Then
-                If _ideDriveShelf.PrimaryMasterId < 0 Then
-                    hardDiskStatus.Text = "Primary master disconnected"
-                ElseIf _mountedIdeDriveId = _ideDriveShelf.PrimaryMasterId Then
-                    hardDiskStatus.Text = "Primary master: shelf #" & _mountedIdeDriveId.ToString()
-                Else
-                    hardDiskStatus.Text = "Primary master: shelf #" & _ideDriveShelf.PrimaryMasterId.ToString() & " unavailable"
-                End If
-            End If
+            hardDiskStatus.Checked = attachedHardDisksInBed > 0
+            hardDiskStatus.Text = "IDE hard disks — " & attachedHardDisksInBed.ToString() &
+                                  "/" & installedHardDisksInBed.ToString() & " attached"
         End If
-        If cdRomStatus IsNot Nothing Then cdRomStatus.Checked = cdPresentInBed
+        If cdRomStatus IsNot Nothing Then
+            cdRomStatus.Checked = mountedCdMediaInBed > 0
+            cdRomStatus.Text = "ATAPI CD-ROMs — " & mountedCdMediaInBed.ToString() &
+                               "/" & installedCdDrivesInBed.ToString() & " with media"
+        End If
         UpdateDriveBayFacesInBed(floppyAGeometryInBed, floppyBGeometryInBed)
     End Sub
 
@@ -1754,19 +2184,23 @@ Public Class Form1
         UpdateMediaStatus()
     End Sub
 
-    Private Sub EjectHardDisk()
+    Private Sub EjectHardDisk(Optional channelInBed As Integer = 0,
+                              Optional slaveInBed As Boolean = False)
         If _ideDriveShelf IsNot Nothing Then
-            _ideDriveShelf.PrimaryMasterId = -1
+            _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
             _ideDriveShelf.SaveConfiguration()
         End If
-        WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-        _mountedIdeDriveId = -1
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
         UpdateMediaStatus()
         If ideDriveShelfMenu IsNot Nothing Then RebuildIdeDriveShelfMenu()
     End Sub
 
-    Private Sub EjectCdRom()
-        WithMachineInBed(Sub() Declares.IdeController.EjectCdRom())
+    Private Sub EjectCdRom(Optional channelInBed As Integer = 0,
+                           Optional slaveInBed As Boolean = True)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectCdRom(slaveInBed))
         UpdateMediaStatus()
     End Sub
 
@@ -1781,7 +2215,13 @@ Public Class Form1
 
     Private Sub BootHardDisk()
         Try
-            If ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount) = 0 Then Throw New InvalidOperationException("Mount a hard-disk image first.")
+            Dim primaryKindInBed As IdeDeviceKind = ReadMachineInBed(Function() Declares.IdeController.GetDeviceKind(False))
+            If primaryKindInBed <> IdeDeviceKind.AtaHardDisk Then
+                Throw New InvalidOperationException("Primary master is not configured as an ATA hard disk.")
+            End If
+            If ReadMachineInBed(Function() Declares.IdeController.GetHardDiskSectorCount(False)) = 0 Then
+                Throw New InvalidOperationException("Mount a hard-disk image on primary master first.")
+            End If
             ResetThroughFirmware()
         Catch ex As Exception
             MessageBox.Show(Me, ex.Message, "Hard-disk boot failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -1950,42 +2390,43 @@ Public Class Form1
         }
         _driveBayToolTipInBed = New ToolTip()
 
-        ' Physical chassis order.  Only devices implemented by the current
-        ' controller are interactive.  The two unused 5.25-inch positions are
-        ' blank plates reserved for a future secondary IDE channel.
+        ' Physical chassis order.  The two standard IDE channels are now
+        ' represented honestly as four independent electrical positions. System
+        ' Configuration may fit ATA, ATAPI, or no device in any position; the
+        ' runtime facade is refreshed from that hardware choice after power cycle.
         _floppyBayAInBed = CreateFloppyBayFaceInBed(0, firstBayTopInBed)
         _floppyBayBInBed = CreateFloppyBayFaceInBed(1, firstBayTopInBed + bayPitchInBed)
         _cdRomBayInBed = CreateFixedBayFaceInBed(
             _cdRomDriveFaceInBed,
             firstBayTopInBed + (bayPitchInBed * 2),
             Cursors.Hand,
-            "ATAPI CD-ROM — click for optical media choices",
-            Sub() ShowCdRomBayMenuInBed())
-        _reservedAtapiBayInBed = CreateFixedBayFaceInBed(
-            _emptyDriveFaceInBed,
+            "Channel 1 Drive 1 (Slave) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(0, True))
+        _cdRomBaySecondaryInBed = CreateFixedBayFaceInBed(
+            _cdRomDriveFaceInBed,
             firstBayTopInBed + (bayPitchInBed * 3),
-            Cursors.Default,
-            "Reserved 5.25-inch bay — no IDE device fitted",
-            Nothing)
+            Cursors.Hand,
+            "Channel 2 Drive 1 (Slave) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(1, True))
         _hardDiskBayInBed = CreateFixedBayFaceInBed(
             _mfmHardDiskDriveFaceInBed,
             firstBayTopInBed + (bayPitchInBed * 4),
             Cursors.Hand,
-            "IDE primary master hard disk — click for drive shelf and utilities",
-            Sub() ShowHardDiskBayMenuInBed())
-        _reservedIdeBayInBed = CreateFixedBayFaceInBed(
-            _emptyDriveFaceInBed,
+            "Channel 1 Drive 0 (Master) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(0, False))
+        _hardDiskBaySecondaryInBed = CreateFixedBayFaceInBed(
+            _mfmHardDiskDriveFaceInBed,
             firstBayTopInBed + (bayPitchInBed * 5),
-            Cursors.Default,
-            "Reserved 5.25-inch bay — no IDE device fitted",
-            Nothing)
+            Cursors.Hand,
+            "Channel 2 Drive 0 (Master) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(1, False))
 
         _driveBayPanelInBed.Controls.Add(_floppyBayAInBed)
         _driveBayPanelInBed.Controls.Add(_floppyBayBInBed)
         _driveBayPanelInBed.Controls.Add(_cdRomBayInBed)
-        _driveBayPanelInBed.Controls.Add(_reservedAtapiBayInBed)
+        _driveBayPanelInBed.Controls.Add(_cdRomBaySecondaryInBed)
         _driveBayPanelInBed.Controls.Add(_hardDiskBayInBed)
-        _driveBayPanelInBed.Controls.Add(_reservedIdeBayInBed)
+        _driveBayPanelInBed.Controls.Add(_hardDiskBaySecondaryInBed)
         Controls.Add(_driveBayPanelInBed)
         _driveBayPanelInBed.BringToFront()
 
@@ -2157,116 +2598,164 @@ Public Class Form1
         popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
     End Sub
 
-    Private Sub ShowCdRomBayMenuInBed()
-        If _cdRomBayInBed Is Nothing OrElse _cdRomBayInBed.IsDisposed Then Return
-        DisposeDriveBayPopupInBed()
+    Private Function IdeBayForSlotInBed(channelInBed As Integer, slaveInBed As Boolean) As PictureBox
+        Select Case channelInBed
+            Case 0
+                Return If(slaveInBed, _cdRomBayInBed, _hardDiskBayInBed)
+            Case 1
+                Return If(slaveInBed, _cdRomBaySecondaryInBed, _hardDiskBaySecondaryInBed)
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
 
-        Dim cdPresentInBed As Boolean =
-            ReadMachineInBed(Function() Declares.IdeController.CdRomMounted)
-        Dim popupInBed As New ContextMenuStrip()
-        popupInBed.Items.Add(
-            New ToolStripMenuItem(
-                If(cdPresentInBed,
-                   "ATAPI CD-ROM — media inserted",
-                   "ATAPI CD-ROM — tray empty")) With {.Enabled = False})
-        popupInBed.Items.Add(New ToolStripSeparator())
-        popupInBed.Items.Add(
-            "Disc Box / Optical Utilities...",
-            Nothing,
-            Sub() RunSneakerNet("optical"))
-        popupInBed.Items.Add(
-            "Mount CD-ROM ISO...",
-            Nothing,
-            Sub() ChooseIso())
-        Dim ejectInBed As ToolStripItem =
-            popupInBed.Items.Add(
-                "Eject CD-ROM",
-                Nothing,
-                Sub() EjectCdRom())
-        ejectInBed.Enabled = cdPresentInBed
-
-        _driveBayPopupInBed = popupInBed
-        popupInBed.Show(_cdRomBayInBed, New Point(0, _cdRomBayInBed.Height))
+    Private Sub ShowIdeBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim kindInBed As IdeDeviceKind =
+            ReadMachineInBed(Function() IdeControllerForChannelInBed(channelInBed).GetDeviceKind(slaveInBed))
+        Select Case kindInBed
+            Case IdeDeviceKind.AtaHardDisk
+                ShowHardDiskBayMenuInBed(channelInBed, slaveInBed)
+            Case IdeDeviceKind.AtapiCdRom
+                ShowCdRomBayMenuInBed(channelInBed, slaveInBed)
+            Case Else
+                Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+                If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+                DisposeDriveBayPopupInBed()
+                Dim popupInBed As New ContextMenuStrip()
+                popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " — empty IDE socket") With {.Enabled = False})
+                popupInBed.Items.Add(New ToolStripMenuItem("Install ATA or ATAPI hardware from System Configuration, then power-cycle.") With {.Enabled = False})
+                _driveBayPopupInBed = popupInBed
+                popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+        End Select
     End Sub
 
-    Private Sub ShowHardDiskBayMenuInBed()
-        If _hardDiskBayInBed Is Nothing OrElse _hardDiskBayInBed.IsDisposed Then Return
+    Private Sub ShowCdRomBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
         DisposeDriveBayPopupInBed()
 
-        Dim hardDiskPresentInBed As Boolean =
-            ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount > 0)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim kindInBed As IdeDeviceKind
+        Dim cdPresentInBed As Boolean
+        ReadMachineInBed(
+            Function()
+                kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                cdPresentInBed = controllerInBed.IsCdRomMounted(slaveInBed)
+                Return True
+            End Function)
+
         Dim popupInBed As New ContextMenuStrip()
-        popupInBed.Items.Add(
-            New ToolStripMenuItem(
-                If(hardDiskPresentInBed,
-                   "IDE primary master — hard disk attached",
-                   "IDE primary master — disconnected")) With {.Enabled = False})
-        popupInBed.Items.Add(New ToolStripSeparator())
-
-        Dim shelfInBed As New ToolStripMenuItem("IDE Drive Shelf")
-        PopulateIdeDriveShelfMenuInBed(shelfInBed)
-        popupInBed.Items.Add(shelfInBed)
-
-        popupInBed.Items.Add(
-            "Hard Drive Utilities...",
-            Nothing,
-            Sub() RunSneakerNet("harddisk"))
-        popupInBed.Items.Add(New ToolStripSeparator())
-        popupInBed.Items.Add(
-            "Mount hard-disk image...",
-            Nothing,
-            Sub() ChooseHardDisk())
-        popupInBed.Items.Add(
-            "Create 64 MB IDE shelf drive...",
-            Nothing,
-            Sub() CreateHardDisk())
-        popupInBed.Items.Add(
-            "Open IDE-Drives folder",
-            Nothing,
-            Sub() OpenIdeDriveShelfFolder())
-        popupInBed.Items.Add(New ToolStripSeparator())
-
-        Dim bootInBed As ToolStripItem =
-            popupInBed.Items.Add(
-                "Boot hard disk",
-                Nothing,
-                Sub() BootHardDisk())
-        bootInBed.Enabled = hardDiskPresentInBed
-
-        Dim ejectInBed As ToolStripItem =
-            popupInBed.Items.Add(
-                "Disconnect hard disk",
-                Nothing,
-                Sub() EjectHardDisk())
-        ejectInBed.Enabled = hardDiskPresentInBed
+        If kindInBed <> IdeDeviceKind.AtapiCdRom Then
+            popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " is not an ATAPI device") With {.Enabled = False})
+        Else
+            popupInBed.Items.Add(New ToolStripMenuItem(
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " ATAPI CD-ROM — " &
+                If(cdPresentInBed, "media inserted", "tray empty")) With {.Enabled = False})
+            popupInBed.Items.Add(New ToolStripSeparator())
+            popupInBed.Items.Add("Disc Box / Optical Utilities...", Nothing, Sub() RunSneakerNet("optical", channelInBed, slaveInBed))
+            popupInBed.Items.Add("Mount CD-ROM ISO...", Nothing, Sub() ChooseIso(channelInBed, slaveInBed))
+            Dim ejectInBed As ToolStripItem = popupInBed.Items.Add("Eject CD-ROM", Nothing, Sub() EjectCdRom(channelInBed, slaveInBed))
+            ejectInBed.Enabled = cdPresentInBed
+        End If
 
         _driveBayPopupInBed = popupInBed
-        popupInBed.Show(_hardDiskBayInBed, New Point(0, _hardDiskBayInBed.Height))
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
+
+    Private Sub ShowHardDiskBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+        DisposeDriveBayPopupInBed()
+
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim kindInBed As IdeDeviceKind
+        Dim hardDiskPresentInBed As Boolean
+        Dim identityInBed As HardDiskIdentity = Nothing
+        ReadMachineInBed(
+            Function()
+                kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                hardDiskPresentInBed = controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0
+                identityInBed = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                Return True
+            End Function)
+
+        Dim popupInBed As New ContextMenuStrip()
+        If kindInBed <> IdeDeviceKind.AtaHardDisk Then
+            popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " is not an ATA hard disk") With {.Enabled = False})
+        Else
+            Dim modelTextInBed As String = If(identityInBed Is Nothing, "ATA hard disk", identityInBed.Manufacturer & " " & identityInBed.Model)
+            popupInBed.Items.Add(New ToolStripMenuItem(
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " — " & modelTextInBed & " — " &
+                If(hardDiskPresentInBed, "attached", "no disk image attached")) With {.Enabled = False})
+            popupInBed.Items.Add(New ToolStripSeparator())
+
+            Dim shelfInBed As New ToolStripMenuItem("IDE Drive Shelf")
+            PopulateIdeDriveShelfMenuInBed(shelfInBed, channelInBed, slaveInBed)
+            popupInBed.Items.Add(shelfInBed)
+            popupInBed.Items.Add("Hard Drive Utilities...", Nothing, Sub() RunSneakerNet("harddisk", channelInBed, slaveInBed))
+            popupInBed.Items.Add(New ToolStripSeparator())
+            popupInBed.Items.Add("Mount hard-disk image...", Nothing, Sub() ChooseHardDisk(channelInBed, slaveInBed))
+            popupInBed.Items.Add("Create selected-model IDE shelf drive...", Nothing, Sub() CreateHardDisk(channelInBed, slaveInBed))
+            popupInBed.Items.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            popupInBed.Items.Add(New ToolStripSeparator())
+
+            If channelInBed = 0 AndAlso Not slaveInBed Then
+                Dim bootInBed As ToolStripItem = popupInBed.Items.Add("Boot hard disk", Nothing, Sub() BootHardDisk())
+                bootInBed.Enabled = hardDiskPresentInBed
+            Else
+                popupInBed.Items.Add(New ToolStripMenuItem("BIOS boot path — primary master only") With {.Enabled = False})
+            End If
+
+            Dim ejectInBed As ToolStripItem = popupInBed.Items.Add("Disconnect hard disk", Nothing, Sub() EjectHardDisk(channelInBed, slaveInBed))
+            ejectInBed.Enabled = hardDiskPresentInBed OrElse
+                                 (_ideDriveShelf IsNot Nothing AndAlso _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed) >= 0)
+        End If
+
+        _driveBayPopupInBed = popupInBed
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
     End Sub
 
     Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
         UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
         UpdateDriveBayFaceInBed(_floppyBayBInBed, 1, geometryBInBed)
 
-        If _cdRomBayInBed IsNot Nothing Then
-            Dim cdPresentInBed As Boolean =
-                ReadMachineInBed(Function() Declares.IdeController.CdRomMounted)
-            _driveBayToolTipInBed.SetToolTip(
-                _cdRomBayInBed,
-                If(cdPresentInBed,
-                   "ATAPI CD-ROM — media inserted; click for optical media choices",
-                   "ATAPI CD-ROM — tray empty; click for optical media choices"))
-        End If
+        For channelInBed As Integer = 0 To 1
+            Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim kindInBed As IdeDeviceKind
+                Dim hardDiskPresentInBed As Boolean
+                Dim cdPresentInBed As Boolean
+                Dim identityInBed As HardDiskIdentity = Nothing
+                ReadMachineInBed(
+                    Function()
+                        kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                        hardDiskPresentInBed = controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0
+                        cdPresentInBed = controllerInBed.IsCdRomMounted(slaveInBed)
+                        identityInBed = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                        Return True
+                    End Function)
 
-        If _hardDiskBayInBed IsNot Nothing Then
-            Dim hardDiskPresentInBed As Boolean =
-                ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount > 0)
-            _driveBayToolTipInBed.SetToolTip(
-                _hardDiskBayInBed,
-                If(hardDiskPresentInBed,
-                   "IDE primary master hard disk — attached; click for drive shelf and utilities",
-                   "IDE primary master hard disk — disconnected; click for drive shelf and utilities"))
-        End If
+                Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+                If faceInBed Is Nothing Then Continue For
+                Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+
+                Select Case kindInBed
+                    Case IdeDeviceKind.AtaHardDisk
+                        faceInBed.Image = _mfmHardDiskDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        Dim modelTextInBed As String = If(identityInBed Is Nothing, "ATA hard disk", identityInBed.Model)
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — " & modelTextInBed & " — " & If(hardDiskPresentInBed, "attached", "no disk image attached") & "; click for drive shelf and utilities")
+                    Case IdeDeviceKind.AtapiCdRom
+                        faceInBed.Image = _cdRomDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — ATAPI CD-ROM — " & If(cdPresentInBed, "media inserted", "tray empty") & "; click for optical media choices")
+                    Case Else
+                        faceInBed.Image = _emptyDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — empty IDE socket; click for configuration hint")
+                End Select
+            Next
+        Next
     End Sub
 
     Private Sub UpdateDriveBayFaceInBed(faceInBed As PictureBox,
@@ -2407,7 +2896,14 @@ Public Class Form1
         Process.Start(startInBed)
     End Sub
 
-    Private Sub RunSneakerNet(Optional mediaPageInBed As String = Nothing)
+    Private Sub RunSneakerNet(Optional mediaPageInBed As String = Nothing,
+                              Optional ideChannelInBed As Integer = 0,
+                              Optional ideSlaveInBed As Boolean = False)
+        If ideChannelInBed < 0 OrElse ideChannelInBed > 1 Then Throw New ArgumentOutOfRangeException(NameOf(ideChannelInBed))
+        _sneakerNetIdeTargetInBed = ideChannelInBed
+        _sneakerNetIdeTargetSlaveInBed = ideSlaveInBed
+        _sneakerNetOpticalTargetInBed = ideChannelInBed
+        _sneakerNetOpticalTargetSlaveInBed = ideSlaveInBed
         If _floppyBox Is Nothing Then InitializeFloppyBox()
 
         If _sneakerNetForm Is Nothing OrElse _sneakerNetForm.IsDisposed Then
@@ -2427,20 +2923,20 @@ Public Class Form1
                 End Sub,
                 _ideDriveShelf,
                 Sub(driveIdInBed As Integer)
-                    SelectIdeShelfDrive(driveIdInBed)
+                    SelectIdeShelfDrive(driveIdInBed, _sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
                 Sub()
-                    EjectHardDisk()
+                    EjectHardDisk(_sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
-                Function() _mountedIdeDriveId,
+                Function() MountedIdeDriveIdInBed(_sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed),
                 Sub(imagePathInBed As String)
-                    WithMachineInBed(Sub() MountIsoImage(imagePathInBed))
+                    WithMachineInBed(Sub() MountIsoImage(imagePathInBed, _sneakerNetOpticalTargetInBed, _sneakerNetOpticalTargetSlaveInBed))
                     UpdateMediaStatus()
                 End Sub,
                 Sub()
-                    EjectCdRom()
+                    EjectCdRom(_sneakerNetOpticalTargetInBed, _sneakerNetOpticalTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
                 Function() AcquireMediaQuiesceLeaseInBed())
@@ -2455,9 +2951,7 @@ Public Class Form1
             _sneakerNetForm.Activate()
         End If
 
-        If Not String.IsNullOrWhiteSpace(mediaPageInBed) Then
-            _sneakerNetForm.ShowMediaPageInBed(mediaPageInBed)
-        End If
+        If Not String.IsNullOrWhiteSpace(mediaPageInBed) Then _sneakerNetForm.ShowMediaPageInBed(mediaPageInBed)
     End Sub
 
     Private Function AcquireMediaQuiesceLeaseInBed() As IDisposable
@@ -2489,60 +2983,97 @@ Public Class Form1
         End Using
     End Sub
 
-    Private Sub ChooseHardDisk()
+    Private Sub ChooseHardDisk(Optional channelInBed As Integer = 0,
+                               Optional slaveInBed As Boolean = False)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                            "ATA hard disk not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
         Using picker As New OpenFileDialog()
-            picker.Title = "Mount hard-disk image"
+            picker.Title = "Mount hard-disk image on " & IdeSlotDisplayNameInBed(channelInBed, slaveInBed).ToLowerInvariant()
             picker.Filter = "Raw disk images (*.img;*.hdd)|*.img;*.hdd|All files (*.*)|*.*"
             If picker.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
-                WithMachineInBed(Sub() MountHardDiskImage(picker.FileName))
+                WithMachineInBed(Sub() MountHardDiskImage(picker.FileName, False, channelInBed, slaveInBed))
+                If _ideDriveShelf IsNot Nothing Then
+                    _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
+                    _ideDriveShelf.SaveConfiguration()
+                End If
+                SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
                 UpdateMediaStatus()
+                RebuildIdeDriveShelfMenu()
             Catch ex As Exception
                 MessageBox.Show(Me, ex.Message, "Unable to mount hard disk", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End Try
         End Using
     End Sub
 
-    Private Sub CreateHardDisk()
+    Private Sub CreateHardDisk(Optional channelInBed As Integer = 0,
+                               Optional slaveInBed As Boolean = False)
         If _ideDriveShelf Is Nothing Then Return
-        _ideDriveShelf.EnsureShelfExists()
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                            "ATA hard disk not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
 
-        Dim label As String = Microsoft.VisualBasic.Interaction.InputBox(
-            "Label for the new 64 MB IDE drive:",
+        _ideDriveShelf.EnsureShelfExists()
+        Dim effectiveIdeInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        Dim slotKeyInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(effectiveIdeInBed.GetModelId(slotKeyInBed))
+        If profileInBed Is Nothing Then profileInBed = IdeDriveModelCatalog.FindById(IdeDriveModelCatalog.Generic64MiBId)
+        Dim labelInBed As String = Microsoft.VisualBasic.Interaction.InputBox(
+            "Label for the new " & profileInBed.DisplayName & ":",
             "Create IDE Shelf Drive",
-            "New 64 MB Drive")
-        If String.IsNullOrWhiteSpace(label) Then Return
+            profileInBed.DisplayName)
+        If String.IsNullOrWhiteSpace(labelInBed) Then Return
 
         Try
-            Dim driveId As Integer = _ideDriveShelf.NextAvailableId()
-            Dim safeLabel As String = IdeDriveShelf.SanitizeLabel(label)
-            Dim imagePath As String = Path.Combine(_ideDriveShelf.RootPath, driveId.ToString() & " - " & safeLabel & ".hdd")
-            HardDiskImage.Create(imagePath, 64L * 1024L * 1024L \ 512L)
+            Dim driveIdInBed As Integer = _ideDriveShelf.NextAvailableId()
+            Dim safeLabelInBed As String = IdeDriveShelf.SanitizeLabel(labelInBed)
+            Dim imagePathInBed As String = Path.Combine(_ideDriveShelf.RootPath, driveIdInBed.ToString() & " - " & safeLabelInBed & ".hdd")
+            HardDiskImage.Create(imagePathInBed, profileInBed)
 
-            _ideDriveShelf.PrimaryMasterId = driveId
+            _ideDriveShelf.SetConfiguredDriveId(channelInBed, driveIdInBed, slaveInBed)
             _ideDriveShelf.SaveConfiguration()
-            AttachConfiguredPrimaryMaster(silent:=False)
+            AttachConfiguredIdeDiskInBed(channelInBed, slaveInBed, silent:=False)
             UpdateMediaStatus()
             RebuildIdeDriveShelfMenu()
-            If _mountedIdeDriveId = driveId Then ResetThroughFirmware()
+            If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then ResetThroughFirmware()
         Catch ex As Exception
             MessageBox.Show(Me, ex.Message, "Unable to create IDE shelf drive", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 
-    Private Sub ChooseIso()
+    Private Sub ChooseIso(Optional channelInBed As Integer = 0,
+                          Optional slaveInBed As Boolean = True)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtapiCdRom Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATAPI CD-ROM. Select ATAPI CD-ROM in System Configuration first.",
+                            "ATAPI drive not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
         Using picker As New OpenFileDialog()
-            picker.Title = "Mount CD-ROM image"
+            picker.Title = "Mount CD-ROM image on " & IdeSlotDisplayNameInBed(channelInBed, slaveInBed).ToLowerInvariant()
             picker.Filter = "ISO images (*.iso)|*.iso|All files (*.*)|*.*"
             If picker.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
-                WithMachineInBed(Sub() MountIsoImage(picker.FileName))
+                WithMachineInBed(Sub() MountIsoImage(picker.FileName, channelInBed, slaveInBed))
                 UpdateMediaStatus()
             Catch ex As Exception
                 MessageBox.Show(Me, ex.Message, "Unable to mount CD-ROM", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End Try
         End Using
     End Sub
+
     Private Sub SystemLoop_Tick(sender As System.Object, e As System.EventArgs) Handles SystemLoop.Tick
         ' Deliberately inert. MachineRuntime286 owns CPU/motherboard execution.
         ' Keeping the designer timer stub avoids destructive form-designer churn.
@@ -2676,6 +3207,77 @@ Public Class Form1
     Private Sub UpdateCpuPerformanceWindowInBed()
         If _cpuPerfText Is Nothing OrElse _cpuPerfText.IsDisposed Then Return
 
+        ' Performance-baseline mode deliberately keeps only the rate meter.
+        ' The full diagnostic window used to format bus/CPU/chipset reports AND
+        ' assign the WinForms label while owning the machine gate.  That makes
+        ' the observer part of the workload we are trying to measure.
+        If Not RuntimeDiagnostics.Enabled Then
+            Dim targetHzInBed As Long
+            Dim debtTStatesInBed As Long
+            Dim sliceCeilingInBed As Long
+            WithMachineInBed(
+                Sub()
+                    targetHzInBed = MachineClock.CpuClockHz
+                    debtTStatesInBed = MachineClock.PendingTStates
+                    sliceCeilingInBed = _machineRuntime.CurrentMaximumTStatesPerSlice
+                End Sub)
+
+            Dim effectiveHzInBed As Double
+            Dim samplesReadyInBed As Boolean
+            Dim lastSliceMsInBed As Double
+            Dim averageSliceMsInBed As Double
+            Dim minimumSliceMsInBed As Double
+            Dim maximumSliceMsInBed As Double
+            Dim sliceCountInBed As Long
+            SyncLock _cpuPerfLockInBed
+                effectiveHzInBed = _cpuPerfEffectiveTStatesPerSecond
+                samplesReadyInBed = _cpuPerfSamplesReady
+                lastSliceMsInBed = _cpuPerfLastSliceMilliseconds
+                averageSliceMsInBed = _cpuPerfAverageSliceMillisecondsInBed
+                minimumSliceMsInBed = _cpuPerfMinimumSliceMillisecondsInBed
+                maximumSliceMsInBed = _cpuPerfMaximumSliceMillisecondsInBed
+                sliceCountInBed = _cpuPerfLastWindowSliceCountInBed
+            End SyncLock
+
+            Dim ratioInBed As Double =
+                If(targetHzInBed > 0, effectiveHzInBed / CDbl(targetHzInBed), 0.0)
+            Dim debtMillisecondsInBed As Double =
+                If(targetHzInBed > 0,
+                   CDbl(debtTStatesInBed) * 1000.0 / CDbl(targetHzInBed),
+                   0.0)
+            Dim effectiveTextInBed As String =
+                If(samplesReadyInBed,
+                   (effectiveHzInBed / 1000000.0).ToString("0.000") & " MT-states/s",
+                   "measuring...")
+            Dim ratioTextInBed As String =
+                If(samplesReadyInBed,
+                   (ratioInBed * 100.0).ToString("0.0") & " %",
+                   "measuring...")
+            Dim statusInBed As String =
+                If(Not samplesReadyInBed,
+                   "MEASURING",
+                   If(ratioInBed >= 0.95 AndAlso debtMillisecondsInBed < 100.0,
+                      "KEEPING UP",
+                      "FALLING BEHIND"))
+
+            _cpuPerfText.Text =
+                "Harris CS80C286 performance — DIAGNOSTICS OFF" & Environment.NewLine & Environment.NewLine &
+                "Target clock           : " & (CDbl(targetHzInBed) / 1000000.0).ToString("0.000") & " MHz" & Environment.NewLine &
+                "Effective T-state rate : " & effectiveTextInBed & Environment.NewLine &
+                "Real-time ratio        : " & ratioTextInBed & Environment.NewLine &
+                "Pending scheduler debt : " & debtTStatesInBed.ToString("N0") & " T-states" & Environment.NewLine &
+                "Debt as guest time     : " & debtMillisecondsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "Last RunSlice host cost: " & lastSliceMsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "RunSlice avg/min/max    : " & averageSliceMsInBed.ToString("0.0") & " / " &
+                                                minimumSliceMsInBed.ToString("0.0") & " / " &
+                                                maximumSliceMsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "Slices in rate window  : " & sliceCountInBed.ToString("N0") & Environment.NewLine &
+                "Slice ceiling          : " & sliceCeilingInBed.ToString("N0") & " T-states" & Environment.NewLine &
+                "Runtime trace collectors: COMPILED OUT" & Environment.NewLine & Environment.NewLine &
+                "Status                 : " & statusInBed
+            Return
+        End If
+
         WithMachineInBed(
             Sub()
                 SyncLock _cpuPerfLockInBed
@@ -2772,6 +3374,11 @@ Public Class Form1
             If bytesRead = 0 Then Throw New EndOfStreamException("Unexpected end of file.")
             offset += bytesRead
         End While
+    End Sub
+
+    Private Sub ShowSingleStep80286TestsInBed()
+        Dim formInBed As New SingleStep80286TestHostForm()
+        formInBed.Show(Me)
     End Sub
 End Class
 'keyboard buffer address &h0:0100-&h0:01ff (tentative)

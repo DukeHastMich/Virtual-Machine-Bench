@@ -1,4 +1,4 @@
-Imports System.IO
+﻿Imports System.IO
 Imports System.Text
 
 ' Host diagnostic viewers and report composition for Form1. Kept in a partial
@@ -134,6 +134,8 @@ Partial Public Class Form1
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== ATA / ATAPI STORAGE =====")
                         reportInBed.AppendLine(Declares.IdeController.DiagnosticText())
+                        reportInBed.AppendLine()
+                        reportInBed.AppendLine(Declares.SecondaryIdeController.DiagnosticText())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== SERIAL / PARALLEL I/O =====")
                         reportInBed.AppendLine(Com1.DiagnosticText())

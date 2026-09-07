@@ -1,0 +1,16 @@
+--- /mnt/data/isa_removable_layer/base/VirtualComputer.Modern.vbproj	2026-09-06 05:04:16.274794865 +0000
++++ /mnt/data/isa_removable_layer/VirtualComputer.Modern.vbproj	2026-09-06 05:03:33.211255519 +0000
+@@ -1,4 +1,4 @@
+-<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
++﻿<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+   <PropertyGroup>
+     <OutputType>WinExe</OutputType>
+     <TargetFramework>net8.0-windows</TargetFramework>
+@@ -92,6 +92,7 @@
+   <ItemGroup>
+     <Compile Include="MachineConfiguration.vb" />
+     <Compile Include="IsaCardJumperPanels.vb" />
++    <Compile Include="IsaBackplane.vb" />
+     <Compile Include="SystemConfigurationDrawer.vb" />
+   </ItemGroup>
+ 

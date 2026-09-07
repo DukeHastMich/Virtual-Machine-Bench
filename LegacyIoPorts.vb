@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Collections.Generic
 Imports System.Linq
 
@@ -144,6 +144,7 @@ Public NotInheritable Class DiagnosticSerialPeripheral
         _lastDataBits = dataBits
         _lastParityMode = parityMode
         _lastStopBits = stopBits
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _received.Count >= MaximumCapturedBytes Then
             _received.Dequeue()
             _droppedBytes += 1
@@ -167,6 +168,7 @@ Public NotInheritable Class DiagnosticSerialPeripheral
     End Sub
 
     Public Sub ObserveUartReceive(value As Byte, lineErrorBits As Byte) Implements ISerialLineMonitor.ObserveUartReceive
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _transmittedToGuest.Count >= MaximumCapturedBytes Then
             _transmittedToGuest.Dequeue()
             _droppedBytes += 1
@@ -270,19 +272,22 @@ Public NotInheritable Class Uart16550A
         Public ReadOnly ParityMode As Integer
         Public ReadOnly StopBits As Double
         Public ReadOnly SourceErrors As Byte
+        Public ReadOnly FramePicoseconds As Long
 
         Public Sub New(value As Byte,
                        baudRate As Integer,
                        dataBits As Integer,
                        parityMode As Integer,
                        stopBits As Double,
-                       sourceErrors As Byte)
+                       sourceErrors As Byte,
+                       framePicoseconds As Long)
             Me.Value = value
             Me.BaudRate = Math.Max(1, baudRate)
             Me.DataBits = Math.Max(5, Math.Min(8, dataBits))
             Me.ParityMode = parityMode And 7
             Me.StopBits = stopBits
             Me.SourceErrors = CByte(sourceErrors And &H1C)
+            Me.FramePicoseconds = Math.Max(1L, framePicoseconds)
         End Sub
     End Class
 
@@ -316,6 +321,23 @@ Public NotInheritable Class Uart16550A
     Private _rxShiftActive As Boolean
     Private _rxShiftFrame As SerialReceiveFrame
     Private _rxShiftRemainingPicoseconds As Long
+
+    ' Derived line timing.  DLL/DLM/LCR are the guest-visible source of truth;
+    ' these copies are recomputed immediately after those registers change so
+    ' hot RX/TX paths do not redo floating-point/division work per character.
+    Private _characterPicosecondsInBed As Long
+    Private _transmitterClockPicosecondsInBed As Long
+    Private _configuredBaudInBed As Double
+    Private _configuredDataBitsInBed As Integer
+    Private _configuredParityModeInBed As Integer
+    Private _configuredStopBitsInBed As Double
+    Private _configuredDataMaskInBed As Integer
+
+    ' Electrical UART interrupt-output pin state.  Do not re-drive the same
+    ' level into the 8259A on every LSR/IIR/RBR access; only edges/level changes
+    ' cross the physical wire.
+    Private _irqOutputAssertedInBed As Boolean
+
     Private _rxWireDroppedFrames As Long
     Private Const MaximumDiagnosticEvents As Integer = 256
     Private ReadOnly _diagnosticEvents As New Queue(Of String)()
@@ -369,23 +391,28 @@ Public NotInheritable Class Uart16550A
     End Function
 
     Private Sub FlushPolledLineStatus()
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _lastPolledLsrCount <= 0 Then Return
-        AddDiagnosticEvent($"LSR read {_lastPolledLsrCount} time(s), value={_lastPolledLsr:X2}")
+        If RuntimeDiagnostics.Enabled Then
+            AddDiagnosticEvent($"LSR read {_lastPolledLsrCount} time(s), value={_lastPolledLsr:X2}")
+        End If
         _lastPolledLsr = -1
         _lastPolledLsrCount = 0
     End Sub
 
     Private Sub RecordPolledLineStatus(value As Byte)
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _lastPolledLsr = value Then
             _lastPolledLsrCount += 1
             Return
         End If
-        FlushPolledLineStatus()
+        If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
         _lastPolledLsr = value
         _lastPolledLsrCount = 1
     End Sub
 
     Private Sub AddDiagnosticEvent(description As String)
+        If Not RuntimeDiagnostics.Enabled Then Return
         _diagnosticSequence += 1
         While _diagnosticEvents.Count >= MaximumDiagnosticEvents
             _diagnosticEvents.Dequeue()
@@ -394,9 +421,12 @@ Public NotInheritable Class Uart16550A
     End Sub
 
     Private Sub RecordRegisterWrite(offset As Integer, value As Byte)
-        FlushPolledLineStatus()
-        AddDiagnosticEvent($"OUT {CUShort(_basePort + offset):X4}h <- {value:X2} " &
-                           $"(DLAB={If((_lcr And &H80) <> 0, 1, 0)} LCR={_lcr:X2} MCR={_mcr:X2})")
+        If Not RuntimeDiagnostics.Enabled Then Return
+        If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
+        If RuntimeDiagnostics.Enabled Then
+            AddDiagnosticEvent($"OUT {CUShort(_basePort + offset):X4}h <- {value:X2} " &
+                               $"(DLAB={If((_lcr And &H80) <> 0, 1, 0)} LCR={_lcr:X2} MCR={_mcr:X2})")
+        End If
     End Sub
 
     Public Property Peripheral As ISerialPeripheral
@@ -440,15 +470,18 @@ Public NotInheritable Class Uart16550A
                                             stopBits As Double,
                                             Optional sourceErrors As Byte = 0) As Boolean
         If ReceiveWireFreeFrames <= 0 Then
-            _rxWireDroppedFrames += 1
+            If RuntimeDiagnostics.Enabled Then _rxWireDroppedFrames += 1
             Return False
         End If
+        Dim framePicosecondsInBed As Long =
+            SerialFramePicoseconds(baudRate, dataBits, parityMode, stopBits)
         _rxWireQueue.Enqueue(New SerialReceiveFrame(value,
                                                      baudRate,
                                                      dataBits,
                                                      parityMode,
                                                      stopBits,
-                                                     sourceErrors))
+                                                     sourceErrors,
+                                                     framePicosecondsInBed))
         BeginReceiveIfIdle()
         Return True
     End Function
@@ -461,12 +494,52 @@ Public NotInheritable Class Uart16550A
         If values Is Nothing Then Throw New ArgumentNullException(NameOf(values))
         Dim materialized As Byte() = values.ToArray()
         If materialized.Length > ReceiveWireFreeFrames Then
-            _rxWireDroppedFrames += materialized.Length
+            If RuntimeDiagnostics.Enabled Then _rxWireDroppedFrames += materialized.Length
             Return False
         End If
+
+        Dim framePicosecondsInBed As Long =
+            SerialFramePicoseconds(baudRate, dataBits, parityMode, stopBits)
         For Each value As Byte In materialized
-            _rxWireQueue.Enqueue(New SerialReceiveFrame(value, baudRate, dataBits, parityMode, stopBits, 0))
+            _rxWireQueue.Enqueue(
+                New SerialReceiveFrame(value,
+                                       baudRate,
+                                       dataBits,
+                                       parityMode,
+                                       stopBits,
+                                       0,
+                                       framePicosecondsInBed))
         Next
+        BeginReceiveIfIdle()
+        Return True
+    End Function
+
+    ' Allocation-free three-character connector helper for protocols such as the
+    ' original Microsoft mouse.  It is not a mouse shortcut: all three bytes
+    ' still enter the ordinary UART wire queue and spend a complete asynchronous
+    ' frame time on RXD before becoming guest-visible.
+    Public Function QueueReceivedSerialBytes3(value0 As Byte,
+                                              value1 As Byte,
+                                              value2 As Byte,
+                                              baudRate As Integer,
+                                              dataBits As Integer,
+                                              parityMode As Integer,
+                                              stopBits As Double) As Boolean
+        If ReceiveWireFreeFrames < 3 Then
+            If RuntimeDiagnostics.Enabled Then _rxWireDroppedFrames += 3
+            Return False
+        End If
+
+        Dim framePicosecondsInBed As Long =
+            SerialFramePicoseconds(baudRate, dataBits, parityMode, stopBits)
+
+        _rxWireQueue.Enqueue(
+            New SerialReceiveFrame(value0, baudRate, dataBits, parityMode, stopBits, 0, framePicosecondsInBed))
+        _rxWireQueue.Enqueue(
+            New SerialReceiveFrame(value1, baudRate, dataBits, parityMode, stopBits, 0, framePicosecondsInBed))
+        _rxWireQueue.Enqueue(
+            New SerialReceiveFrame(value2, baudRate, dataBits, parityMode, stopBits, 0, framePicosecondsInBed))
+
         BeginReceiveIfIdle()
         Return True
     End Function
@@ -503,7 +576,7 @@ Public NotInheritable Class Uart16550A
         End If
         ' This is connector activity even when a full FIFO discards the frame.
         RaiseEvent ReceiveActivity()
-        If _monitor IsNot Nothing Then _monitor.ObserveUartReceive(value, lineErrorBits)
+        If RuntimeDiagnostics.Enabled AndAlso _monitor IsNot Nothing Then _monitor.ObserveUartReceive(value, lineErrorBits)
         RestartReceiverTimeout()
         UpdateIrq()
     End Sub
@@ -535,7 +608,7 @@ Public NotInheritable Class Uart16550A
             Case 4 : Return _mcr
             Case 5
                 Dim value As Byte = LineStatus()
-                RecordPolledLineStatus(value)
+                If RuntimeDiagnostics.Enabled Then RecordPolledLineStatus(value)
                 _overrunError = False
                 If _rxFifo.Count > 0 Then _rxFifo.Peek().Errors = 0
                 UpdateIrq()
@@ -552,11 +625,12 @@ Public NotInheritable Class Uart16550A
 
     Public Sub WritePort(port As UInt16, value As Byte) Implements IPortDevice.WritePort
         Dim offset As Integer = CInt(port - _basePort)
-        RecordRegisterWrite(offset, value)
+        If RuntimeDiagnostics.Enabled Then RecordRegisterWrite(offset, value)
         Select Case offset
             Case 0
                 If (_lcr And &H80) <> 0 Then
                     _dll = value
+                    RecomputeLineTimingInBed()
                     RestartReceiverTimeout()
                 Else
                     WriteTransmitter(value)
@@ -564,6 +638,7 @@ Public NotInheritable Class Uart16550A
             Case 1
                 If (_lcr And &H80) <> 0 Then
                     _dlm = value
+                    RecomputeLineTimingInBed()
                     RestartReceiverTimeout()
                 Else
                     Dim oldIer As Byte = _ier
@@ -577,6 +652,7 @@ Public NotInheritable Class Uart16550A
             Case 3
                 Dim oldBreakState As Boolean = (_lcr And &H40) <> 0
                 _lcr = value
+                RecomputeLineTimingInBed()
                 If oldBreakState <> ((_lcr And &H40) <> 0) Then NotifyBreakState()
                 RestartReceiverTimeout()
             Case 4
@@ -606,8 +682,10 @@ Public NotInheritable Class Uart16550A
             ' next 16x transmitter clock transfers THR into TSR.  Keeping that
             ' real interval is required by drivers which verify THRE cleared.
             _txHoldingTransferPicoseconds = TransmitterClockPicoseconds()
-            FlushPolledLineStatus()
-            AddDiagnosticEvent($"THR loaded value={value:X2}, transfer in {_txHoldingTransferPicoseconds} ps")
+            If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
+            If RuntimeDiagnostics.Enabled Then
+                AddDiagnosticEvent($"THR loaded value={value:X2}, transfer in {_txHoldingTransferPicoseconds} ps")
+            End If
         End If
         UpdateIrq()
     End Sub
@@ -643,8 +721,10 @@ Public NotInheritable Class Uart16550A
         _txShiftValue = _txFifo.Dequeue()
         _txShiftActive = True
         _txRemainingPicoseconds = CharacterPicoseconds()
-        FlushPolledLineStatus()
-        AddDiagnosticEvent($"TX shift start value={_txShiftValue:X2}, frame={_txRemainingPicoseconds} ps, THR={_txFifo.Count}")
+        If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
+        If RuntimeDiagnostics.Enabled Then
+            AddDiagnosticEvent($"TX shift start value={_txShiftValue:X2}, frame={_txRemainingPicoseconds} ps, THR={_txFifo.Count}")
+        End If
         If _txFifo.Count = 0 Then _threInterruptPending = True
     End Sub
 
@@ -652,10 +732,7 @@ Public NotInheritable Class Uart16550A
         If _rxShiftActive OrElse _rxWireQueue.Count = 0 Then Return
         _rxShiftFrame = _rxWireQueue.Dequeue()
         _rxShiftActive = True
-        _rxShiftRemainingPicoseconds = SerialFramePicoseconds(_rxShiftFrame.BaudRate,
-                                                               _rxShiftFrame.DataBits,
-                                                               _rxShiftFrame.ParityMode,
-                                                               _rxShiftFrame.StopBits)
+        _rxShiftRemainingPicoseconds = _rxShiftFrame.FramePicoseconds
     End Sub
 
     Private Shared Function SerialFramePicoseconds(baudRate As Integer,
@@ -676,41 +753,76 @@ Public NotInheritable Class Uart16550A
         _rxShiftRemainingPicoseconds = 0
         If frame Is Nothing Then Return
 
-        Dim configuredDivisor As Integer = (CInt(_dlm) << 8) Or CInt(_dll)
-        If configuredDivisor = 0 Then configuredDivisor = 1
-        Dim configuredBaud As Double = CrystalHz / (16.0R * configuredDivisor)
-        Dim configuredDataBits As Integer = 5 + (_lcr And 3)
-        Dim configuredParityMode As Integer = (_lcr >> 3) And 7
-        Dim configuredStopBits As Double = If((_lcr And 4) = 0,
-                                              1.0R,
-                                              If(configuredDataBits = 5, 1.5R, 2.0R))
         Dim errors As Byte = frame.SourceErrors
-        Dim baudError As Double = Math.Abs(configuredBaud - frame.BaudRate) / frame.BaudRate
-        If baudError > 0.04R OrElse configuredDataBits <> frame.DataBits OrElse
-           Math.Abs(configuredStopBits - frame.StopBits) > 0.25R Then
+        Dim baudError As Double =
+            Math.Abs(_configuredBaudInBed - frame.BaudRate) / frame.BaudRate
+        If baudError > 0.04R OrElse
+           _configuredDataBitsInBed <> frame.DataBits OrElse
+           Math.Abs(_configuredStopBitsInBed - frame.StopBits) > 0.25R Then
             errors = CByte(errors Or &H8) ' framing error
         End If
-        If configuredParityMode <> frame.ParityMode Then errors = CByte(errors Or &H4)
+        If _configuredParityModeInBed <> frame.ParityMode Then
+            errors = CByte(errors Or &H4)
+        End If
 
-        Dim dataMask As Integer = (1 << configuredDataBits) - 1
-        CommitReceivedCharacter(CByte(CInt(frame.Value) And dataMask), errors)
+        CommitReceivedCharacter(
+            CByte(CInt(frame.Value) And _configuredDataMaskInBed),
+            errors)
         BeginReceiveIfIdle()
     End Sub
 
+    Private Sub RecomputeLineTimingInBed()
+        Dim divisorInBed As Integer = (CInt(_dlm) << 8) Or CInt(_dll)
+        If divisorInBed = 0 Then divisorInBed = 1
+
+        _configuredDataBitsInBed = 5 + (_lcr And 3)
+        _configuredParityModeInBed = (_lcr >> 3) And 7
+        Dim parityBitsInBed As Integer =
+            If((_lcr And &H8) <> 0, 1, 0)
+        _configuredStopBitsInBed =
+            If((_lcr And &H4) = 0,
+               1.0R,
+               If(_configuredDataBitsInBed = 5, 1.5R, 2.0R))
+        _configuredDataMaskInBed =
+            (1 << _configuredDataBitsInBed) - 1
+        _configuredBaudInBed =
+            CrystalHz / (16.0R * divisorInBed)
+
+        Dim totalBitsInBed As Double =
+            1.0R +
+            _configuredDataBitsInBed +
+            parityBitsInBed +
+            _configuredStopBitsInBed
+
+        _characterPicosecondsInBed =
+            Math.Max(
+                1L,
+                CLng(
+                    Math.Ceiling(
+                        totalBitsInBed *
+                        16.0R *
+                        divisorInBed *
+                        MachineProfile286.PicosecondsPerSecond /
+                        CrystalHz)))
+
+        _transmitterClockPicosecondsInBed =
+            Math.Max(
+                1L,
+                CLng(
+                    Math.Ceiling(
+                        divisorInBed *
+                        MachineProfile286.PicosecondsPerSecond /
+                        CDbl(CrystalHz))))
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Function CharacterPicoseconds() As Long
-        Dim divisor As Integer = (CInt(_dlm) << 8) Or CInt(_dll)
-        If divisor = 0 Then divisor = 1
-        Dim dataBits As Integer = 5 + (_lcr And 3)
-        Dim parityBits As Integer = If((_lcr And &H8) <> 0, 1, 0)
-        Dim stopBits As Double = If((_lcr And &H4) = 0, 1.0R, If(dataBits = 5, 1.5R, 2.0R))
-        Dim totalBits As Double = 1.0R + dataBits + parityBits + stopBits
-        Return Math.Max(1L, CLng(Math.Ceiling(totalBits * 16.0R * divisor * MachineProfile286.PicosecondsPerSecond / CrystalHz)))
+        Return _characterPicosecondsInBed
     End Function
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Function TransmitterClockPicoseconds() As Long
-        Dim divisor As Integer = (CInt(_dlm) << 8) Or CInt(_dll)
-        If divisor = 0 Then divisor = 1
-        Return Math.Max(1L, CLng(Math.Ceiling(divisor * MachineProfile286.PicosecondsPerSecond / CDbl(CrystalHz))))
+        Return _transmitterClockPicosecondsInBed
     End Function
 
     Private Function LineStatus() As Byte
@@ -792,14 +904,14 @@ Public NotInheritable Class Uart16550A
         Dim out1 As Boolean = Not loopback AndAlso (_mcr And 4) <> 0
         Dim out2 As Boolean = Not loopback AndAlso (_mcr And 8) <> 0
         If _peripheral IsNot Nothing Then _peripheral.ModemOutputsChanged(dtr, rts, out1, out2)
-        If _monitor IsNot Nothing Then _monitor.ObserveModemOutputs(dtr, rts, out1, out2)
+        If RuntimeDiagnostics.Enabled AndAlso _monitor IsNot Nothing Then _monitor.ObserveModemOutputs(dtr, rts, out1, out2)
     End Sub
 
     Private Sub NotifyBreakState()
         ' Loopback disconnects the external serial pins; SOUT is held inactive.
         Dim asserted As Boolean = (_mcr And &H10) = 0 AndAlso (_lcr And &H40) <> 0
         If _peripheral IsNot Nothing Then _peripheral.BreakStateChanged(asserted)
-        If _monitor IsNot Nothing Then _monitor.ObserveBreakState(asserted)
+        If RuntimeDiagnostics.Enabled AndAlso _monitor IsNot Nothing Then _monitor.ObserveBreakState(asserted)
     End Sub
 
     Private Sub RestartReceiverTimeout()
@@ -818,11 +930,35 @@ Public NotInheritable Class Uart16550A
 
     Private Sub UpdateIrq()
         Dim pending As Boolean = (InterruptIdentification() And 1) = 0
-        _pic.SetIrqLine(_irq, pending AndAlso (_mcr And &H8) <> 0)
+        Dim assertedInBed As Boolean =
+            pending AndAlso (_mcr And &H8) <> 0
+
+        If assertedInBed = _irqOutputAssertedInBed Then Return
+        _irqOutputAssertedInBed = assertedInBed
+        _pic.SetIrqLine(_irq, assertedInBed)
     End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function HasActiveTimingInBed() As Boolean
+        If _txShiftActive OrElse _rxShiftActive Then Return True
+        If _txFifo.Count > 0 OrElse _rxWireQueue.Count > 0 Then Return True
+        If _txHoldingTransferPicoseconds > 0 Then Return True
+        Return _fifoEnabled AndAlso
+               _rxFifo.Count > 0 AndAlso
+               Not _rxTimeoutPending AndAlso
+               _rxTimeoutRemainingPicoseconds > 0
+    End Function
 
     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+
+        ' Both UARTs are on the coordinated motherboard clock list, so this
+        ' method is called at every clock-batch flush even while a port is
+        ' completely idle.  With no shift register, holding-transfer, RX wire
+        ' frame, FIFO timeout, or queued byte active, elapsed time cannot change
+        ' any UART state.  Return before setting up the generic timing loop.
+        If Not HasActiveTimingInBed() Then Return
+
         Dim remaining As Long = elapsedPicoseconds
         BeginTransmitIfIdle()
         BeginReceiveIfIdle()
@@ -867,8 +1003,10 @@ Public NotInheritable Class Uart16550A
         Dim completed As Byte = _txShiftValue
         _txShiftActive = False
         _txRemainingPicoseconds = 0
-        FlushPolledLineStatus()
-        AddDiagnosticEvent($"TX shift complete value={completed:X2}, THR={_txFifo.Count}")
+        If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
+        If RuntimeDiagnostics.Enabled Then
+            AddDiagnosticEvent($"TX shift complete value={completed:X2}, THR={_txFifo.Count}")
+        End If
         RaiseEvent TransmitActivity()
         Dim dataBits As Integer = 5 + (_lcr And 3)
         Dim wireValue As Byte = CByte(CInt(completed) And ((1 << dataBits) - 1))
@@ -878,7 +1016,7 @@ Public NotInheritable Class Uart16550A
             Dim parityMode As Integer = (_lcr >> 3) And 7
             Dim stopBits As Double = If((_lcr And 4) = 0, 1.0R, If(dataBits = 5, 1.5R, 2.0R))
             If _peripheral IsNot Nothing Then _peripheral.TransmitByte(wireValue, dataBits, parityMode, stopBits)
-            If _monitor IsNot Nothing Then _monitor.ObserveUartTransmit(wireValue, dataBits, parityMode, stopBits)
+            If RuntimeDiagnostics.Enabled AndAlso _monitor IsNot Nothing Then _monitor.ObserveUartTransmit(wireValue, dataBits, parityMode, stopBits)
         End If
         BeginTransmitIfIdle()
         UpdateIrq()
@@ -898,8 +1036,10 @@ Public NotInheritable Class Uart16550A
     End Function
 
     Public Sub ResetDevice() Implements IResettableDevice.ResetDevice
-        FlushPolledLineStatus()
-        AddDiagnosticEvent("UART master reset")
+        If RuntimeDiagnostics.Enabled Then FlushPolledLineStatus()
+        If RuntimeDiagnostics.Enabled Then
+            AddDiagnosticEvent("UART master reset")
+        End If
         _pic.SetIrqLine(_irq, False)
         _rxFifo.Clear()
         _txFifo.Clear()
@@ -908,6 +1048,7 @@ Public NotInheritable Class Uart16550A
         _lcr = 0
         _mcr = 0
         _fcr = 0
+        RecomputeLineTimingInBed()
         ' A 16550 master reset does not alter SCR or the divisor latches.
         ' They retain their power-on value at construction and survive warm reset.
         _overrunError = False
@@ -923,6 +1064,7 @@ Public NotInheritable Class Uart16550A
         _rxShiftRemainingPicoseconds = 0
         _rxTimeoutRemainingPicoseconds = 0
         _rxTimeoutPending = False
+        _irqOutputAssertedInBed = False
         NotifyModemOutputs()
         NotifyBreakState()
     End Sub
@@ -1025,7 +1167,7 @@ Public NotInheritable Class MicrosoftSerialMouse
         ' driver performs no extra host-coordinate conversion.
         _pendingX = SaturatingAdd(_pendingX, CLng(deltaX))
         _pendingY = SaturatingAdd(_pendingY, CLng(deltaY))
-        _hostMovementEvents += 1
+        If RuntimeDiagnostics.Enabled Then _hostMovementEvents += 1
 
         ' A physical mouse samples motion periodically; host event frequency
         ' must not become serial report frequency. If the periodic sampler is
@@ -1069,9 +1211,9 @@ Public NotInheritable Class MicrosoftSerialMouse
         If _identificationPending Then
             If _uart.QueueReceivedSerialByte(&H4D, MouseBaud, MouseDataBits, MouseParityMode, MouseStopBits) Then
                 _identificationPending = False
-                _identificationsSent += 1
+                If RuntimeDiagnostics.Enabled Then _identificationsSent += 1
             Else
-                _packetsDeferred += 1
+                If RuntimeDiagnostics.Enabled Then _packetsDeferred += 1
                 ArmSampleClock(SampleIntervalPicoseconds)
                 Return
             End If
@@ -1086,13 +1228,14 @@ Public NotInheritable Class MicrosoftSerialMouse
         If _leftButton Then first = CByte(first Or &H20)
         If _rightButton Then first = CByte(first Or &H10)
         first = CByte(first Or ((yByte And &HC0) >> 4) Or ((xByte And &HC0) >> 6))
-        Dim packet As Byte() = {first, CByte(xByte And &H3F), CByte(yByte And &H3F)}
-        If Not _uart.QueueReceivedSerialBytes(packet,
-                                              MouseBaud,
-                                              MouseDataBits,
-                                              MouseParityMode,
-                                              MouseStopBits) Then
-            _packetsDeferred += 1
+        If Not _uart.QueueReceivedSerialBytes3(first,
+                                               CByte(xByte And &H3F),
+                                               CByte(yByte And &H3F),
+                                               MouseBaud,
+                                               MouseDataBits,
+                                               MouseParityMode,
+                                               MouseStopBits) Then
+            If RuntimeDiagnostics.Enabled Then _packetsDeferred += 1
             ArmSampleClock(SampleIntervalPicoseconds)
             Return
         End If
@@ -1101,7 +1244,7 @@ Public NotInheritable Class MicrosoftSerialMouse
         _pendingY -= deltaY
         _reportedLeftButton = _leftButton
         _reportedRightButton = _rightButton
-        _packetsSent += 1
+        If RuntimeDiagnostics.Enabled Then _packetsSent += 1
         ' Keep the sampler periodic even when this report drained all motion.
         ' New host counts arriving before the next sample remain coalesced and
         ' cannot overfill the UART's 1200-baud wire queue.
@@ -1277,6 +1420,8 @@ Public NotInheritable Class ParallelPortSpp
 
     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+        If _handshakePhase = 0 OrElse elapsedPicoseconds = 0 Then Return
+
         Dim remaining As Long = elapsedPicoseconds
         While _handshakePhase <> 0 AndAlso remaining >= _handshakeRemaining
             remaining -= _handshakeRemaining

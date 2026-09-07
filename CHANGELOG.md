@@ -1,6 +1,10 @@
-# Change log
+﻿# Change log
 
 ## 2026-09-03
+- Reorganized IDE hardware configuration by physical topology: Channel 1/2, each with Drive 0 (master) and Drive 1 (slave), instead of separate master/slave device-class pages.
+- Added selectable ATA hard-disk model profiles with capacity, CHS, ATA identity, timing identity, and `.meta` sidecar persistence. Initial profiles include the exact legacy Generic 64 MiB image, Generic 500 MB, Conner CP-2064, and Conner CP30064H.
+- Model changes are staged until power cycle; incompatible platter images are disconnected intact instead of being resized, while exact-capacity images can adopt the selected physical-drive sidecar identity. New shelf drives are created at the selected model's exact capacity.
+- Routed IDE activity telemetry by electrical socket so HDD0-HDD3 correspond to primary master/slave and secondary master/slave ATA activity instead of one lamp per channel.
 
 ### Front panel / media controls
 

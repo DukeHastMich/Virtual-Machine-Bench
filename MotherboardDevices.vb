@@ -861,7 +861,9 @@ Public Class KeyboardController8042
     Public Sub ClearDiagnosticTrace()
         _diagnosticTrace.Clear()
         _diagnosticTraceSequence = 0
-        TraceDiagnostic("trace cleared")
+        If RuntimeDiagnostics.Enabled Then
+            TraceDiagnostic("trace cleared")
+        End If
     End Sub
 
     Public Function GetDiagnosticTrace() As String
@@ -876,13 +878,16 @@ Public Class KeyboardController8042
     End Function
 
     Private Sub ObserveDiagnosticPort64ReadInBed(valueInBed As Byte)
+        If Not RuntimeDiagnostics.Enabled Then Return
         If _diagnosticPort64RunValid AndAlso valueInBed = _diagnosticPort64RunValue Then
             _diagnosticPort64RunLength += 1UL
             Return
         End If
         If _diagnosticPort64RunValid Then
-            TraceDiagnostic("CPU IN 64h -> " & _diagnosticPort64RunValue.ToString("X2") &
-                            " repeated " & _diagnosticPort64RunLength.ToString("N0") & " times")
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("CPU IN 64h -> " & _diagnosticPort64RunValue.ToString("X2") &
+                                " repeated " & _diagnosticPort64RunLength.ToString("N0") & " times")
+            End If
         End If
         _diagnosticPort64RunValid = True
         _diagnosticPort64RunValue = valueInBed
@@ -890,6 +895,7 @@ Public Class KeyboardController8042
     End Sub
 
     Private Sub TraceDiagnostic(message As String)
+        If Not RuntimeDiagnostics.Enabled Then Return
         _diagnosticTraceSequence += 1UL
         Dim line As String = "#" & _diagnosticTraceSequence.ToString("000000") & " " & message
         While _diagnosticTrace.Count >= DiagnosticTraceCapacity
@@ -934,12 +940,12 @@ Public Class KeyboardController8042
 
     Public Function ReadPort(port As UInt16) As Byte Implements IPortDevice.ReadPort
         If port = &H64US Then
-            _port64ReadCount += 1UL
+            If RuntimeDiagnostics.Enabled Then _port64ReadCount += 1UL
             Dim statusInBed As Byte = ComposeStatus()
-            ObserveDiagnosticPort64ReadInBed(statusInBed)
+            If RuntimeDiagnostics.Enabled Then ObserveDiagnosticPort64ReadInBed(statusInBed)
             Return statusInBed
         End If
-        _port60ReadCount += 1UL
+        If RuntimeDiagnostics.Enabled Then _port60ReadCount += 1UL
         If Not _outputBufferFull Then
             ' CROMWELL 8042 DBB RETENTION FIX
             ' UPI-41/8042 host reads clear OBF, not the DBB data latch itself.
@@ -947,16 +953,20 @@ Public Class KeyboardController8042
             ' the value retained in the controller output data register until
             ' firmware writes a replacement byte.
             _lastPort60Value = _outputBufferValue
-            TraceDiagnostic("CPU IN 60h -> " & _outputBufferValue.ToString("X2") &
-                            " (OBF empty; retained DBB)")
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("CPU IN 60h -> " & _outputBufferValue.ToString("X2") &
+                                " (OBF empty; retained DBB)")
+            End If
             Return _outputBufferValue
         End If
 
         Dim value As Byte = _outputBufferValue
         _lastPort60Value = value
-        TraceDiagnostic("CPU IN 60h -> " & value.ToString("X2") &
-                        "  cmdresp=" & If(_outputBufferKeyboardCommandResponse, "1", "0") &
-                        "  translation=" & If(TranslationEnabled, "1", "0"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceDiagnostic("CPU IN 60h -> " & value.ToString("X2") &
+                            "  cmdresp=" & If(_outputBufferKeyboardCommandResponse, "1", "0") &
+                            "  translation=" & If(TranslationEnabled, "1", "0"))
+        End If
         Dim wasKeyboardData As Boolean = _outputBufferContainsKeyboardData
         Dim wasCommandResponse As Boolean = _outputBufferKeyboardCommandResponse
         _outputBufferFull = False
@@ -998,7 +1008,9 @@ Public Class KeyboardController8042
     End Function
 
     Public Sub WritePort(port As UInt16, value As Byte) Implements IPortDevice.WritePort
-        TraceDiagnostic("CPU OUT " & port.ToString("X2") & "h <- " & value.ToString("X2"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceDiagnostic("CPU OUT " & port.ToString("X2") & "h <- " & value.ToString("X2"))
+        End If
         If _inputBufferFull Then
             _transmitTimeout = True
             Return
@@ -1011,7 +1023,26 @@ Public Class KeyboardController8042
         _inputDelayRemaining = ControllerInputDelayPicoseconds
     End Sub
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function HasActiveTimingInBed() As Boolean
+        If _linkDirection <> LinkDirection.None Then Return True
+        If _awaitingKeyboardResponse OrElse _inputBufferFull Then Return True
+        If _keyboard.HasTimedActivity Then Return True
+
+        ' A queued serial byte can begin only while the controller clock is
+        ' enabled.  If the guest holds it low, no elapsed-time transition exists
+        ' until software changes the command byte / controller state.
+        If Not ControllerKeyboardClockDisabled AndAlso
+           (_hostToKeyboardQueue.Count > 0 OrElse _keyboard.HasByteToTransmit) Then
+            Return True
+        End If
+
+        Return False
+    End Function
+
     Public Function PicosecondsUntilNextWakeEvent() As Long Implements IClockWakeSource.PicosecondsUntilNextWakeEvent
+        If Not HasActiveTimingInBed() Then Return Long.MaxValue
+
         Dim earliest As Long = Long.MaxValue
 
         Dim keyboardEvent As Long = _keyboard.PicosecondsUntilNextEvent
@@ -1066,6 +1097,12 @@ Public Class KeyboardController8042
     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
         If elapsedPicoseconds = 0 Then Return
+
+        ' HardwareBus advances every registered clocked device at each committed
+        ' motherboard interval.  An idle 8042 + keyboard has no free-running
+        ' counter whose passage changes guest-visible state, so avoid the full
+        ' link/keyboard state machine until some timed activity is actually armed.
+        If Not HasActiveTimingInBed() Then Return
 
         ' Advance only serial activity which existed at the beginning of this
         ' interval. Keyboard/BAT/IBF events which mature at the endpoint may start
@@ -1171,7 +1208,9 @@ Public Class KeyboardController8042
             Else
                 _linkFault = DiagnosticLinkFault.None
             End If
-            TraceDiagnostic("WIRE system->kbd raw " & _linkFrameValue.ToString("X2"))
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("WIRE system->kbd raw " & _linkFrameValue.ToString("X2"))
+            End If
             RaiseEvent KeyboardTransmitActivity()
             Return
         End If
@@ -1204,8 +1243,10 @@ Public Class KeyboardController8042
             Else
                 _linkFault = DiagnosticLinkFault.None
             End If
-            TraceDiagnostic("WIRE kbd->8042 raw " & _linkFrameValue.ToString("X2") &
-                            "  cmdresp=" & If(_linkFrameIsCommandResponse, "1", "0"))
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("WIRE kbd->8042 raw " & _linkFrameValue.ToString("X2") &
+                                "  cmdresp=" & If(_linkFrameIsCommandResponse, "1", "0"))
+            End If
             RaiseEvent KeyboardReceiveActivity()
         End If
     End Sub
@@ -1367,7 +1408,9 @@ Public Class KeyboardController8042
         ' enabled.  This matters for values such as the second Enhanced Keyboard
         ' ID byte 83h, which is also a valid Set-2 make code (F7).
         If commandResponse Then
-            TraceDiagnostic("8042 protocol byte " & value.ToString("X2") & " bypasses translation")
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("8042 protocol byte " & value.ToString("X2") & " bypasses translation")
+            End If
             _awaitingKeyboardResponse = False
             _awaitingResendData = False
             _keyboardResponseTimeoutRemaining = 0
@@ -1382,12 +1425,16 @@ Public Class KeyboardController8042
 
         If TranslationEnabled Then
             If value = &HF0 Then
-                TraceDiagnostic("8042 translate F0 break prefix")
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDiagnostic("8042 translate F0 break prefix")
+                End If
                 _translationBreakPending = True
                 Return
             End If
             If value = &HE0 OrElse value = &HE1 Then
-                TraceDiagnostic("8042 pass prefix " & value.ToString("X2"))
+                If RuntimeDiagnostics.Enabled Then
+                    TraceDiagnostic("8042 pass prefix " & value.ToString("X2"))
+                End If
                 PresentOutput(value, keyboardData:=True, keyboardCommandResponse:=False)
                 Return
             End If
@@ -1398,9 +1445,11 @@ Public Class KeyboardController8042
                 translated = CByte(translated Or &H80)
                 _translationBreakPending = False
             End If
-            TraceDiagnostic("8042 translate " & value.ToString("X2") & " -> " &
-                            translated.ToString("X2") &
-                            If(translated <> translatedBeforeBreak, " (break)", ""))
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("8042 translate " & value.ToString("X2") & " -> " &
+                                translated.ToString("X2") &
+                                If(translated <> translatedBeforeBreak, " (break)", ""))
+            End If
             PresentOutput(translated, keyboardData:=True, keyboardCommandResponse:=False)
         Else
             _translationBreakPending = False
@@ -1597,13 +1646,17 @@ Public Class KeyboardController8042
         _outputBufferContainsKeyboardData = keyboardData
         _outputBufferKeyboardCommandResponse = keyboardData AndAlso keyboardCommandResponse
         _outputBufferFull = True
-        TraceDiagnostic("OBF <- " & value.ToString("X2") &
-                        "  keyboard=" & If(keyboardData, "1", "0") &
-                        "  irqEnabled=" & If((_controllerRam(0) And CommandByteIrq1Enable) <> 0, "1", "0"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceDiagnostic("OBF <- " & value.ToString("X2") &
+                            "  keyboard=" & If(keyboardData, "1", "0") &
+                            "  irqEnabled=" & If((_controllerRam(0) And CommandByteIrq1Enable) <> 0, "1", "0"))
+        End If
         UpdateKeyboardInhibitState()
         If keyboardData AndAlso (_controllerRam(0) And CommandByteIrq1Enable) <> 0 Then
-            _irq1AssertionCount += 1UL
-            TraceDiagnostic("IRQ1 assert for " & value.ToString("X2"))
+            If RuntimeDiagnostics.Enabled Then _irq1AssertionCount += 1UL
+            If RuntimeDiagnostics.Enabled Then
+                TraceDiagnostic("IRQ1 assert for " & value.ToString("X2"))
+            End If
             _pic.RaiseIrq(1)
         End If
     End Sub
@@ -2290,6 +2343,12 @@ Public Class NeatCs8221Chipset
     Public Event A20ForceLowChanged(forceLow As Boolean)
     Public Event ReadyTimeoutNmiRequested()
 
+    ' 82C212 RB7 owns the local CPU RAM/ROM READY Tw values.  The motherboard
+    ' bridge subscribes to this signal only to cache the currently programmed
+    ' result at its hot bus boundary; the chipset remains authoritative.
+    Public Event LocalReadyTimingChanged(ramWaitTStates As Integer,
+                                         romWaitTStates As Integer)
+
     Public Sub New(Optional cpuClockHz As Func(Of Long) = Nothing)
         _cpuClockHz = cpuClockHz
         ResetDevice()
@@ -2326,6 +2385,7 @@ Public Class NeatCs8221Chipset
         _refreshAddress = 0
         _refreshCycles = 0
         RaiseEvent A20ForceLowChanged(False)
+        RaiseEvent LocalReadyTimingChanged(RamWaitStates, RomWaitStates)
     End Sub
 
     Public Function HandlesPort(port As UInt16) As Boolean Implements IPortDevice.HandlesPort
@@ -2436,6 +2496,14 @@ Public Class NeatCs8221Chipset
         ' those registers can change the compiled physical page candidate set.
         If index >= &H66 AndAlso index <= &H69 AndAlso _rb(slot) <> oldValueInBed Then
             RaiseEvent MemoryDecodeChanged()
+        End If
+
+        ' RB7 (index 6Bh) is the 82C212 register that contains both local ROM
+        ' READY wait bits and the local DRAM READY wait bit.  Publish the new
+        ' decoded timing immediately after the guest write, so the very next CPU
+        ' bus cycle sees the new board timing.
+        If index = &H6B AndAlso _rb(slot) <> oldValueInBed Then
+            RaiseEvent LocalReadyTimingChanged(RamWaitStates, RomWaitStates)
         End If
     End Sub
 

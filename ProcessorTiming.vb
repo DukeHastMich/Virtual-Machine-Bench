@@ -612,6 +612,19 @@ Partial Public Class Processor286
                 End Select
             Case &H2, &H3
                 Return If(memoryOperand, 16 + ea, 14)                    ' LAR/LSL
+            Case &H5
+                ' Undocumented 80286 LOADALL (0F 05h).
+                '
+                ' Intel's test-instruction documentation gives 195 clocks and
+                ' 51 word bus cycles with no wait states.  The execution core
+                ' already performs the real 51-word physical-memory load; this
+                ' timing ledger supplies the nominal processor clocks, while
+                ' actual READY waits continue to be charged by the bus.
+                '
+                ' This changes timing only.  Existing LOADALL architectural
+                ' semantics (including this emulator's Windows-tested MSW/PE
+                ' behavior) are deliberately untouched.
+                Return 195
             Case &H6
                 Return 2                                                ' CLTS
             Case Else

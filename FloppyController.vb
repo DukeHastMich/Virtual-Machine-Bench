@@ -1,4 +1,4 @@
-Imports System
+﻿Imports System
 Imports System.Collections.Generic
 
 ' CROMWELL KEYBOARD REALITY BRICK 4 FDD ACTIVITY
@@ -166,7 +166,16 @@ Public Class FloppyController765
     End Function
 
     Public Function HandlesPort(port As UInt16) As Boolean Implements IPortDevice.HandlesPort
-        Return port >= &H3F2 AndAlso port <= &H3F7
+        ' The AT FDC does not own 3F6h.  That address is the primary IDE
+        ' alternate-status/device-control register.  The old broad 3F2h-3F7h
+        ' decode silently shadowed IDE device control because the FDC is
+        ' registered earlier on the bus.
+        Select Case port
+            Case &H3F2, &H3F4, &H3F5, &H3F7
+                Return True
+            Case Else
+                Return False
+        End Select
     End Function
 
     Public Function ReadPort(port As UInt16) As Byte Implements IPortDevice.ReadPort

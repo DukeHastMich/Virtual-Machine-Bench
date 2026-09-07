@@ -1,0 +1,29 @@
+--- a/DiamondStealthPro928.vb
++++ b/DiamondStealthPro928.vb
+@@ -2115,18 +2115,25 @@
+                     ' latch, then merges through (rotated CPU data AND GC8).
+                     ' Omitting the raster operation leaves colour planes set
+                     ' during masked Windows/GDI drawing (notably Mode 12h).
+                     source = If((_graphics(0) And (1 << plane)) <> 0, &HFF, 0)
+                     source = ApplyLogical(source, _latches(plane), logicalOp)
+                     effectiveMask = RotateRight8(value, rotateCount) And bitMask
+             End Select
+             Dim finalValue As Byte = CByte(((source And effectiveMask) Or (_latches(plane) And (Not effectiveMask And &HFF))) And &HFF)
+-            Dim oldValueInBed As Integer = ReadPlaneByte(plane, planeOffset)
++
++            ' CROMWELL VGA DIAGNOSTIC DEAD-READ BRICK 15
++            '
++            ' oldValueInBed exists only to feed host-only diagnostic bit-transition
++            ' counters.  When runtime diagnostics are compiled out, reading the
++            ' physical plane here is pure overhead and performs a second complete
++            ' VGA plane-address calculation for every enabled plane write.
+             If RuntimeDiagnostics.Enabled Then
++                Dim oldValueInBed As Integer = ReadPlaneByte(plane, planeOffset)
+                 _diagnosticVgaPlaneBitsSet(writeMode, plane) +=
+                     CULng(System.Numerics.BitOperations.PopCount(CUInt((Not oldValueInBed) And finalValue And &HFF)))
+                 _diagnosticVgaPlaneBitsCleared(writeMode, plane) +=
+                     CULng(System.Numerics.BitOperations.PopCount(CUInt(oldValueInBed And (Not finalValue) And &HFF)))
+             End If
+             WritePlaneByte(plane, planeOffset, finalValue)
+         Next
+     End Sub

@@ -30,3 +30,10 @@ Backup/
 # OS noise
 Thumbs.db
 Desktop.ini
+# Shared local wavetable/sample-bank assets
+/Banks/*.sf2
+/Banks/*.sf3
+/Banks/*.sfArk
+/Banks/*.sfark
+/Banks/*.mlb
+

@@ -1,0 +1,32 @@
+WAVETABLE BRICK 6.1 - SB16 HOST AUDIO CLOCK CORRECTION
+
+Why:
+Brick 6 still made SoundBlaster16Isa.AdvanceTime generate/mix/submit every 48 kHz host sample on the machine-owner thread. That could slow the entire VM and race the wavetable producer, causing slow/jittery MIDI playback.
+
+What changed:
+- Guest-visible OPL timers remain advanced on the coordinated machine thread.
+- Guest DSP DMA/DREQ/IRQ timing remains on the coordinated machine thread.
+- A dedicated SB16 host-audio worker now owns:
+  - OPL waveform generation
+  - wavetable PCM consumption
+  - DSP PCM host-rate presentation
+  - mixer math / clipping
+  - WinMM waveOut submission
+- OPL register writes are mirrored to the host worker through an ordered bounded FIFO.
+- Decoded DSP DMA samples cross through a bounded SPSC ring; no host synth or waveOut work occurs in ConsumePcmFrame.
+- SoundBlaster16Isa.AdvanceTime only computes elapsed 48 kHz frame count and posts one nonblocking render-interval command.
+- WavetableHost render requests still originate on the machine thread, in the SAME FIFO order as guest MIDI events. This prevents future MIDI from leaking backward if the host mixer is behind.
+- The host mixer may wait up to 20 ms for a requested MeltySynth block. This wait is host-only and never blocks the emulated machine.
+- Wavetable PCM buffering was enlarged to tolerate scheduling jitter.
+
+Clock rule:
+The audio worker has its own output clock, but it does NOT free-run from wall clock. It renders only emulated time that the VM has actually advanced.
+
+Not changed:
+- no guest IRQ/DMA/register shortcuts
+- no CPU/video/storage changes
+- no new MIDI/SysEx behavior
+- no bank hot swap
+- no vendor-specific wavetable behavior
+
+Apply over Wavetable Brick 6 Fixed.

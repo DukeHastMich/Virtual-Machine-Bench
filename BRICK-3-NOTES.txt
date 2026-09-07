@@ -1,0 +1,39 @@
+WAVETABLE BRICK 3
+=================
+
+Scope kept deliberately narrow:
+
+1. Added Device/WaveBlasterConnector.vb.
+   - Sound-card-agnostic connector shell.
+   - Receives bytes only after they have passed through a card's guest-visible MIDI transmitter.
+   - Tracks forwarded bytes / bytes sent with no board attached.
+   - No SoundFont, UI, host audio, IRQ, DMA, or guest-memory behavior.
+
+2. Added Device/WaveBlasterDaughterboard.vb.
+   - Generic Wave Blaster-compatible daughterboard shell.
+   - Receives raw MIDI bytes.
+   - Keeps a bounded 32-byte diagnostic trace and counters only.
+   - Does NOT parse MIDI yet.
+   - Does NOT load/render SF2 yet.
+
+3. Wired SoundBlaster16Isa.vb.
+   - Existing MPU UART data-port writes in UART mode now feed WaveBlasterConnector.
+   - ConfigureWavetableHardware attaches/detaches the daughterboard from the staged power-cycle configuration.
+   - SoundFont bank identity remains host/chassis configuration; the daughterboard never sees a filename.
+   - Hardware reset is forwarded to an attached daughterboard.
+   - MPU command FFh is NOT treated as a daughterboard reset; no undocumented reset connection was invented.
+   - DiagnosticText now shows connector/device raw-MIDI counters.
+
+4. Updated VirtualComputer.Modern.vbproj with the two new compiled device files.
+
+Validation available in this environment:
+- project XML parses successfully;
+- required Compile Include paths exist;
+- structural checks confirm the SB16 UART branch calls the connector and no SF2/file APIs occur in the new Device files.
+
+This environment has no dotnet/MSBuild/vbc executable, so Visual Studio remains the compile/boot gate before Brick 4.
+
+NEXT BRICK
+----------
+WavetableMidiParser + WavetableMidiState: running status, channel voice messages,
+controllers/program/bend/note state, bounded diagnostics. Still no SoundFont renderer.

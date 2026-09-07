@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+﻿<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -41,7 +41,19 @@
     <Compile Include="HardwareBus.vb" />
     <Compile Include="LegacyIoPorts.vb" />
     <Compile Include="Ne2000Isa.vb" />
-    <Compile Include="SoundBlaster16Isa.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\SoundBlaster16Isa.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableProfile.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableMidiParser.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableMidiState.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableDiagnostics.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableRenderEvent.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterDaughterboard.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterConnector.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableSettings.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\SoundFontCatalog.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableConfigForm.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableRenderer.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableHost.vb" />
     <Compile Include="EpsonFxVirtualPrinter.vb" />
     <Compile Include="IdeController.vb" />
     <Compile Include="KeyboardRealityDiagnostics.vb" />
@@ -49,6 +61,7 @@
     <Compile Include="AtKeyboard101.vb" />
     <Compile Include="MotherboardDevices.vb" />
     <Compile Include="ProcessorCore.vb" />
+    <Compile Include="SingleStep80286TestHost.vb" />
     <Compile Include="StorageDevices.vb" />
     <Compile Include="My Project\Resources.Designer.vb">
       <AutoGen>true</AutoGen>
@@ -92,6 +105,7 @@
   <ItemGroup>
     <Compile Include="MachineConfiguration.vb" />
     <Compile Include="IsaCardJumperPanels.vb" />
+    <Compile Include="IsaBackplane.vb" />
     <Compile Include="SystemConfigurationDrawer.vb" />
   </ItemGroup>
 
@@ -110,5 +124,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MediaWorkbenchSupport.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MeltySynth" Version="2.4.1" />
   </ItemGroup>
 </Project>

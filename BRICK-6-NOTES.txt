@@ -1,0 +1,35 @@
+WAVETABLE BRICK 6 - PCM RENDER + SB16 MIX
+
+Scope:
+- Adds PCM rendering to the existing MeltySynth renderer abstraction.
+- MeltySynth remains owned by one background WavetableHost worker.
+- MIDI events and coordinated machine-time RenderFrames commands share one bounded FIFO.
+- Adds an 8192-frame single-producer/single-consumer float PCM ring.
+- SB16 AdvanceTime requests wavetable frames from its existing 48 kHz coordinated host-audio clock.
+- SB16 never waits for the synth worker; missing PCM is silence and is counted as an underrun.
+- Wavetable PCM is mixed into the existing WinMmStereoOut16 stream; no second audio device/clock is created.
+- OPL and Wave Blaster PCM share the CT1745 MIDI volume path already represented by mixer registers 34h/35h (legacy 26h fallback).
+- Reset publishes an audio discard fence and the renderer reset remains ordered on the host command FIFO.
+
+Deliberately NOT in this brick:
+- No new SysEx/GM/GS/XG/vendor behavior.
+- No hot bank swapping.
+- No new guest IRQ/DMA/register behavior.
+- No exact model-specific Wave Blaster/AWE daughterboard profile yet.
+- No unrelated CPU/video/storage/audit fixes.
+
+Host-overload policy:
+- Maximum queued render lead is bounded to 4096 frames.
+- PCM ring capacity is 8192 frames.
+- If the worker falls behind, render requests/frames may be dropped and the consumer outputs silence rather than blocking the 80286.
+- Diagnostics expose request/drop/produce/consume/underrun and ring depth.
+
+Validation gate on Eric's machine:
+1. Build in Visual Studio (MeltySynth 2.4.1 should already restore from Brick 5).
+2. Cold boot the VM and confirm no regression.
+3. Dump All and verify Wavetable host says: bank loaded - PCM connected.
+4. Run guest software that sends General MIDI through the SB16 MPU port.
+5. Confirm audible wavetable output and verify CT1745 MIDI volume changes affect it.
+6. If audio is silent/choppy, capture Wavetable host diagnostics before changing timing/queue sizes.
+
+This environment has no dotnet/MSBuild/vbc, so Brick 6 received XML/static source checks but not a local VB compile.

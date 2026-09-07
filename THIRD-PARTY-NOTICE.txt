@@ -1,0 +1,8 @@
+SingleStepTests/80286
+Copyright (c) 2025 Daniel Balsom
+Upstream repository: https://github.com/SingleStepTests/80286
+License: MIT
+
+This VMB patch does not redistribute the upstream test corpus. It contains a host-side
+reader/runner designed from the publicly documented MOO format and the upstream
+MIT-licensed conversion tool.

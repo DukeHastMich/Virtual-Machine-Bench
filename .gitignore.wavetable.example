@@ -1,0 +1,7 @@
+# Suggested entries for the main repository .gitignore.
+# Wavetable banks are shared at the source-code root for every sound card.
+/Banks/*.sf2
+/Banks/*.sf3
+/Banks/*.sfArk
+/Banks/*.sfark
+/Banks/*.mlb

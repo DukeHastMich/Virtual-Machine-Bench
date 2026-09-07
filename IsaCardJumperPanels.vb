@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Collections.Generic
 Imports System.Drawing
 Imports System.IO
@@ -15,6 +15,10 @@ Public NotInheritable Class SoundBlaster16JumperSettings
     Public Property Dma16 As Integer = 5
     Public Property MpuPort As UInt16 = &H330US
     Public Property GamePortEnabled As Boolean = True
+    ' The wavetable attachment is physical card/chassis configuration too.  The
+    ' settings object is generic so later wavetable-capable sound cards can reuse
+    ' the same host configurator rather than growing SB16-specific SoundFont UI.
+    Public Property Wavetable As WavetableAttachmentSettings = New WavetableAttachmentSettings()
 
     Public Function CloneSettings() As SoundBlaster16JumperSettings
         Return New SoundBlaster16JumperSettings With {
@@ -23,15 +27,18 @@ Public NotInheritable Class SoundBlaster16JumperSettings
             .Dma8 = Dma8,
             .Dma16 = Dma16,
             .MpuPort = MpuPort,
-            .GamePortEnabled = GamePortEnabled
+            .GamePortEnabled = GamePortEnabled,
+            .Wavetable = If(Wavetable, New WavetableAttachmentSettings()).CloneSettings()
         }
     End Function
 
     Public Function Summary() As String
+        Dim wavetableInBed As WavetableAttachmentSettings = If(Wavetable, New WavetableAttachmentSettings())
         Return BasePort.ToString("X3") & "h / IRQ" & Irq.ToString() &
                " / DMA" & Dma8.ToString() & "/" & Dma16.ToString() &
                " / MPU " & MpuPort.ToString("X3") & "h" &
-               If(GamePortEnabled, " / game 201h", " / game disabled")
+               If(GamePortEnabled, " / game 201h", " / game disabled") &
+               " / " & wavetableInBed.Summary()
     End Function
 End Class
 
@@ -85,6 +92,27 @@ Public NotInheritable Class IsaExpansionCardConfiguration
         Dim gameEnabled As Boolean
         If Boolean.TryParse(gameText, gameEnabled) Then sb.GamePortEnabled = gameEnabled
 
+        Dim wavetableInBed As New WavetableAttachmentSettings()
+        Dim wtInstalledTextInBed As String = MachineConfigurationStore.ReadValue(_configurationPath, "SoundBlaster16", "WavetableInstalled", "True")
+        Dim wtInstalledInBed As Boolean
+        If Boolean.TryParse(wtInstalledTextInBed, wtInstalledInBed) Then wavetableInBed.Installed = wtInstalledInBed
+        wavetableInBed.ProfileId = WavetableAttachmentSettings.NormalizeProfileId(
+            MachineConfigurationStore.ReadValue(_configurationPath, "SoundBlaster16", "WavetableProfile", WavetableAttachmentSettings.GenericWaveBlasterProfileId))
+        Dim wtBankRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPath, "SoundBlaster16", "WavetableBank", WavetableAttachmentSettings.DefaultSoundFontFileName)
+        Dim wtPolicyRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPath, "SoundBlaster16", "WavetableBankPolicyVersion", "1")
+        Dim wtPolicyInBed As Integer = 1
+        Integer.TryParse(wtPolicyRawInBed, wtPolicyInBed)
+        Dim normalizedWtBankInBed As String = WavetableAttachmentSettings.NormalizeBankFileName(wtBankRawInBed)
+        If wtPolicyInBed < WavetableAttachmentSettings.CurrentBankPolicyVersion AndAlso
+           String.Equals(normalizedWtBankInBed, WavetableAttachmentSettings.LegacyDefaultSoundFontFileName, StringComparison.OrdinalIgnoreCase) Then
+            ' Bricks 1/2 persisted uo_4mb_2.sf2 as the old factory default.  Migrate
+            ' that unversioned default to the new automatic SB16.sf2 policy so an
+            ' existing test machine actually receives the new smallest-bank fallback.
+            normalizedWtBankInBed = WavetableAttachmentSettings.DefaultSoundFontFileName
+        End If
+        wavetableInBed.BankFileName = normalizedWtBankInBed
+        sb.Wavetable = wavetableInBed
+
         Dim ne As New Ne2000JumperSettings()
         ne.BasePort = ReadHexChoice("NE2000", "BasePort", ne.BasePort, Ne2000BasePorts)
         ne.Irq = ReadIntChoice("NE2000", "IRQ", ne.Irq, Ne2000Irqs)
@@ -102,6 +130,11 @@ Public NotInheritable Class IsaExpansionCardConfiguration
         MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "DMA16", sb.Dma16.ToString())
         MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "MPUPort", sb.MpuPort.ToString("X3"))
         MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "GamePortEnabled", sb.GamePortEnabled.ToString())
+        Dim wavetableInBed As WavetableAttachmentSettings = If(sb.Wavetable, New WavetableAttachmentSettings())
+        MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "WavetableInstalled", wavetableInBed.Installed.ToString())
+        MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "WavetableProfile", WavetableAttachmentSettings.NormalizeProfileId(wavetableInBed.ProfileId))
+        MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "WavetableBank", WavetableAttachmentSettings.NormalizeBankFileName(wavetableInBed.BankFileName))
+        MachineConfigurationStore.WriteValue(_configurationPath, "SoundBlaster16", "WavetableBankPolicyVersion", WavetableAttachmentSettings.CurrentBankPolicyVersion.ToString())
         MachineConfigurationStore.WriteValue(_configurationPath, "NE2000", "BasePort", ne.BasePort.ToString("X3"))
         MachineConfigurationStore.WriteValue(_configurationPath, "NE2000", "IRQ", ne.Irq.ToString())
     End Sub
@@ -159,13 +192,17 @@ Public NotInheritable Class IsaResourceConflictDetector
             New IoClaim(&H40, &H43, "PIT"),
             New IoClaim(&H60, &H64, "keyboard/controller"),
             New IoClaim(&H70, &H71, "RTC/CMOS"),
+            New IoClaim(&H170, &H177, "secondary IDE"),
             New IoClaim(&H1F0, &H1F7, "primary IDE"),
             New IoClaim(&H201, &H201, "SB16 game port"),
             New IoClaim(&H278, &H27A, "LPT2"),
             New IoClaim(&H2F8, &H2FF, "COM2"),
+            New IoClaim(&H376, &H376, "secondary IDE control"),
             New IoClaim(&H378, &H37A, "LPT1"),
             New IoClaim(&H388, &H38B, "OPL2/OPL3"),
-            New IoClaim(&H3F2, &H3F7, "floppy controller"),
+            New IoClaim(&H3F2, &H3F5, "floppy controller"),
+            New IoClaim(&H3F6, &H3F6, "primary IDE control"),
+            New IoClaim(&H3F7, &H3F7, "floppy controller"),
             New IoClaim(&H3F8, &H3FF, "COM1"),
             New IoClaim(&HA0, &HA1, "slave PIC")
         }
@@ -195,7 +232,8 @@ Public NotInheritable Class IsaResourceConflictDetector
 
         Dim fixedIrqs As New Dictionary(Of Integer, String) From {
             {1, "keyboard"}, {3, "COM2"}, {4, "COM1"}, {5, "LPT2"}, {6, "floppy"},
-            {7, "LPT1"}, {8, "RTC"}, {13, "numeric coprocessor"}, {14, "primary IDE"}
+            {7, "LPT1"}, {8, "RTC"}, {13, "numeric coprocessor"},
+            {14, "primary IDE"}, {15, "secondary IDE"}
         }
         Dim owner As String = Nothing
         If fixedIrqs.TryGetValue(sb.Irq, owner) Then conflicts.Add("SB16 IRQ" & sb.Irq.ToString() & " conflicts with " & owner & ".")
@@ -235,6 +273,8 @@ Friend NotInheritable Class IsaCardJumperDialog
     Private ReadOnly _dma16Combo As New ComboBox()
     Private ReadOnly _mpuCombo As New ComboBox()
     Private ReadOnly _gameCheck As New CheckBox()
+    Private ReadOnly _wavetableButton As New Button()
+    Private ReadOnly _wavetableValue As New Label()
     Private ReadOnly _conflictLabel As New Label()
     Private ReadOnly _stageButton As New Button()
 
@@ -250,13 +290,13 @@ Friend NotInheritable Class IsaCardJumperDialog
         SoundBlasterSettings = _otherSb.CloneSettings()
         Ne2000Settings = _otherNe.CloneSettings()
 
-        Text = If(kind = IsaJumperCardKind.SoundBlaster16, "Sound Blaster 16 — jumpers / DIP switches", "NE2000 — jumpers / DIP switches")
+        Text = If(kind = IsaJumperCardKind.SoundBlaster16, "Sound Blaster 16 — card configuration", "NE2000 — jumpers / DIP switches")
         FormBorderStyle = FormBorderStyle.FixedDialog
         MaximizeBox = False
         MinimizeBox = False
         ShowInTaskbar = False
         StartPosition = FormStartPosition.CenterParent
-        ClientSize = New Size(474, If(kind = IsaJumperCardKind.SoundBlaster16, 505, 380))
+        ClientSize = New Size(474, If(kind = IsaJumperCardKind.SoundBlaster16, 565, 380))
         BackColor = Color.FromArgb(232, 226, 210)
 
         BuildUi()
@@ -267,7 +307,7 @@ Friend NotInheritable Class IsaCardJumperDialog
     Private Sub BuildUi()
         Dim cardPanel As New Panel() With {
             .Left = 14, .Top = 14, .Width = ClientSize.Width - 28,
-            .Height = If(_kind = IsaJumperCardKind.SoundBlaster16, 330, 205),
+            .Height = If(_kind = IsaJumperCardKind.SoundBlaster16, 390, 205),
             .BackColor = Color.FromArgb(52, 91, 62),
             .BorderStyle = BorderStyle.FixedSingle
         }
@@ -295,12 +335,32 @@ Friend NotInheritable Class IsaCardJumperDialog
             _gameCheck.AutoSize = False
             AddHandler _gameCheck.CheckedChanged, AddressOf SelectionChanged
             cardPanel.Controls.Add(_gameCheck)
+
+            Dim wavetableCaptionInBed As New Label() With {
+                .Left = 18, .Top = 301, .Width = 132, .Height = 24,
+                .ForeColor = Color.WhiteSmoke,
+                .Text = "DAUGHTERBOARD",
+                .Font = New Font(SystemFonts.MessageBoxFont, FontStyle.Bold)
+            }
+            cardPanel.Controls.Add(wavetableCaptionInBed)
+
+            _wavetableButton.Left = 166 : _wavetableButton.Top = 292 : _wavetableButton.Width = 245 : _wavetableButton.Height = 29
+            _wavetableButton.Text = "Wavetable / ROM bank..."
+            AddHandler _wavetableButton.Click, AddressOf ConfigureWavetableInBed
+            cardPanel.Controls.Add(_wavetableButton)
+
+            _wavetableValue.Left = 166 : _wavetableValue.Top = 327 : _wavetableValue.Width = 245 : _wavetableValue.Height = 42
+            _wavetableValue.ForeColor = Color.Gainsboro
+            _wavetableValue.AutoEllipsis = True
+            cardPanel.Controls.Add(_wavetableValue)
         End If
 
         Dim note As New Label() With {
             .Left = 14, .Top = cardPanel.Bottom + 8, .Width = ClientSize.Width - 28, .Height = 34,
             .ForeColor = Color.FromArgb(62, 55, 43),
-            .Text = "These are physical card straps. Changes are staged now and become active only after a virtual chassis power cycle."
+            .Text = If(_kind = IsaJumperCardKind.SoundBlaster16,
+                       "Card straps and wavetable daughterboard/ROM selection are staged here and become active only after a virtual chassis power cycle.",
+                       "These are physical card straps. Changes are staged now and become active only after a virtual chassis power cycle.")
         }
         Controls.Add(note)
 
@@ -312,7 +372,7 @@ Friend NotInheritable Class IsaCardJumperDialog
         Controls.Add(_conflictLabel)
 
         Dim cancelButton As New Button() With {.Text = "Cancel", .Width = 90, .Height = 29, .Left = ClientSize.Width - 104, .Top = ClientSize.Height - 43}
-        _stageButton.Text = "Stage jumpers"
+        _stageButton.Text = If(_kind = IsaJumperCardKind.SoundBlaster16, "Stage card", "Stage jumpers")
         _stageButton.Width = 112 : _stageButton.Height = 29
         _stageButton.Left = cancelButton.Left - 118 : _stageButton.Top = cancelButton.Top
         _stageButton.DialogResult = DialogResult.OK
@@ -342,10 +402,32 @@ Friend NotInheritable Class IsaCardJumperDialog
             FillInts(_dma16Combo, IsaExpansionCardConfiguration.Sb16Dma16Channels, SoundBlasterSettings.Dma16, Function(v) "DMA " & v.ToString())
             FillHex(_mpuCombo, IsaExpansionCardConfiguration.Sb16MpuPorts, SoundBlasterSettings.MpuPort)
             _gameCheck.Checked = SoundBlasterSettings.GamePortEnabled
+            If SoundBlasterSettings.Wavetable Is Nothing Then SoundBlasterSettings.Wavetable = New WavetableAttachmentSettings()
+            UpdateWavetableValueInBed()
         Else
             FillHex(_baseCombo, IsaExpansionCardConfiguration.Ne2000BasePorts, Ne2000Settings.BasePort)
             FillInts(_irqCombo, IsaExpansionCardConfiguration.Ne2000Irqs, Ne2000Settings.Irq, Function(v) If(v = 9, "IRQ 2/9", "IRQ " & v.ToString()))
         End If
+    End Sub
+
+    Private Sub ConfigureWavetableInBed(senderInBed As Object, eInBed As EventArgs)
+        If _kind <> IsaJumperCardKind.SoundBlaster16 Then Return
+        Dim currentInBed As WavetableAttachmentSettings = If(SoundBlasterSettings.Wavetable, New WavetableAttachmentSettings()).CloneSettings()
+        Using dialogInBed As New WavetableConfigForm("Sound Blaster 16", currentInBed)
+            If dialogInBed.ShowDialog(Me) = DialogResult.OK Then
+                SoundBlasterSettings.Wavetable = dialogInBed.WavetableSettings
+                UpdateWavetableValueInBed()
+                ValidateSelections()
+            End If
+        End Using
+    End Sub
+
+    Private Sub UpdateWavetableValueInBed()
+        If _kind <> IsaJumperCardKind.SoundBlaster16 Then Return
+        Dim wavetableInBed As WavetableAttachmentSettings = If(SoundBlasterSettings.Wavetable, New WavetableAttachmentSettings())
+        _wavetableValue.Text = If(wavetableInBed.Installed,
+                                  "Installed — " & WavetableAttachmentSettings.NormalizeBankFileName(wavetableInBed.BankFileName),
+                                  "Not installed")
     End Sub
 
     Private Shared Sub FillHex(combo As ComboBox, choices As UInt16(), selected As UInt16)

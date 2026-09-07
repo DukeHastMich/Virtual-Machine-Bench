@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 Imports System.Collections.Generic
 Imports System.Diagnostics
 Imports System.Drawing
@@ -46,7 +46,17 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property FloppyMediaSourceIdB As String
     Public Property HardDiskController As String
     Public Property HardDisk0 As String
+    Public Property HardDisk1 As String
     Public Property Optical As String
+    Public Property Optical1 As String
+    Public Property IdePrimaryMasterHardwareId As String
+    Public Property IdePrimarySlaveHardwareId As String
+    Public Property IdeSecondaryMasterHardwareId As String
+    Public Property IdeSecondarySlaveHardwareId As String
+    Public Property IdePrimaryMasterModelId As String
+    Public Property IdePrimarySlaveModelId As String
+    Public Property IdeSecondaryMasterModelId As String
+    Public Property IdeSecondarySlaveModelId As String
     Public Property Keyboard As String
     Public Property Com1 As String
     Public Property Com2 As String
@@ -299,7 +309,9 @@ Public NotInheritable Class SystemConfigurationDrawer
             SetValueInBed("floppy-a-media", snapshotInBed.FloppyMediaA)
             SetValueInBed("floppy-b-media", snapshotInBed.FloppyMediaB)
             SetValueInBed("hdd0", snapshotInBed.HardDisk0)
+            SetValueInBed("hdd1", snapshotInBed.HardDisk1)
             SetValueInBed("optical", snapshotInBed.Optical)
+            SetValueInBed("optical1", snapshotInBed.Optical1)
             SetValueInBed("keyboard", snapshotInBed.Keyboard)
             SetValueInBed("com1", snapshotInBed.Com1)
             SetValueInBed("com2", snapshotInBed.Com2)
@@ -326,6 +338,29 @@ Public NotInheritable Class SystemConfigurationDrawer
             SelectChoiceInBed("floppy-a-source", snapshotInBed.FloppyMediaSourceIdA)
             SelectChoiceInBed("floppy-b-source", snapshotInBed.FloppyMediaSourceIdB)
             SelectChoiceInBed("ide", snapshotInBed.HardDiskController)
+            SelectChoiceInBed("ide-primary-master", snapshotInBed.IdePrimaryMasterHardwareId)
+            SelectChoiceInBed("ide-primary-slave", snapshotInBed.IdePrimarySlaveHardwareId)
+            SelectChoiceInBed("ide-secondary-master", snapshotInBed.IdeSecondaryMasterHardwareId)
+            SelectChoiceInBed("ide-secondary-slave", snapshotInBed.IdeSecondarySlaveHardwareId)
+            SelectChoiceInBed("ide-primary-master-model", snapshotInBed.IdePrimaryMasterModelId)
+            SelectChoiceInBed("ide-primary-slave-model", snapshotInBed.IdePrimarySlaveModelId)
+            SelectChoiceInBed("ide-secondary-master-model", snapshotInBed.IdeSecondaryMasterModelId)
+            SelectChoiceInBed("ide-secondary-slave-model", snapshotInBed.IdeSecondarySlaveModelId)
+
+            Select Case _currentPageInBed
+                Case "ide-c1d0"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(0, False))
+                    SetValueInBed("ide-attachment", snapshotInBed.HardDisk0)
+                Case "ide-c1d1"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(0, True))
+                    SetValueInBed("ide-attachment", snapshotInBed.Optical)
+                Case "ide-c2d0"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(1, False))
+                    SetValueInBed("ide-attachment", snapshotInBed.HardDisk1)
+                Case "ide-c2d1"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(1, True))
+                    SetValueInBed("ide-attachment", snapshotInBed.Optical1)
+            End Select
 
             Dim memoryChoiceInBed As Integer = If(snapshotInBed.PendingMemoryMb.HasValue,
                                                    snapshotInBed.PendingMemoryMb.Value,
@@ -442,8 +477,13 @@ Public NotInheritable Class SystemConfigurationDrawer
 
         Dim storageInBed As TreeNode = AddNodeInBed(Nothing, "storage", "Storage")
         AddNodeInBed(storageInBed, "floppy", "Floppy Drives")
-        AddNodeInBed(storageInBed, "harddisk", "Hard Drives")
-        AddNodeInBed(storageInBed, "optical", "Optical Drives")
+        Dim ideInBed As TreeNode = AddNodeInBed(storageInBed, "ide", "IDE Controller")
+        Dim ideChannel1InBed As TreeNode = AddNodeInBed(ideInBed, "ide-channel1", "Channel 1 — Primary")
+        AddNodeInBed(ideChannel1InBed, "ide-c1d0", "Drive 0 (Master)")
+        AddNodeInBed(ideChannel1InBed, "ide-c1d1", "Drive 1 (Slave)")
+        Dim ideChannel2InBed As TreeNode = AddNodeInBed(ideInBed, "ide-channel2", "Channel 2 — Secondary")
+        AddNodeInBed(ideChannel2InBed, "ide-c2d0", "Drive 0 (Master)")
+        AddNodeInBed(ideChannel2InBed, "ide-c2d1", "Drive 1 (Slave)")
 
         Dim expansionInBed As TreeNode = AddNodeInBed(Nothing, "expansion", "Expansion")
         AddNodeInBed(expansionInBed, "video", "Video")
@@ -458,6 +498,9 @@ Public NotInheritable Class SystemConfigurationDrawer
         hostInBed.Expand()
         systemInBed.Expand()
         storageInBed.Expand()
+        ideInBed.Expand()
+        ideChannel1InBed.Expand()
+        ideChannel2InBed.Expand()
         expansionInBed.Expand()
         ioInBed.Expand()
     End Sub
@@ -572,16 +615,30 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                     AddNoteInBed("The drive mechanism remains the installed hardware. This page can attach that drive either to a host physical floppy drive or to an image source; the FDC and guest path remain identical. Disk-image authoring and physical-disk imaging remain Sneaker Net jobs.")
 
-                Case "harddisk"
-                    _pageTitleInBed.Text = "HARD DRIVES"
+                Case "ide"
+                    _pageTitleInBed.Text = "IDE CONTROLLER"
                     AddSelectorInBed("Controller", "ide", {New HardwareProfileChoice(snapshotInBed.HardDiskController, snapshotInBed.HardDiskController)}, Nothing)
-                    AddValueInBed("Primary master", "hdd0", snapshotInBed.HardDisk0)
-                    AddNoteInBed("Drive Shelf operations remain available through Media/Sneaker Net. Hardware-model, controller and channel selectors live here as the configuration layer grows.")
+                    AddValueInBed("Channel 1", "ide-channel1-summary", "Primary — 1F0h-1F7h + 3F6h — IRQ14")
+                    AddValueInBed("Channel 2", "ide-channel2-summary", "Secondary — 170h-177h + 376h — IRQ15")
+                    AddNoteInBed("Each channel has two ATA electrical positions: Drive 0 (master) and Drive 1 (slave). Device class and hard-disk model are properties of the socket; hard-disk platter data and its .meta identity travel together in the IDE Drive Shelf.")
 
-                Case "optical"
-                    _pageTitleInBed.Text = "OPTICAL DRIVES"
-                    AddSelectorInBed("Optical device", "optical-selector", {New HardwareProfileChoice(snapshotInBed.Optical, snapshotInBed.Optical)}, Nothing)
-                    AddNoteInBed("Optical image authoring and CD/DVD Shelf work remain separate from installed-drive configuration.")
+                Case "ide-channel1"
+                    BuildIdeChannelPageInBed(0, snapshotInBed)
+
+                Case "ide-channel2"
+                    BuildIdeChannelPageInBed(1, snapshotInBed)
+
+                Case "ide-c1d0"
+                    BuildIdeDevicePageInBed(0, False, snapshotInBed)
+
+                Case "ide-c1d1"
+                    BuildIdeDevicePageInBed(0, True, snapshotInBed)
+
+                Case "ide-c2d0"
+                    BuildIdeDevicePageInBed(1, False, snapshotInBed)
+
+                Case "ide-c2d1"
+                    BuildIdeDevicePageInBed(1, True, snapshotInBed)
 
                 Case "video"
                     _pageTitleInBed.Text = "VIDEO"
@@ -652,8 +709,10 @@ Public NotInheritable Class SystemConfigurationDrawer
                     AddValueInBed("Numeric coprocessor", "npx", snapshotInBed.NumericCoprocessor)
                     AddValueInBed("Floppy A", "floppy-a-media", snapshotInBed.FloppyMediaA)
                     AddValueInBed("Floppy B", "floppy-b-media", snapshotInBed.FloppyMediaB)
-                    AddValueInBed("Hard disk", "hdd0", snapshotInBed.HardDisk0)
-                    AddValueInBed("Optical", "optical", snapshotInBed.Optical)
+                    AddValueInBed("Channel 1 Drive 0 (Master)", "hdd0", snapshotInBed.HardDisk0)
+                    AddValueInBed("Channel 1 Drive 1 (Slave)", "optical", snapshotInBed.Optical)
+                    AddValueInBed("Channel 2 Drive 0 (Master)", "hdd1", snapshotInBed.HardDisk1)
+                    AddValueInBed("Channel 2 Drive 1 (Slave)", "optical1", snapshotInBed.Optical1)
                     AddValueInBed("COM1 / COM2", "serial-summary", snapshotInBed.Com1 & " / " & snapshotInBed.Com2)
                     AddValueInBed("LPT1 / LPT2", "parallel-summary", snapshotInBed.Lpt1 & " / " & snapshotInBed.Lpt2)
                     AddValueInBed("Game / MIDI", "midi-summary", snapshotInBed.GamePort & " / " & snapshotInBed.Midi)
@@ -661,6 +720,77 @@ Public NotInheritable Class SystemConfigurationDrawer
         Finally
             _pageBodyInBed.ResumeLayout()
         End Try
+    End Sub
+
+    Private Sub BuildIdeChannelPageInBed(channelInBed As Integer, snapshotInBed As SystemConfigurationSnapshot)
+        Dim channelNumberInBed As Integer = channelInBed + 1
+        _pageTitleInBed.Text = "IDE CHANNEL " & channelNumberInBed.ToString()
+        If channelInBed = 0 Then
+            AddValueInBed("Controller resources", "ide-channel-resource", "Primary — 1F0h-1F7h + 3F6h — IRQ14")
+            AddValueInBed("Drive 0 (Master)", "hdd0", snapshotInBed.HardDisk0)
+            AddValueInBed("Drive 1 (Slave)", "optical", snapshotInBed.Optical)
+        Else
+            AddValueInBed("Controller resources", "ide-channel-resource", "Secondary — 170h-177h + 376h — IRQ15")
+            AddValueInBed("Drive 0 (Master)", "hdd1", snapshotInBed.HardDisk1)
+            AddValueInBed("Drive 1 (Slave)", "optical1", snapshotInBed.Optical1)
+        End If
+        AddNoteInBed("Drive 0/1 are the ATA device numbers on this ribbon cable. Master/slave remains visible as the period electrical terminology, but the configuration tree is organized by channel and device position rather than by device class.")
+    End Sub
+
+    Private Sub BuildIdeDevicePageInBed(channelInBed As Integer,
+                                        slaveInBed As Boolean,
+                                        snapshotInBed As SystemConfigurationSnapshot)
+        Dim slotInBed As String = If(channelInBed = 0, "primary-", "secondary-") & If(slaveInBed, "slave", "master")
+        Dim selectorKeyInBed As String = "ide-" & slotInBed
+        Dim modelSelectorKeyInBed As String = selectorKeyInBed & "-model"
+        Dim hardwareIdInBed As String
+        Dim attachmentInBed As String
+        If channelInBed = 0 AndAlso Not slaveInBed Then
+            hardwareIdInBed = snapshotInBed.IdePrimaryMasterHardwareId
+            attachmentInBed = snapshotInBed.HardDisk0
+        ElseIf channelInBed = 0 Then
+            hardwareIdInBed = snapshotInBed.IdePrimarySlaveHardwareId
+            attachmentInBed = snapshotInBed.Optical
+        ElseIf Not slaveInBed Then
+            hardwareIdInBed = snapshotInBed.IdeSecondaryMasterHardwareId
+            attachmentInBed = snapshotInBed.HardDisk1
+        Else
+            hardwareIdInBed = snapshotInBed.IdeSecondarySlaveHardwareId
+            attachmentInBed = snapshotInBed.Optical1
+        End If
+
+        _pageTitleInBed.Text = "IDE CHANNEL " & (channelInBed + 1).ToString() & " — DRIVE " & If(slaveInBed, "1 (SLAVE)", "0 (MASTER)")
+        AddValueInBed("Electrical position",
+                      "ide-position",
+                      If(channelInBed = 0, "Primary", "Secondary") & " channel / device " & If(slaveInBed, "1 / slave", "0 / master"))
+
+        Dim hardwareChoicesInBed As HardwareProfileChoice() = {
+            New HardwareProfileChoice("empty", "Empty IDE socket"),
+            New HardwareProfileChoice("ata", "ATA hard disk"),
+            New HardwareProfileChoice("atapi", "ATAPI CD-ROM")
+        }
+        AddSelectorInBed("Installed device class", selectorKeyInBed, hardwareChoicesInBed, AddressOf IdeHardwareSelectionChangedInBed)
+        If _selectorsInBed.ContainsKey(selectorKeyInBed) Then _selectorsInBed(selectorKeyInBed).Tag = slotInBed
+
+        Dim kindInBed As IdeDeviceKind = IdeHardwareConfiguration.ParseKind(hardwareIdInBed, IdeDeviceKind.Empty)
+        If kindInBed = IdeDeviceKind.AtaHardDisk Then
+            Dim modelChoicesInBed As New List(Of HardwareProfileChoice)()
+            For Each profileInBed As IdeDriveModelProfile In IdeDriveModelCatalog.GetProfiles()
+                modelChoicesInBed.Add(New HardwareProfileChoice(profileInBed.Id, profileInBed.DisplayName))
+            Next
+            AddSelectorInBed("Drive model", modelSelectorKeyInBed, modelChoicesInBed, AddressOf IdeDriveModelSelectionChangedInBed)
+            If _selectorsInBed.ContainsKey(modelSelectorKeyInBed) Then _selectorsInBed(modelSelectorKeyInBed).Tag = slotInBed
+            AddValueInBed("Drive model information", "ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(channelInBed, slaveInBed), 156)
+            AddValueInBed("Drive unit / backing image", "ide-attachment", attachmentInBed, 62)
+            AddNoteInBed("The selected HDD model defines IDENTIFY DEVICE, capacity, CHS translation and timing identity. Its raw .hdd/.img platter and adjacent .meta sidecar are one physical drive. Incompatible model changes disconnect the old image intact rather than resizing it. Hard Drive Utilities creates a new shelf drive at the selected model's exact capacity.")
+        ElseIf kindInBed = IdeDeviceKind.AtapiCdRom Then
+            AddValueInBed("Optical mechanism", "ide-atapi-model", "Generic ATAPI CD-ROM — packet PIO")
+            AddValueInBed("Disc / media", "ide-attachment", attachmentInBed)
+            AddNoteInBed("ATAPI mechanism selection is now attached to this electrical socket. A later optical model catalog can add period-specific drive identities without changing the channel/device topology.")
+        Else
+            AddValueInBed("Socket state", "ide-attachment", attachmentInBed)
+            AddNoteInBed("No device is electrically installed at this IDE position. Probing software should see an empty socket rather than a phantom ATA or ATAPI mechanism.")
+        End If
     End Sub
 
     Private Sub AddBackupPathEditorInBed()
@@ -951,6 +1081,31 @@ Public NotInheritable Class SystemConfigurationDrawer
         Dim driveInBed As Integer = CInt(comboInBed.Tag)
         _ownerInBed.SelectFloppyConfigurationSourceInBed(driveInBed, choiceInBed.Id)
         BuildPageInBed("floppy")
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub IdeHardwareSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing OrElse comboInBed.Tag Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+
+        Dim slotInBed As String = CStr(comboInBed.Tag)
+        _ownerInBed.StageIdeHardwareKindInBed(slotInBed, choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub IdeDriveModelSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing OrElse comboInBed.Tag Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        Dim slotInBed As String = CStr(comboInBed.Tag)
+        _ownerInBed.StageIdeDriveModelInBed(slotInBed, choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
         RefreshFromMachine()
     End Sub
 

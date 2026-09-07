@@ -1,0 +1,203 @@
+--- a/HardwareBus.vb
++++ b/HardwareBus.vb
+@@ -406,10 +406,18 @@
+ 
+     ' CROMWELL PCB REFIT PHASE 2 BRICK 8E - READY/wait-state completion.
+     Private _readyWaitSinkInBed As Action(Of Integer, Boolean)
+     Private _readyPolicyInBed As Func(Of AtReadyCycle286, Integer)
+     Private _readyPolicyDescriptionInBed As Func(Of String)
++
++    ' Fast copies of the 82C212's CPU-local READY settings.  These are NOT
++    ' independent timing knobs: the chipset owns the values and pushes every
++    ' RB7 timing change here.  A negative value means "cache not attached",
++    ' in which case the full READY policy remains authoritative.
++    Private _cpuLocalDramReadyWaitTStatesInBed As Integer = -1
++    Private _cpuSystemRomReadyWaitTStatesInBed As Integer = -1
++
+     Private ReadOnly _readyCycleCountInBed(3) As ULong
+     Private ReadOnly _readyWaitCycleCountInBed(3) As ULong
+     Private ReadOnly _readyWaitTStatesInBed(3) As ULong
+     Private ReadOnly _readyMaxWaitTStatesInBed(3) As Integer
+ 
+@@ -518,25 +526,77 @@
+         If readyPolicyInBed Is Nothing Then Throw New ArgumentNullException(NameOf(readyPolicyInBed))
+         _readyWaitSinkInBed = waitSinkInBed
+         _readyPolicyInBed = readyPolicyInBed
+         _readyPolicyDescriptionInBed = readyPolicyDescriptionInBed
+     End Sub
++
++    ' The 82C212 local RAM/ROM wait fields are already specified directly in
++    ' 80286 READY Tw states.  Keep a copy at the bridge where every CPU memory
++    ' transaction passes, instead of rebuilding an AtReadyCycle286 and calling
++    ' back through the chipset merely to reread the same RB7 bits.
++    '
++    ' This does NOT bypass the chipset.  NeatCs8221Chipset owns these values and
++    ' calls this method immediately whenever RB7 changes or the chipset resets.
++    Public Sub UpdateCpuLocalReadyWaitStates(ramWaitTStatesInBed As Integer,
++                                             romWaitTStatesInBed As Integer)
++        If ramWaitTStatesInBed < 0 OrElse romWaitTStatesInBed < 0 Then
++            Throw New ArgumentOutOfRangeException(
++                NameOf(ramWaitTStatesInBed),
++                "CPU-local NEAT READY wait states cannot be negative.")
++        End If
++
++        _cpuLocalDramReadyWaitTStatesInBed = ramWaitTStatesInBed
++        _cpuSystemRomReadyWaitTStatesInBed = romWaitTStatesInBed
++    End Sub
++
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+     Private Sub ApplyReadyWaitStatesInBed(masterInBed As AtBusMaster286,
+                                           kindInBed As AtBusCycleKind286,
+                                           readyClassInBed As AtReadyCycleClass286,
+                                           addressOrPortInBed As UInteger,
+                                           widthBytesInBed As Integer)
+-        Dim indexInBed As Integer = MasterIndexInBed(masterInBed)
+-        If RuntimeDiagnostics.Enabled Then _readyCycleCountInBed(indexInBed) += 1UL
+-        If _readyPolicyInBed Is Nothing Then Return
+-
+-        Dim cycleInBed As New AtReadyCycle286(masterInBed,
+-                                              kindInBed,
+-                                              readyClassInBed,
+-                                              addressOrPortInBed,
+-                                              widthBytesInBed)
+-        Dim waitTStatesInBed As Integer = _readyPolicyInBed.Invoke(cycleInBed)
++        Dim indexInBed As Integer
++        If RuntimeDiagnostics.Enabled Then
++            indexInBed = MasterIndexInBed(masterInBed)
++            _readyCycleCountInBed(indexInBed) += 1UL
++        End If
++
++        Dim waitTStatesInBed As Integer
++        Dim resolvedFromLocalCacheInBed As Boolean
++
++        ' Only CPU cycles to motherboard-local DRAM/System ROM qualify.  DMA
++        ' cycles must still pass through the full policy because the 82C206 DMA
++        ' wait control is added in its own SCLK-derived clock domain.  ISA,
++        ' motherboard I/O, mapped memory, and open-bus cycles likewise remain on
++        ' the complete policy path.
++        If masterInBed = AtBusMaster286.Cpu Then
++            Select Case readyClassInBed
++                Case AtReadyCycleClass286.LocalDram
++                    If _cpuLocalDramReadyWaitTStatesInBed >= 0 Then
++                        waitTStatesInBed = _cpuLocalDramReadyWaitTStatesInBed
++                        resolvedFromLocalCacheInBed = True
++                    End If
++
++                Case AtReadyCycleClass286.SystemRom
++                    If _cpuSystemRomReadyWaitTStatesInBed >= 0 Then
++                        waitTStatesInBed = _cpuSystemRomReadyWaitTStatesInBed
++                        resolvedFromLocalCacheInBed = True
++                    End If
++            End Select
++        End If
++
++        If Not resolvedFromLocalCacheInBed Then
++            If _readyPolicyInBed Is Nothing Then Return
++
++            Dim cycleInBed As New AtReadyCycle286(masterInBed,
++                                                  kindInBed,
++                                                  readyClassInBed,
++                                                  addressOrPortInBed,
++                                                  widthBytesInBed)
++            waitTStatesInBed = _readyPolicyInBed.Invoke(cycleInBed)
++        End If
++
+         If waitTStatesInBed < 0 Then
+             _arbitrationFaultCountInBed += 1UL
+             Throw New InvalidOperationException("NEAT READY policy returned a negative wait-state duration.")
+         End If
+         If waitTStatesInBed = 0 Then Return
+@@ -547,13 +607,13 @@
+             If waitTStatesInBed > _readyMaxWaitTStatesInBed(indexInBed) Then
+                 _readyMaxWaitTStatesInBed(indexInBed) = waitTStatesInBed
+             End If
+         End If
+ 
+-        ' The sink adds physical stall T-states to the bounded CPU time ledger.
+-        ' For DMA masters those T-states represent time during which the CPU owns
+-        ' no bus; only CPU-originated READY stretching lights the B annunciator.
++        ' The sink adds the exact same physical stall T-states to the CPU timing
++        ' ledger as before.  We optimized how the NEAT setting is looked up, not
++        ' the number or placement of guest-visible READY waits.
+         If _readyWaitSinkInBed IsNot Nothing Then
+             _readyWaitSinkInBed.Invoke(waitTStatesInBed, masterInBed = AtBusMaster286.Cpu)
+         End If
+     End Sub
+     Private Shared Function ReadyClassForMemoryTargetInBed(targetInBed As AtMemoryCycleTarget286,
+--- a/MotherboardDevices.vb
++++ b/MotherboardDevices.vb
+@@ -2316,10 +2316,16 @@
+ 
+     Public Event CpuResetRequested()
+     Public Event A20ForceLowChanged(forceLow As Boolean)
+     Public Event ReadyTimeoutNmiRequested()
+ 
++    ' 82C212 RB7 owns the local CPU RAM/ROM READY Tw values.  The motherboard
++    ' bridge subscribes to this signal only to cache the currently programmed
++    ' result at its hot bus boundary; the chipset remains authoritative.
++    Public Event LocalReadyTimingChanged(ramWaitTStates As Integer,
++                                         romWaitTStates As Integer)
++
+     Public Sub New(Optional cpuClockHz As Func(Of Long) = Nothing)
+         _cpuClockHz = cpuClockHz
+         ResetDevice()
+     End Sub
+ 
+@@ -2352,10 +2358,11 @@
+         _readyTimeoutLatched = False
+         _cpuResetPicosecondsRemaining = 0
+         _refreshAddress = 0
+         _refreshCycles = 0
+         RaiseEvent A20ForceLowChanged(False)
++        RaiseEvent LocalReadyTimingChanged(RamWaitStates, RomWaitStates)
+     End Sub
+ 
+     Public Function HandlesPort(port As UInt16) As Boolean Implements IPortDevice.HandlesPort
+         Return port = &H22US OrElse port = &H23US
+     End Function
+@@ -2463,10 +2470,18 @@
+         ' RB2-RB5 contain motherboard-vs-ISA and shadow-decode controls.  Only
+         ' those registers can change the compiled physical page candidate set.
+         If index >= &H66 AndAlso index <= &H69 AndAlso _rb(slot) <> oldValueInBed Then
+             RaiseEvent MemoryDecodeChanged()
+         End If
++
++        ' RB7 (index 6Bh) is the 82C212 register that contains both local ROM
++        ' READY wait bits and the local DRAM READY wait bit.  Publish the new
++        ' decoded timing immediately after the guest write, so the very next CPU
++        ' bus cycle sees the new board timing.
++        If index = &H6B AndAlso _rb(slot) <> oldValueInBed Then
++            RaiseEvent LocalReadyTimingChanged(RamWaitStates, RomWaitStates)
++        End If
+     End Sub
+ 
+     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
+         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+         If _cpuResetPicosecondsRemaining <= 0 Then Return
+--- a/Declares.vb
++++ b/Declares.vb
+@@ -134,10 +134,24 @@
+             End Sub,
+             Function(cycleInBed As AtReadyCycle286) As Integer
+                 Return Chipset.GetReadyWaitTStates(cycleInBed)
+             End Function,
+             Function() Chipset.TimingDiagnosticText())
++
++        ' Performance Brick 3: cache ONLY the chipset's CPU-local 82C212 RB7
++        ' READY results at the motherboard bridge.  The chipset remains the
++        ' source of truth and pushes every reset/register change immediately.
++        MotherboardBridge.UpdateCpuLocalReadyWaitStates(
++            Chipset.RamWaitStates,
++            Chipset.RomWaitStates)
++        AddHandler Chipset.LocalReadyTimingChanged,
++            Sub(ramWaitTStatesInBed As Integer, romWaitTStatesInBed As Integer)
++                MotherboardBridge.UpdateCpuLocalReadyWaitStates(
++                    ramWaitTStatesInBed,
++                    romWaitTStatesInBed)
++            End Sub
++
+         AddHandler DmaController.HoldRequestChanged,
+             Sub(masterInBed As AtBusMaster286, assertedInBed As Boolean)
+                 MotherboardBridge.SetDmaHoldRequest(masterInBed, assertedInBed)
+             End Sub
+         MotherboardBridge.ResetArbitration()

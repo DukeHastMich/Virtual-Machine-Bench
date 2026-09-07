@@ -1,0 +1,136 @@
+--- a/ProcessorCore.vb
++++ b/ProcessorCore.vb
+@@ -911,10 +911,11 @@
+     Private _currentInstructionLengthInBed As Integer
+     Private ReadOnly _prefetchBytesInBed(5) As Byte
+     Private ReadOnly _prefetchIpsInBed(5) As UInt16
+     Private ReadOnly _prefetchCsInBed(5) As UInt16
+     Private ReadOnly _prefetchBasesInBed(5) As UInteger
++    Private _prefetchHeadInBed As Integer
+     Private _prefetchCountInBed As Integer
+     Private _interruptShadowRetirementsInBed As Integer
+     Private _nmiShadowRetirementsInBed As Integer
+     Private _trapFlagSampleAtInstructionStartInBed As Boolean
+     Private _nmiBlockedInBed As Boolean
+@@ -1083,10 +1084,11 @@
+         _diagnosticGpHandlerRemainingInBed = 0
+         _diagnosticLdtWriteIndexInBed = 0
+         _diagnosticLdtWriteCountInBed = 0
+         _currentInstructionActiveInBed = False : _currentInstructionAbortedInBed = False : _currentInstructionLengthInBed = 0
+         _exceptionDeliveryActiveInBed = False : _exceptionDeliveryVectorInBed = -1
++        _prefetchHeadInBed = 0
+         _prefetchCountInBed = 0
+         _interruptShadowRetirementsInBed = 0 : _nmiShadowRetirementsInBed = 0
+         _trapFlagSampleAtInstructionStartInBed = False
+         _nmiBlockedInBed = False : _nmiNestedInterruptDepthInBed = 0 : _enteringNmiInBed = False
+         _busHoldRequestInBed = False : _busHoldAcknowledgeInBed = False : _holdObservedSinceLastRunInBed = False
+@@ -3597,17 +3599,19 @@
+         If _prefetchCountInBed = 0 Then
+             RaiseCpuException(13, "Instruction fetch exceeds CS limit", True, 0US)
+             Return 0
+         End If
+ 
+-        Dim valueInBed As Byte = _prefetchBytesInBed(0)
+-        For indexInBed As Integer = 1 To _prefetchCountInBed - 1
+-            _prefetchBytesInBed(indexInBed - 1) = _prefetchBytesInBed(indexInBed)
+-            _prefetchIpsInBed(indexInBed - 1) = _prefetchIpsInBed(indexInBed)
+-            _prefetchCsInBed(indexInBed - 1) = _prefetchCsInBed(indexInBed)
+-            _prefetchBasesInBed(indexInBed - 1) = _prefetchBasesInBed(indexInBed)
+-        Next
++        ' Six-byte 80286 prefetch queue, represented as a ring.  The old host
++        ' implementation physically shifted four six-entry arrays for every code
++        ' byte consumed.  That did not model any guest-visible bus activity; it
++        ' was only expensive host bookkeeping.
++        Dim consumeIndexInBed As Integer = _prefetchHeadInBed
++        Dim valueInBed As Byte = _prefetchBytesInBed(consumeIndexInBed)
++        consumeIndexInBed += 1
++        If consumeIndexInBed = 6 Then consumeIndexInBed = 0
++        _prefetchHeadInBed = consumeIndexInBed
+         _prefetchCountInBed -= 1
+         IP = CUShort((CInt(IP) + 1) And &HFFFF)
+         If _currentInstructionActiveInBed Then _currentInstructionLengthInBed += 1
+         RecordFusedCodeBytesInBed(1)
+         Return valueInBed
+@@ -3618,41 +3622,59 @@
+         Dim lowInBed As Byte = FetchByte()
+         Dim highInBed As Byte = FetchByte()
+         Return CUShort(CInt(lowInBed) Or (CInt(highInBed) << 8))
+     End Function
+ 
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+     Private Sub EnsurePrefetchHeadMatchesExecutionInBed()
+         If _prefetchCountInBed = 0 Then Return
+-        If _prefetchIpsInBed(0) <> IP OrElse _prefetchCsInBed(0) <> CS OrElse _prefetchBasesInBed(0) <> _segmentBases(1) Then
+-            _prefetchCountInBed = 0
++
++        Dim headInBed As Integer = _prefetchHeadInBed
++        If _prefetchIpsInBed(headInBed) <> IP OrElse
++           _prefetchCsInBed(headInBed) <> CS OrElse
++           _prefetchBasesInBed(headInBed) <> _segmentBases(1) Then
++            FlushPrefetchQueueInBed()
+         End If
+     End Sub
+ 
+     Private Sub FillPrefetchQueueInBed()
+         If _prefetchCountInBed >= 6 Then Return
++
+         Dim nextIpInBed As UInt16
+         If _prefetchCountInBed = 0 Then
+             nextIpInBed = IP
+         Else
+-            nextIpInBed = CUShort((CInt(_prefetchIpsInBed(_prefetchCountInBed - 1)) + 1) And &HFFFF)
++            Dim lastIndexInBed As Integer =
++                _prefetchHeadInBed + _prefetchCountInBed - 1
++            If lastIndexInBed >= 6 Then lastIndexInBed -= 6
++            nextIpInBed =
++                CUShort((CInt(_prefetchIpsInBed(lastIndexInBed)) + 1) And &HFFFF)
+         End If
+ 
+         While _prefetchCountInBed < 6
+             If ProtectedMode Then
+                 If Not _segmentValid(1) Then
+                     If _prefetchCountInBed = 0 Then RaiseCpuException(13, "Invalid CS cache during instruction fetch", True, 0US)
+                     Exit While
+                 End If
+                 If CUInt(nextIpInBed) > _segmentLimits(1) Then Exit While
+             End If
+-            Dim physicalInBed As UInteger = (_segmentBases(1) + CUInt(nextIpInBed)) And &HFFFFFFUI
++
++            Dim physicalInBed As UInteger =
++                (_segmentBases(1) + CUInt(nextIpInBed)) And &HFFFFFFUI
+             Dim targetInBed As AtMemoryCycleTarget286
+-            Dim byteInBed As Byte = PortBus.ReadMemoryByte(physicalInBed, targetInBed)
+-            _prefetchBytesInBed(_prefetchCountInBed) = byteInBed
+-            _prefetchIpsInBed(_prefetchCountInBed) = nextIpInBed
+-            _prefetchCsInBed(_prefetchCountInBed) = CS
+-            _prefetchBasesInBed(_prefetchCountInBed) = _segmentBases(1)
++            Dim byteInBed As Byte =
++                PortBus.ReadMemoryByte(physicalInBed, targetInBed)
++
++            Dim writeIndexInBed As Integer =
++                _prefetchHeadInBed + _prefetchCountInBed
++            If writeIndexInBed >= 6 Then writeIndexInBed -= 6
++
++            _prefetchBytesInBed(writeIndexInBed) = byteInBed
++            _prefetchIpsInBed(writeIndexInBed) = nextIpInBed
++            _prefetchCsInBed(writeIndexInBed) = CS
++            _prefetchBasesInBed(writeIndexInBed) = _segmentBases(1)
+             _prefetchCountInBed += 1
+             nextIpInBed = CUShort((CInt(nextIpInBed) + 1) And &HFFFF)
+         End While
+     End Sub
+ 
+@@ -5423,11 +5445,13 @@
+         _taskBaseInBed = tssCacheInBed.BaseAddress : _taskLimitInBed = tssCacheInBed.Limit : _taskAccessInBed = tssCacheInBed.Access : _taskValidInBed = (tssCacheInBed.Access And &H80) <> 0
+         Flags = NormalizeFlags(newFlagsInBed)
+         FlushPrefetchQueueInBed()
+     End Sub
+ 
++    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+     Private Sub FlushPrefetchQueueInBed()
++        _prefetchHeadInBed = 0
+         _prefetchCountInBed = 0
+     End Sub
+ 
+     Private Sub ExecuteSystemOpcode()
+         Dim op2 As Byte = FetchByte()

@@ -1,6 +1,8 @@
-﻿Imports System
+Imports System
 Imports System.Collections.Generic
+Imports System.Collections.Concurrent
 Imports System.Runtime.InteropServices
+Imports System.Threading
 
 ' Creative Sound Blaster 16-class ISA adapter.
 '
@@ -27,9 +29,16 @@ Public NotInheritable Class SoundBlaster16Isa
     Private ReadOnly _mixer(255) As Byte
     Private ReadOnly _commandParams As New List(Of Byte)(4)
     Private ReadOnly _opl As New Opl3FmCore(HostSampleRate)
-    Private ReadOnly _waveOut As New WinMmStereoOut16(HostSampleRate)
+    Private ReadOnly _hostAudioInBed As New Sb16HostAudioEngine(HostSampleRate)
     Private ReadOnly _mpuReadQueue As New Queue(Of Byte)()
+    Private ReadOnly _waveBlasterConnector As New WaveBlasterConnector()
+    Private _wavetableHostInBed As WavetableHost
     Private ReadOnly _processExitHandler As EventHandler
+
+    ' Physical daughterboard selection applied by the chassis configuration path.
+    ' The host bank identity remains configuration only; guest MIDI reaches the
+    ' device shell solely through the real MPU UART -> Wave Blaster connector path.
+    Private _wavetableHardwareSettingsInBed As WavetableAttachmentSettings = New WavetableAttachmentSettings()
 
     Private _irq As Integer
     Private _dma8 As Integer
@@ -54,6 +63,9 @@ Public NotInheritable Class SoundBlaster16Isa
     Private _exitAutoInitAfterBlock As Boolean
     Private _pcmClockNumerator As Long
     Private _hostClockNumerator As Long
+    Private _hostPcmFramesPendingInBed As Integer
+    Private _hostPcmIntervalStartLeftInBed As Short
+    Private _hostPcmIntervalStartRightInBed As Short
     Private _currentLeft As Short
     Private _currentRight As Short
     Private _pendingIrqBits As Byte ' bit0 8-bit, bit1 16-bit, bit2 MPU
@@ -123,6 +135,47 @@ Public NotInheritable Class SoundBlaster16Isa
             Return _gamePortEnabled
         End Get
     End Property
+
+    Public ReadOnly Property WavetableHardwareSettings As WavetableAttachmentSettings
+        Get
+            Return _wavetableHardwareSettingsInBed.CloneSettings()
+        End Get
+    End Property
+
+    Public ReadOnly Property WavetableInstalled As Boolean
+        Get
+            Return _wavetableHardwareSettingsInBed.Installed
+        End Get
+    End Property
+
+    ' Chassis-side physical daughterboard configuration.  The caller applies this
+    ' only while the machine is stopped/off as part of the existing staged ISA-card
+    ' power-cycle path.  No SoundFont file is opened here.
+    Public Sub ConfigureWavetableHardware(settingsInBed As WavetableAttachmentSettings)
+        Dim appliedInBed As WavetableAttachmentSettings = If(settingsInBed, New WavetableAttachmentSettings()).CloneSettings()
+        Dim profileInBed As WavetableProfile = WavetableProfileCatalog.FindById(appliedInBed.ProfileId)
+        appliedInBed.ProfileId = profileInBed.Id
+        _wavetableHardwareSettingsInBed = appliedInBed
+
+        Dim oldHostInBed As WavetableHost = _wavetableHostInBed
+        _wavetableHostInBed = Nothing
+        _waveBlasterConnector.Detach()
+
+        ' The host audio worker owns wavetable PCM consumption.  Swapping this
+        ' reference waits only for host audio work; this configuration path runs
+        ' while the chassis is stopped/off and never holds the running machine.
+        _hostAudioInBed.SetWavetableHost(Nothing)
+        If oldHostInBed IsNot Nothing Then oldHostInBed.Dispose()
+
+        If appliedInBed.Installed Then
+            ' Host bank parsing/render-state work starts behind a bounded queue.
+            ' ConfigureWavetableHardware itself performs no SoundFont file I/O.
+            Dim hostInBed As New WavetableHost(appliedInBed)
+            _wavetableHostInBed = hostInBed
+            _hostAudioInBed.SetWavetableHost(hostInBed)
+            _waveBlasterConnector.Attach(profileInBed, hostInBed)
+        End If
+    End Sub
 
     ' Host-side jumpers/DIP switches.  This must only be called while the
     ' virtual chassis is stopped/off; guest mixer writes may subsequently
@@ -232,8 +285,11 @@ Public NotInheritable Class SoundBlaster16Isa
                 WriteDspReset(value)
             Case 8
                 _opl.WriteAddress(0, value)
+                _hostAudioInBed.PostOplAddress(0, value)
             Case 9
                 _opl.WriteData(0, value)
+                _hostAudioInBed.PostOplData(0, value)
+                _hostAudioInBed.NotifyPotentialAudioActivity()
             Case &HC
                 WriteDspByte(value)
         End Select
@@ -250,10 +306,20 @@ Public NotInheritable Class SoundBlaster16Isa
 
     Private Sub WriteOplPort(port As UInt16, value As Byte)
         Select Case port
-            Case &H388US : _opl.WriteAddress(0, value)
-            Case &H389US : _opl.WriteData(0, value)
-            Case &H38AUS : _opl.WriteAddress(1, value)
-            Case &H38BUS : _opl.WriteData(1, value)
+            Case &H388US
+                _opl.WriteAddress(0, value)
+                _hostAudioInBed.PostOplAddress(0, value)
+            Case &H389US
+                _opl.WriteData(0, value)
+                _hostAudioInBed.PostOplData(0, value)
+                _hostAudioInBed.NotifyPotentialAudioActivity()
+            Case &H38AUS
+                _opl.WriteAddress(1, value)
+                _hostAudioInBed.PostOplAddress(1, value)
+            Case &H38BUS
+                _opl.WriteData(1, value)
+                _hostAudioInBed.PostOplData(1, value)
+                _hostAudioInBed.NotifyPotentialAudioActivity()
         End Select
     End Sub
 
@@ -280,9 +346,13 @@ Public NotInheritable Class SoundBlaster16Isa
                     _mpuReadQueue.Enqueue(&HFE)
             End Select
         ElseIf _mpuUartMode Then
-            ' UART bytes reach the emulated MPU transmitter.  No external MIDI
-            ' synthesizer is connected yet, so transmitted bytes simply leave
-            ' the card exactly as they would with an empty MIDI OUT cable.
+            ' The guest byte has reached the emulated MPU transmitter.  Feed the
+            ' internal Wave Blaster connector from this exact hardware seam; no
+            ' direct host/UI MIDI injection is permitted.
+            _waveBlasterConnector.TransmitMidiByte(value)
+            If _wavetableHostInBed IsNot Nothing Then
+                _hostAudioInBed.NotifyPotentialAudioActivity()
+            End If
         End If
     End Sub
 
@@ -356,6 +426,7 @@ Public NotInheritable Class SoundBlaster16Isa
                 If parameters.Length >= 1 Then
                     Dim sample As Short = CShort((CInt(parameters(0)) - 128) << 8)
                     _currentLeft = sample : _currentRight = sample
+                    If _speakerEnabled Then _hostAudioInBed.NotifyPotentialAudioActivity()
                 End If
             Case &H14 ' 8-bit single-cycle DMA
                 Dim units As Integer = CInt(parameters(0)) Or (CInt(parameters(1)) << 8)
@@ -376,6 +447,7 @@ Public NotInheritable Class SoundBlaster16Isa
                 ' Silence DAC command takes a 16-bit duration on older DSPs; it
                 ' is uncommon on SB16 software.  Treat bare command as silence.
                 _currentLeft = 0 : _currentRight = 0
+                _hostAudioInBed.NotifyPotentialAudioActivity()
             Case &H90 ' high-speed 8-bit auto-init compatibility
                 StartPlayback(bits16:=False, stereo:=False, signedData:=False, autoInit:=True, units:=Math.Max(1, _legacyBlockUnits))
             Case &H91 ' high-speed 8-bit single-cycle compatibility
@@ -384,8 +456,10 @@ Public NotInheritable Class SoundBlaster16Isa
                 If Not _playback16Bit Then _playbackPaused = True
             Case &HD1
                 _speakerEnabled = True
+                _hostAudioInBed.NotifyPotentialAudioActivity()
             Case &HD3
                 _speakerEnabled = False
+                _hostAudioInBed.NotifyPotentialAudioActivity()
             Case &HD4
                 If Not _playback16Bit Then _playbackPaused = False
             Case &HD5
@@ -464,8 +538,8 @@ Public NotInheritable Class SoundBlaster16Isa
         _sampleRate = value
     End Sub
 
-    Private Sub ConsumePcmFrame()
-        If Not _playbackActive OrElse _playbackPaused Then Return
+    Private Function ConsumePcmFrame() As Boolean
+        If Not _playbackActive OrElse _playbackPaused Then Return False
 
         Dim bytesPerSample As Integer = If(_playback16Bit, 2, 1)
         Dim channels As Integer = If(_playbackStereo, 2, 1)
@@ -483,7 +557,7 @@ Public NotInheritable Class SoundBlaster16Isa
 
         If moved < bytesNeeded Then
             _dspUnderruns += 1UL
-            Return
+            Return False
         End If
 
         _dmaBytesPlayed += CULng(moved)
@@ -506,6 +580,18 @@ Public NotInheritable Class SoundBlaster16Isa
             End If
         End If
 
+        Dim hostAcceptedInBed As Boolean
+        If _speakerEnabled Then
+            hostAcceptedInBed =
+                _hostAudioInBed.TryPostPcmSourceFrame(_currentLeft, _currentRight)
+        Else
+            ' The DSP/DMA engine still consumed this sample exactly normally.
+            ' With the analog speaker path disabled there is no reason to retain
+            ' historical PCM in a host presentation ring; enabling the speaker
+            ' later exposes the then-current DAC state, not old muted samples.
+            hostAcceptedInBed = False
+        End If
+
         If _playbackUnitsRemaining <= 0 Then
             RaiseDspIrq(_playback16Bit)
             If _playbackAutoInit AndAlso Not _exitAutoInitAfterBlock Then
@@ -515,7 +601,8 @@ Public NotInheritable Class SoundBlaster16Isa
                 _playbackUnitsRemaining = 0
             End If
         End If
-    End Sub
+        Return hostAcceptedInBed
+    End Function
 
     Private Shared Function Decode8(value As Byte, signedData As Boolean) As Short
         If signedData Then
@@ -575,6 +662,7 @@ Public NotInheritable Class SoundBlaster16Isa
     Private Sub WriteMixerData(value As Byte)
         If _mixerIndex = 0 Then
             ResetMixer()
+            _hostAudioInBed.NotifyPotentialAudioActivity()
             Return
         End If
 
@@ -588,6 +676,9 @@ Public NotInheritable Class SoundBlaster16Isa
                 ' IRQ status is read-only.
             Case Else
                 _mixer(_mixerIndex) = value
+                ' A mixer write may unmute or reroute an already-running source.
+                ' Wake host synthesis without changing any guest hardware state.
+                _hostAudioInBed.NotifyPotentialAudioActivity()
         End Select
     End Sub
 
@@ -665,16 +756,16 @@ Public NotInheritable Class SoundBlaster16Isa
         Return (Math.Min(31, master) / 31.0) * (Math.Min(31, voice) / 31.0)
     End Function
 
-    Private Function FmVolume(channelLeft As Boolean) As Double
+    Private Function MidiVolume(channelLeft As Boolean) As Double
         Dim master As Integer = If(channelLeft, _mixer(&H30), _mixer(&H31)) >> 3
-        Dim fm As Integer = If(channelLeft, _mixer(&H34), _mixer(&H35)) >> 3
-        If master = 0 AndAlso fm = 0 Then
+        Dim midi As Integer = If(channelLeft, _mixer(&H34), _mixer(&H35)) >> 3
+        If master = 0 AndAlso midi = 0 Then
             Dim legacyMaster As Byte = _mixer(&H22)
-            Dim legacyFm As Byte = _mixer(&H26)
+            Dim legacyMidi As Byte = _mixer(&H26)
             master = If(channelLeft, legacyMaster >> 4, legacyMaster And &HF) * 2
-            fm = If(channelLeft, legacyFm >> 4, legacyFm And &HF) * 2
+            midi = If(channelLeft, legacyMidi >> 4, legacyMidi And &HF) * 2
         End If
-        Return (Math.Min(31, master) / 31.0) * (Math.Min(31, fm) / 31.0)
+        Return (Math.Min(31, master) / 31.0) * (Math.Min(31, midi) / 31.0)
     End Function
 
     Public Sub AdvanceTime(elapsedPicoseconds As Long) Implements IClockedDevice.AdvanceTime
@@ -682,43 +773,90 @@ Public NotInheritable Class SoundBlaster16Isa
         If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
         If elapsedPicoseconds = 0 Then Return
 
-        _opl.AdvanceTime(elapsedPicoseconds)
+        ' Guest-visible OPL timers stay on the coordinated machine timeline.  The
+        ' expensive waveform generation is mirrored to Sb16HostAudioEngine and no
+        ' longer runs 48,000 times per emulated second on the machine owner.
+        If _opl.HasRunningTimers Then
+            _opl.AdvanceTime(elapsedPicoseconds)
+        End If
 
         If _playbackActive AndAlso Not _playbackPaused Then
             Dim pcmTotal As Long = _pcmClockNumerator + elapsedPicoseconds * CLng(_sampleRate)
             Dim frames As Long = pcmTotal \ PicosecondsPerSecond
             _pcmClockNumerator = pcmTotal Mod PicosecondsPerSecond
             For i As Long = 0 To frames - 1
-                ConsumePcmFrame()
+                If ConsumePcmFrame() Then _hostPcmFramesPendingInBed += 1
                 If Not _playbackActive Then Exit For
             Next
         End If
 
+        If _hostPcmFramesPendingInBed > 0 Then
+            ' One cheap level write per machine interval, not one Interlocked
+            ' activity event per DSP sample.
+            _hostAudioInBed.EnsureRenderingActive()
+        End If
+
+        ' Advance the card's host transducer clock with one cheap command.  The
+        ' dedicated audio worker owns OPL synthesis, wavetable rendering, mixing,
+        ' resampling/holding of DSP samples, and waveOut submission.
         Dim hostTotal As Long = _hostClockNumerator + elapsedPicoseconds * CLng(HostSampleRate)
         Dim hostFrames As Long = hostTotal \ PicosecondsPerSecond
         _hostClockNumerator = hostTotal Mod PicosecondsPerSecond
 
-        For i As Long = 0 To hostFrames - 1
-            Dim fmLeft As Double
-            Dim fmRight As Double
-            _opl.GenerateSample(fmLeft, fmRight)
+        If hostFrames > 0 Then
+            ' Guest hardware clocks above always advance.  Host waveform synthesis
+            ' is different: if the DAC path is quiet and the host renderer has
+            ' proved OPL/wavetable release tails are silent, repeatedly rendering
+            ' 48,000 zero samples per virtual second is pure transducer overhead.
+            '
+            ' New OPL/MIDI/DAC/mixer activity re-arms NeedsContinuousRendering
+            ' immediately.  The host sample-clock numerator still advances while
+            ' quiescent, so the next real sound begins on the correct 48-kHz card
+            ' sample boundary.
+            If _hostAudioInBed.NeedsContinuousRendering Then
+                Dim startLeftInBed As Short
+                Dim startRightInBed As Short
+                If _hostPcmFramesPendingInBed > 0 Then
+                    startLeftInBed = _hostPcmIntervalStartLeftInBed
+                    startRightInBed = _hostPcmIntervalStartRightInBed
+                Else
+                    ' Direct-DAC/silence changes can occur without a DMA source frame.
+                    ' At the next host sample boundary the current DAC value is the
+                    ' correct value to present.
+                    startLeftInBed = _currentLeft
+                    startRightInBed = _currentRight
+                End If
 
-            Dim pcmLeft As Double = If(_speakerEnabled, CDbl(_currentLeft), 0.0) * PcmVolume(True)
-            Dim pcmRight As Double = If(_speakerEnabled, CDbl(_currentRight), 0.0) * PcmVolume(False)
-            Dim left As Integer = CInt(Math.Round(pcmLeft + fmLeft * 9000.0 * FmVolume(True)))
-            Dim right As Integer = CInt(Math.Round(pcmRight + fmRight * 9000.0 * FmVolume(False)))
-            If left > Short.MaxValue Then
-                left = Short.MaxValue
-            ElseIf left < Short.MinValue Then
-                left = Short.MinValue
+                Dim renderAcceptedInBed As Boolean =
+                    _hostAudioInBed.PostRenderInterval(hostFrames,
+                                                       _hostPcmFramesPendingInBed,
+                                                       startLeftInBed,
+                                                       startRightInBed,
+                                                       _speakerEnabled,
+                                                       PcmVolume(True),
+                                                       PcmVolume(False),
+                                                       MidiVolume(True),
+                                                       MidiVolume(False))
+                If renderAcceptedInBed Then
+                    ' Post the wavetable render request immediately after the matching
+                    ' host-mix interval is accepted. Guest MIDI is produced only by
+                    ' this same machine owner, so WavetableHost FIFO order is retained.
+                    Dim wavetableHostInBed As WavetableHost = _wavetableHostInBed
+                    If wavetableHostInBed IsNot Nothing Then
+                        wavetableHostInBed.RequestPcmFrames(hostFrames)
+                    End If
+                End If
+            ElseIf _hostPcmFramesPendingInBed > 0 Then
+                ' A presentation interval was not needed.  Prevent muted/obsolete
+                ' source-frame history from accumulating behind the sleeping host
+                ' renderer.
+                _hostAudioInBed.DiscardPendingPcmSourceFrames()
             End If
-            If right > Short.MaxValue Then
-                right = Short.MaxValue
-            ElseIf right < Short.MinValue Then
-                right = Short.MinValue
-            End If
-            _waveOut.SubmitSample(CShort(left), CShort(right))
-        Next
+
+            _hostPcmFramesPendingInBed = 0
+            _hostPcmIntervalStartLeftInBed = _currentLeft
+            _hostPcmIntervalStartRightInBed = _currentRight
+        End If
     End Sub
 
     Public Function PicosecondsUntilNextWakeEvent() As Long Implements IClockWakeSource.PicosecondsUntilNextWakeEvent
@@ -750,11 +888,16 @@ Public NotInheritable Class SoundBlaster16Isa
         _testRegister = 0
         _mpuReadQueue.Clear()
         _mpuUartMode = False
+        If _wavetableHostInBed IsNot Nothing Then _wavetableHostInBed.DiscardBufferedPcm()
+        _waveBlasterConnector.HardwareReset()
         StopPlayback()
         _hostClockNumerator = 0
+        _hostPcmFramesPendingInBed = 0
+        _hostPcmIntervalStartLeftInBed = 0
+        _hostPcmIntervalStartRightInBed = 0
         _opl.Reset()
         ResetMixer()
-        _waveOut.Reset()
+        _hostAudioInBed.ResetAudioState()
     End Sub
 
     Public Function DiagnosticText() As String
@@ -763,13 +906,16 @@ Public NotInheritable Class SoundBlaster16Isa
                "  DMA 8 / DMA 16        : " & _dma8.ToString() & " / " & _dma16.ToString() & Environment.NewLine &
                "  physical straps       : IRQ" & _configuredIrq.ToString() & " DMA" & _configuredDma8.ToString() & "/" & _configuredDma16.ToString() & Environment.NewLine &
                "  MPU / game            : " & _mpuBasePort.ToString("X3") & "h / " & If(_gamePortEnabled, "201h enabled", "disabled") & Environment.NewLine &
+               "  wavetable hardware    : " & _wavetableHardwareSettingsInBed.Summary() & " / profile " & WavetableAttachmentSettings.NormalizeProfileId(_wavetableHardwareSettingsInBed.ProfileId) & Environment.NewLine &
                "  DSP version           : 4.13" & Environment.NewLine &
                "  sample rate           : " & _sampleRate.ToString() & " Hz" & Environment.NewLine &
                "  playback              : " & If(_playbackActive, If(_playback16Bit, "16-bit", "8-bit") & If(_playbackStereo, " stereo", " mono"), "idle") & Environment.NewLine &
                "  speaker               : " & If(_speakerEnabled, "on", "off") & Environment.NewLine &
                "  pending IRQ bits      : " & _pendingIrqBits.ToString("X2") & Environment.NewLine &
                "  DMA bytes / underruns : " & _dmaBytesPlayed.ToString("N0") & " / " & _dspUnderruns.ToString("N0") & Environment.NewLine &
-               "  OPL3                  : " & If(_opl.Opl3Enabled, "enabled", "OPL2-compatible mode")
+               "  OPL3                  : " & If(_opl.Opl3Enabled, "enabled", "OPL2-compatible mode") & Environment.NewLine &
+               _waveBlasterConnector.DiagnosticText() & Environment.NewLine &
+               If(_wavetableHostInBed Is Nothing, "  Wavetable host        : disabled", _wavetableHostInBed.DiagnosticText())
     End Function
 
     Private Sub HandleProcessExit(sender As Object, e As EventArgs)
@@ -783,8 +929,423 @@ Public NotInheritable Class SoundBlaster16Isa
         If _irqLineAsserted Then DriveIrq(_irq, False)
         _irqLineAsserted = False
         StopPlayback()
-        _waveOut.Dispose()
+        _waveBlasterConnector.Detach()
+        Dim wavetableHostInBed As WavetableHost = _wavetableHostInBed
+        _wavetableHostInBed = Nothing
+        _hostAudioInBed.SetWavetableHost(Nothing)
+        If wavetableHostInBed IsNot Nothing Then wavetableHostInBed.Dispose()
+        _hostAudioInBed.Dispose()
         GC.SuppressFinalize(Me)
+    End Sub
+End Class
+
+
+Friend Enum Sb16HostAudioCommandKind As Byte
+    OplAddress = 0
+    OplData = 1
+    RenderInterval = 2
+    Reset = 3
+End Enum
+
+Friend Structure Sb16HostAudioCommand
+    Public Kind As Sb16HostAudioCommandKind
+    Public Generation As Integer
+    Public Bank As Integer
+    Public Value As Byte
+    Public HostFrames As Long
+    Public PcmSourceFrames As Integer
+    Public PcmStartLeft As Short
+    Public PcmStartRight As Short
+    Public SpeakerEnabled As Boolean
+    Public PcmGainLeft As Double
+    Public PcmGainRight As Double
+    Public MidiGainLeft As Double
+    Public MidiGainRight As Double
+End Structure
+
+' Host transducer for the SB16.  Guest-visible timers, DMA, DREQ, IRQ and register
+' state remain on the coordinated machine owner; waveform generation and Windows
+' audio submission run here on their own 48 kHz card/output clock.
+Friend NotInheritable Class Sb16HostAudioEngine
+    Implements IDisposable
+
+    Private Const CommandQueueCapacity As Integer = 16384
+    Private Const PcmSourceRingCapacity As Integer = 65536
+    Private Const PcmSourceRingMask As Long = PcmSourceRingCapacity - 1L
+    Private Const RenderBlockFrames As Integer = 512
+    Private Const WavetableWaitMilliseconds As Integer = 20
+
+    ' A real OPL/wavetable voice can continue after the CPU stops writing it.
+    ' Therefore "no recent command" is NOT an idle test.  The host renderer only
+    ' sleeps after it has actually produced sustained near-zero mixed output.
+    Private Const SilenceThresholdInBed As Integer = 2
+    Private Const SilenceFramesBeforeSleepInBed As Long = 4800L ' 100 ms @ 48 kHz
+
+    Private ReadOnly _sampleRateInBed As Integer
+    Private ReadOnly _commandsInBed As New BlockingCollection(Of Sb16HostAudioCommand)(CommandQueueCapacity)
+    Private ReadOnly _workerInBed As Thread
+    Private ReadOnly _oplInBed As Opl3FmCore
+    Private ReadOnly _waveOutInBed As WinMmStereoOut16
+    Private ReadOnly _wavetableSyncInBed As New Object()
+
+    Private ReadOnly _pcmSourceLeftInBed(PcmSourceRingCapacity - 1) As Short
+    Private ReadOnly _pcmSourceRightInBed(PcmSourceRingCapacity - 1) As Short
+    Private _pcmSourceReadPositionInBed As Long
+    Private _pcmSourceWritePositionInBed As Long
+    Private _pcmSourceDiscardBeforePositionInBed As Long
+
+    Private _wavetableHostInBed As WavetableHost
+    Private _generationInBed As Integer
+    Private _disposedInBed As Integer
+
+    ' Cross-boundary rendering latch.  Machine-side writes only arm it; only the
+    ' host worker may disarm it, and only after observing actual sustained silence.
+    Private _needsContinuousRenderingInBed As Integer
+    Private _activitySerialInBed As Long
+    Private _silentFramesInBed As Long
+    Private _silenceActivitySerialInBed As Long
+
+    Public Sub New(sampleRateInBed As Integer)
+        If sampleRateInBed <= 0 Then Throw New ArgumentOutOfRangeException(NameOf(sampleRateInBed))
+        _sampleRateInBed = sampleRateInBed
+        _oplInBed = New Opl3FmCore(sampleRateInBed)
+        _waveOutInBed = New WinMmStereoOut16(sampleRateInBed)
+        _workerInBed = New Thread(AddressOf WorkerLoopInBed) With {
+            .IsBackground = True,
+            .Name = "Virtual Machine Bench SB16 host audio"
+        }
+        _workerInBed.Start()
+    End Sub
+
+    Public Sub SetWavetableHost(hostInBed As WavetableHost)
+        SyncLock _wavetableSyncInBed
+            _wavetableHostInBed = hostInBed
+        End SyncLock
+        If hostInBed IsNot Nothing Then NotifyPotentialAudioActivity()
+    End Sub
+
+    Public ReadOnly Property NeedsContinuousRendering As Boolean
+        Get
+            Return Volatile.Read(_needsContinuousRenderingInBed) <> 0
+        End Get
+    End Property
+
+    Public Sub NotifyPotentialAudioActivity()
+        If Volatile.Read(_disposedInBed) <> 0 Then Return
+        Interlocked.Increment(_activitySerialInBed)
+        Volatile.Write(_needsContinuousRenderingInBed, 1)
+    End Sub
+
+    ' Continuous DSP PCM does not need to create a new cross-thread activity
+    ' serial for every sample.  The machine owner calls this once per clock
+    ' interval when at least one source frame reached the host ring.
+    Public Sub EnsureRenderingActive()
+        If Volatile.Read(_disposedInBed) <> 0 Then Return
+        Volatile.Write(_needsContinuousRenderingInBed, 1)
+    End Sub
+
+    Public Sub DiscardPendingPcmSourceFrames()
+        Interlocked.Exchange(_pcmSourceDiscardBeforePositionInBed,
+                             Interlocked.Read(_pcmSourceWritePositionInBed))
+    End Sub
+
+    Public Sub PostOplAddress(bankInBed As Integer, valueInBed As Byte)
+        PostSimpleCommandInBed(Sb16HostAudioCommandKind.OplAddress, bankInBed, valueInBed)
+    End Sub
+
+    Public Sub PostOplData(bankInBed As Integer, valueInBed As Byte)
+        PostSimpleCommandInBed(Sb16HostAudioCommandKind.OplData, bankInBed, valueInBed)
+    End Sub
+
+    Private Sub PostSimpleCommandInBed(kindInBed As Sb16HostAudioCommandKind,
+                                       bankInBed As Integer,
+                                       valueInBed As Byte)
+        If Volatile.Read(_disposedInBed) <> 0 Then Return
+        Dim commandInBed As New Sb16HostAudioCommand With {
+            .Kind = kindInBed,
+            .Generation = Volatile.Read(_generationInBed),
+            .Bank = bankInBed And 1,
+            .Value = valueInBed
+        }
+        Try
+            _commandsInBed.TryAdd(commandInBed, 0)
+        Catch ex As InvalidOperationException
+        End Try
+    End Sub
+
+    ' SPSC decoded-DSP source ring.  The machine owner is the only producer and
+    ' this host-audio worker is the only consumer.  No allocation or wait occurs
+    ' in the DMA/sample hot path.
+    Public Function TryPostPcmSourceFrame(leftInBed As Short,
+                                          rightInBed As Short) As Boolean
+        If Volatile.Read(_disposedInBed) <> 0 Then Return False
+        Dim writeInBed As Long = Interlocked.Read(_pcmSourceWritePositionInBed)
+        Dim readInBed As Long = Interlocked.Read(_pcmSourceReadPositionInBed)
+        Dim discardInBed As Long = Interlocked.Read(_pcmSourceDiscardBeforePositionInBed)
+        If readInBed < discardInBed Then readInBed = discardInBed
+        If writeInBed - readInBed >= PcmSourceRingCapacity Then Return False
+        Dim indexInBed As Integer = CInt(writeInBed And PcmSourceRingMask)
+        _pcmSourceLeftInBed(indexInBed) = leftInBed
+        _pcmSourceRightInBed(indexInBed) = rightInBed
+        Interlocked.Exchange(_pcmSourceWritePositionInBed, writeInBed + 1L)
+        Return True
+    End Function
+
+    Public Function PostRenderInterval(hostFramesInBed As Long,
+                                       pcmSourceFramesInBed As Integer,
+                                  pcmStartLeftInBed As Short,
+                                  pcmStartRightInBed As Short,
+                                  speakerEnabledInBed As Boolean,
+                                  pcmGainLeftInBed As Double,
+                                  pcmGainRightInBed As Double,
+                                       midiGainLeftInBed As Double,
+                                       midiGainRightInBed As Double) As Boolean
+        If hostFramesInBed <= 0 OrElse Volatile.Read(_disposedInBed) <> 0 Then Return False
+        Dim commandInBed As New Sb16HostAudioCommand With {
+            .Kind = Sb16HostAudioCommandKind.RenderInterval,
+            .Generation = Volatile.Read(_generationInBed),
+            .HostFrames = hostFramesInBed,
+            .PcmSourceFrames = Math.Max(0, pcmSourceFramesInBed),
+            .PcmStartLeft = pcmStartLeftInBed,
+            .PcmStartRight = pcmStartRightInBed,
+            .SpeakerEnabled = speakerEnabledInBed,
+            .PcmGainLeft = pcmGainLeftInBed,
+            .PcmGainRight = pcmGainRightInBed,
+            .MidiGainLeft = midiGainLeftInBed,
+            .MidiGainRight = midiGainRightInBed
+        }
+        Try
+            If _commandsInBed.TryAdd(commandInBed, 0) Then Return True
+        Catch ex As InvalidOperationException
+        End Try
+
+        ' Host audio has fallen behind.  Flush decoded source samples up to this
+        ' point rather than ever blocking the machine owner on presentation work.
+        Interlocked.Exchange(_pcmSourceDiscardBeforePositionInBed,
+                             Interlocked.Read(_pcmSourceWritePositionInBed))
+        Return False
+    End Function
+
+    Public Sub ResetAudioState()
+        If Volatile.Read(_disposedInBed) <> 0 Then Return
+        Dim generationInBed As Integer = Interlocked.Increment(_generationInBed)
+        Interlocked.Exchange(_pcmSourceDiscardBeforePositionInBed,
+                             Interlocked.Read(_pcmSourceWritePositionInBed))
+        Interlocked.Exchange(_silentFramesInBed, 0L)
+        Dim activityInBed As Long = Interlocked.Increment(_activitySerialInBed)
+        Interlocked.Exchange(_silenceActivitySerialInBed, activityInBed)
+        Volatile.Write(_needsContinuousRenderingInBed, 1)
+        Dim commandInBed As New Sb16HostAudioCommand With {
+            .Kind = Sb16HostAudioCommandKind.Reset,
+            .Generation = generationInBed
+        }
+        Try
+            _commandsInBed.TryAdd(commandInBed, 0)
+        Catch ex As InvalidOperationException
+        End Try
+    End Sub
+
+    Private Sub WorkerLoopInBed()
+        Dim wavetableLeftInBed(RenderBlockFrames - 1) As Single
+        Dim wavetableRightInBed(RenderBlockFrames - 1) As Single
+        Try
+            For Each commandInBed As Sb16HostAudioCommand In _commandsInBed.GetConsumingEnumerable()
+                If Volatile.Read(_disposedInBed) <> 0 Then Exit For
+                If commandInBed.Generation <> Volatile.Read(_generationInBed) Then Continue For
+
+                Select Case commandInBed.Kind
+                    Case Sb16HostAudioCommandKind.OplAddress
+                        _oplInBed.WriteAddress(commandInBed.Bank, commandInBed.Value)
+                    Case Sb16HostAudioCommandKind.OplData
+                        _oplInBed.WriteData(commandInBed.Bank, commandInBed.Value)
+                    Case Sb16HostAudioCommandKind.Reset
+                        _oplInBed.Reset()
+                        _waveOutInBed.Reset()
+                        _silentFramesInBed = 0
+                        _silenceActivitySerialInBed =
+                            Interlocked.Read(_activitySerialInBed)
+                    Case Sb16HostAudioCommandKind.RenderInterval
+                        RenderIntervalInBed(commandInBed, wavetableLeftInBed, wavetableRightInBed)
+                End Select
+            Next
+        Catch ex As InvalidOperationException
+        Catch ex As ObjectDisposedException
+        End Try
+    End Sub
+
+    Private Sub RenderIntervalInBed(commandInBed As Sb16HostAudioCommand,
+                                    wavetableLeftInBed As Single(),
+                                    wavetableRightInBed As Single())
+        Dim totalHostFramesInBed As Long = Math.Max(1L, commandInBed.HostFrames)
+        Dim sourceFramesInBed As Integer = Math.Max(0, commandInBed.PcmSourceFrames)
+        Dim sourceAccumulatorInBed As Long = 0
+        Dim sourceConsumedInBed As Integer = 0
+        Dim currentPcmLeftInBed As Short = commandInBed.PcmStartLeft
+        Dim currentPcmRightInBed As Short = commandInBed.PcmStartRight
+        Dim hostRemainingInBed As Long = commandInBed.HostFrames
+
+        While hostRemainingInBed > 0 AndAlso Volatile.Read(_disposedInBed) = 0
+            Dim blockFramesInBed As Integer = CInt(Math.Min(CLng(RenderBlockFrames), hostRemainingInBed))
+            FillWavetableBlockInBed(wavetableLeftInBed, wavetableRightInBed, blockFramesInBed)
+
+            Dim blockIsSilentInBed As Boolean = True
+
+            For indexInBed As Integer = 0 To blockFramesInBed - 1
+                sourceAccumulatorInBed += sourceFramesInBed
+                While sourceConsumedInBed < sourceFramesInBed AndAlso sourceAccumulatorInBed >= totalHostFramesInBed
+                    Dim nextLeftInBed As Short
+                    Dim nextRightInBed As Short
+                    If TryReadPcmSourceFrameInBed(nextLeftInBed, nextRightInBed) Then
+                        currentPcmLeftInBed = nextLeftInBed
+                        currentPcmRightInBed = nextRightInBed
+                    End If
+                    sourceConsumedInBed += 1
+                    sourceAccumulatorInBed -= totalHostFramesInBed
+                End While
+
+                Dim fmLeftInBed As Double
+                Dim fmRightInBed As Double
+                _oplInBed.GenerateSample(fmLeftInBed, fmRightInBed)
+
+                Dim pcmLeftInBed As Double = 0.0
+                Dim pcmRightInBed As Double = 0.0
+                If commandInBed.SpeakerEnabled Then
+                    pcmLeftInBed = CDbl(currentPcmLeftInBed) * commandInBed.PcmGainLeft
+                    pcmRightInBed = CDbl(currentPcmRightInBed) * commandInBed.PcmGainRight
+                End If
+
+                Dim midiLeftInBed As Double = (fmLeftInBed + CDbl(wavetableLeftInBed(indexInBed))) * 9000.0 * commandInBed.MidiGainLeft
+                Dim midiRightInBed As Double = (fmRightInBed + CDbl(wavetableRightInBed(indexInBed))) * 9000.0 * commandInBed.MidiGainRight
+
+                Dim mixedLeftInBed As Integer = ClampInt16InBed(CInt(Math.Round(pcmLeftInBed + midiLeftInBed)))
+                Dim mixedRightInBed As Integer = ClampInt16InBed(CInt(Math.Round(pcmRightInBed + midiRightInBed)))
+                _waveOutInBed.SubmitSample(CShort(mixedLeftInBed), CShort(mixedRightInBed))
+
+                If Math.Abs(mixedLeftInBed) > SilenceThresholdInBed OrElse
+                   Math.Abs(mixedRightInBed) > SilenceThresholdInBed Then
+                    blockIsSilentInBed = False
+                End If
+            Next
+
+            UpdateRenderedSilenceStateInBed(blockIsSilentInBed, blockFramesInBed)
+            hostRemainingInBed -= blockFramesInBed
+        End While
+
+        ' A dropped/overloaded presentation frame must not poison the next interval's
+        ' source-ring alignment.  Consume any source frames not reached above.
+        While sourceConsumedInBed < sourceFramesInBed
+            Dim ignoredLeftInBed As Short
+            Dim ignoredRightInBed As Short
+            TryReadPcmSourceFrameInBed(ignoredLeftInBed, ignoredRightInBed)
+            sourceConsumedInBed += 1
+        End While
+    End Sub
+
+    Private Sub UpdateRenderedSilenceStateInBed(blockIsSilentInBed As Boolean,
+                                                  blockFramesInBed As Integer)
+        If Not blockIsSilentInBed Then
+            _silentFramesInBed = 0
+            _silenceActivitySerialInBed = Interlocked.Read(_activitySerialInBed)
+            Return
+        End If
+
+        If _silentFramesInBed = 0 Then
+            _silenceActivitySerialInBed = Interlocked.Read(_activitySerialInBed)
+        End If
+        _silentFramesInBed += Math.Max(0, blockFramesInBed)
+
+        If _silentFramesInBed < SilenceFramesBeforeSleepInBed Then Return
+
+        ' Silence alone is insufficient.  A muted OPL operator or SoundFont voice
+        ' must continue evolving so that a later mixer unmute exposes the phase /
+        ' envelope it would have reached on real hardware.
+        If _oplInBed.HasActiveVoices Then
+            _silentFramesInBed = SilenceFramesBeforeSleepInBed
+            Return
+        End If
+
+        Dim wavetableMayContinueInBed As Boolean
+        SyncLock _wavetableSyncInBed
+            Dim hostInBed As WavetableHost = _wavetableHostInBed
+            wavetableMayContinueInBed =
+                hostInBed IsNot Nothing AndAlso hostInBed.MayStillProduceAudio
+        End SyncLock
+        If wavetableMayContinueInBed Then
+            _silentFramesInBed = SilenceFramesBeforeSleepInBed
+            Return
+        End If
+
+        ' Do not race a new guest OPL/MIDI/DAC/mixer event. If activity changed
+        ' during the silent observation window, restart the proof instead.
+        Dim observedActivityInBed As Long = Interlocked.Read(_activitySerialInBed)
+        If observedActivityInBed <> _silenceActivitySerialInBed Then
+            _silentFramesInBed = 0
+            _silenceActivitySerialInBed = observedActivityInBed
+            Return
+        End If
+
+        Volatile.Write(_needsContinuousRenderingInBed, 0)
+
+        ' Close the narrow race where new activity lands between the serial read
+        ' above and the sleep write.
+        If Interlocked.Read(_activitySerialInBed) <> observedActivityInBed Then
+            Volatile.Write(_needsContinuousRenderingInBed, 1)
+            _silentFramesInBed = 0
+            _silenceActivitySerialInBed = Interlocked.Read(_activitySerialInBed)
+        End If
+    End Sub
+
+    Private Sub FillWavetableBlockInBed(leftInBed As Single(),
+                                        rightInBed As Single(),
+                                        frameCountInBed As Integer)
+        Array.Clear(leftInBed, 0, frameCountInBed)
+        Array.Clear(rightInBed, 0, frameCountInBed)
+        SyncLock _wavetableSyncInBed
+            Dim hostInBed As WavetableHost = _wavetableHostInBed
+            If hostInBed Is Nothing Then Return
+            hostInBed.ReadPcmBlockWait(leftInBed,
+                                       rightInBed,
+                                       frameCountInBed,
+                                       WavetableWaitMilliseconds)
+        End SyncLock
+    End Sub
+
+    Private Function TryReadPcmSourceFrameInBed(ByRef leftInBed As Short,
+                                                ByRef rightInBed As Short) As Boolean
+        leftInBed = 0
+        rightInBed = 0
+        Dim readInBed As Long = Interlocked.Read(_pcmSourceReadPositionInBed)
+        Dim discardBeforeInBed As Long = Interlocked.Read(_pcmSourceDiscardBeforePositionInBed)
+        If readInBed < discardBeforeInBed Then
+            readInBed = discardBeforeInBed
+            Interlocked.Exchange(_pcmSourceReadPositionInBed, readInBed)
+        End If
+        Dim writeInBed As Long = Interlocked.Read(_pcmSourceWritePositionInBed)
+        If readInBed >= writeInBed Then Return False
+        Dim indexInBed As Integer = CInt(readInBed And PcmSourceRingMask)
+        leftInBed = _pcmSourceLeftInBed(indexInBed)
+        rightInBed = _pcmSourceRightInBed(indexInBed)
+        Interlocked.Exchange(_pcmSourceReadPositionInBed, readInBed + 1L)
+        Return True
+    End Function
+
+    Private Shared Function ClampInt16InBed(valueInBed As Integer) As Integer
+        If valueInBed > Short.MaxValue Then Return Short.MaxValue
+        If valueInBed < Short.MinValue Then Return Short.MinValue
+        Return valueInBed
+    End Function
+
+    Public Sub Dispose() Implements IDisposable.Dispose
+        If Interlocked.Exchange(_disposedInBed, 1) <> 0 Then Return
+        Try
+            _commandsInBed.CompleteAdding()
+        Catch ex As InvalidOperationException
+        End Try
+        SyncLock _wavetableSyncInBed
+            _wavetableHostInBed = Nothing
+        End SyncLock
+        If Thread.CurrentThread IsNot _workerInBed Then _workerInBed.Join(500)
+        _waveOutInBed.Dispose()
     End Sub
 End Class
 
@@ -936,6 +1497,23 @@ Friend NotInheritable Class Opl3FmCore
         If (value And 1) = 0 Then _timer1Elapsed = 0
         If (value And 2) = 0 Then _timer2Elapsed = 0
     End Sub
+
+    Public ReadOnly Property HasRunningTimers As Boolean
+        Get
+            Return (_timerControl And 3) <> 0
+        End Get
+    End Property
+
+    ' Host-renderer state only.  This core lives exclusively on the dedicated
+    ' SB16 audio worker, so scanning envelope phases here is race-free.
+    Public ReadOnly Property HasActiveVoices As Boolean
+        Get
+            For Each opInBed As OperatorState In _operators
+                If opInBed.EnvPhase <> EnvelopePhase.Off Then Return True
+            Next
+            Return False
+        End Get
+    End Property
 
     Public Sub AdvanceTime(elapsedPicoseconds As Long)
         If (_timerControl And 1) <> 0 Then
@@ -1103,9 +1681,9 @@ Friend NotInheritable Class Opl3FmCore
     End Function
 End Class
 
-' Nonblocking stereo PCM presenter.  Guest timing never waits on waveOut; when
-' the host is overloaded, a host buffer is dropped while ISA/DMA state continues
-' at emulated time.
+' Stereo PCM presenter owned only by the dedicated host-audio worker.  The machine
+' owner never waits on waveOut.  This worker may wait for a completed WinMM buffer
+' so host presentation remains continuous instead of dropping 10 ms PCM blocks.
 Friend NotInheritable Class WinMmStereoOut16
     Implements IDisposable
 
@@ -1171,7 +1749,6 @@ Friend NotInheritable Class WinMmStereoOut16
     Private _opened As Boolean
     Private _disabled As Boolean
     Private _disposed As Boolean
-    Private _dropped As ULong
 
     Public Sub New(sampleRate As Integer)
         _sampleRate = sampleRate
@@ -1198,8 +1775,8 @@ Friend NotInheritable Class WinMmStereoOut16
             If Not OpenDevice() Then Return
         End If
 
-        Dim index As Integer = FindAvailableBuffer()
-        If index < 0 Then _dropped += 1UL : Return
+        Dim index As Integer = WaitForAvailableBuffer()
+        If index < 0 Then Return
         Array.Copy(_staging, _buffers(index), _staging.Length)
         Dim result As UInteger = waveOutWrite(_handle, _headers(index), CUInt(Marshal.SizeOf(GetType(WaveHeader))))
         If result <> 0UI Then _inFlight(index) = False : Return
@@ -1207,14 +1784,25 @@ Friend NotInheritable Class WinMmStereoOut16
         _nextBuffer = (index + 1) Mod BufferCount
     End Sub
 
-    Private Function FindAvailableBuffer() As Integer
-        For offset As Integer = 0 To BufferCount - 1
-            Dim index As Integer = (_nextBuffer + offset) Mod BufferCount
-            If Not _inFlight(index) Then Return index
-            Dim header As WaveHeader = Marshal.PtrToStructure(Of WaveHeader)(_headers(index))
-            If (header.Flags And WhdrDone) <> 0UI Then _inFlight(index) = False : Return index
-        Next
-        Return -1
+    Private Function WaitForAvailableBuffer() As Integer
+        ' This method runs only on the host-audio worker.  It is intentionally
+        ' allowed to pace itself against the Windows audio device.  Never move
+        ' this wait back onto SoundBlaster16Isa.AdvanceTime / the machine owner.
+        Do
+            For offset As Integer = 0 To BufferCount - 1
+                Dim index As Integer = (_nextBuffer + offset) Mod BufferCount
+                If Not _inFlight(index) Then Return index
+
+                Dim header As WaveHeader = Marshal.PtrToStructure(Of WaveHeader)(_headers(index))
+                If (header.Flags And WhdrDone) <> 0UI Then
+                    _inFlight(index) = False
+                    Return index
+                End If
+            Next
+
+            If _disposed OrElse _disabled OrElse _handle = IntPtr.Zero Then Return -1
+            Thread.Sleep(1)
+        Loop
     End Function
 
     Private Function OpenDevice() As Boolean

@@ -1,0 +1,39 @@
+WAVETABLE BRICK 5
+=================
+
+Scope:
+- Change automatic bank request to SB16.sf2.
+- If SB16.sf2 is absent, deterministically choose the smallest .sf2 in root Banks.
+- Preserve an explicitly selected nondefault bank as an exact request; no silent fallback if it disappears.
+- Migrate the old unversioned uo_4mb_2.sf2 factory default to the new automatic policy.
+- Add a bounded/non-blocking device -> host render-event handoff.
+- Add a reusable renderer abstraction.
+- Add MeltySynth 2.4.1 as the first host renderer.
+- Resolve/load the bank on a background host worker and feed decoded MIDI channel messages to the synth.
+- Keep PCM generation/output DISCONNECTED until Brick 6.
+
+Bank resolution examples:
+- Banks/SB16.sf2 exists -> use SB16.sf2.
+- SB16.sf2 missing + 1 MiB AWE32 bank + 4 MiB bank -> use the 1 MiB bank.
+- Explicit Timbres-of-Heaven selection missing -> stay silent; do not substitute.
+- No .sf2 files -> daughterboard remains electrically/configurationally present, host synth stays silent.
+
+Host-boundary behavior:
+- Machine thread only performs BlockingCollection.TryAdd(..., 0).
+- Queue capacity is 4096 events; overflow is counted, never blocks the guest MPU transaction.
+- Directory enumeration, SoundFont parse/load, and MeltySynth message processing happen on a background thread.
+- Host exceptions are contained and shown in DiagnosticText.
+- Event ordering is currently monotonic sequence only. Brick 6 must tie PCM scheduling to coordinated machine time, not host wall clock.
+
+Dependency:
+- NuGet PackageReference: MeltySynth 2.4.1 (MIT, .NET Standard 2.1 compatible).
+- The package is host-side only; no MeltySynth type crosses into Device/*.vb.
+
+Still deliberately NOT implemented:
+- PCM Render()/mix/output.
+- SysEx interpretation (GM/GS/XG/vendor-specific).
+- Exact historical daughterboard profile quirks/polyphony.
+- Changes to SB16 IRQ/DMA/MPU guest-visible port semantics.
+
+Build gate:
+This container does not expose dotnet/MSBuild/vbc. VirtualComputer.Modern.vbproj was XML-parsed after editing. Build/restore in Visual Studio before Brick 6. The first build may restore MeltySynth 2.4.1 from NuGet.

@@ -1,0 +1,25 @@
+IDE HDD hot-trace disable
+
+Purpose:
+Reduce host-side diagnostic overhead while testing the MD/RD slowdown.
+
+Changed:
+- IdeController.vb
+  * disables READ/WRITE command text tracing on the ATA hard-disk hot path
+  * disables per-sector READ/WRITE DRQ text tracing
+  * leaves cheap numeric read/write phase counters active
+  * leaves ATAPI and low-frequency ATA/channel tracing active
+  * diagnostic dump states that HDD hot-path text tracing is disabled
+- HardwareDocs/IDE_ATAPI_IMPLEMENTATION_NOTES.md
+  * documents the new diagnostic policy
+
+Not changed:
+- ATA 512-byte sector phasing
+- DRQ behavior
+- IRQ behavior
+- task-file updates
+- media I/O
+- ATAPI protocol
+- CPU/video/audio/wavetable code
+
+This is intentionally a diagnostic-performance patch only.

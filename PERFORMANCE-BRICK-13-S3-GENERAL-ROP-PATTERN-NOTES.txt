@@ -1,0 +1,98 @@
+PERFORMANCE BRICK 13 — S3 86C928 GENERAL ROP + PATTERN SPANS
+
+What I found
+------------
+Brick 4 fixed the catastrophic "one giant VB dispatch per 25 ns graphics-engine
+tick" problem, but its fast paths were intentionally very conservative.
+
+The current rectangle fast fill only handles four MIX functions:
+  ZERO, ONES, NOT SOURCE, SOURCE/COPY
+
+The current BitBLT fast path handles only plain source COPY.
+
+And type-7 8x8 pattern fill explicitly ALWAYS falls back to the old per-pixel
+PutEnhancedPixelForCommand datapath.
+
+That leaves a very Windows-shaped hole.  Window managers/GDI do more than copy:
+destination inversion, XOR/AND/OR-style ROPs, patterned brushes, stipples, and
+other accelerated drawing operations can all hit those fallback loops.
+
+What this brick accelerates
+---------------------------
+Under a deliberately strict equivalence envelope:
+  * normal (non-inverse) scissors
+  * color compare disabled
+  * PixelControl foreground-only / through-plane modes (selector < 2)
+  * full active-pixel write mask
+  * valid contiguous VRAM destination span
+
+the brick adds:
+
+1. GENERAL SOLID ROP SPAN
+   All 16 existing S3 MIX truth-table functions can run in one tight row loop.
+   Destination-dependent ROPs still read each destination pixel and call the
+   exact existing ApplyMixFunction truth table.
+
+2. GENERAL BITBLT ROP SPAN
+   All 16 MIX functions are supported in a tight row loop.
+   Source and destination are read/written in the exact S3-programmed X order.
+
+   Overlap semantics are NOT converted to host memmove semantics.  An unsafe
+   direction selected by the guest still smears in programmed order.
+
+3. THROUGH-PLANE 8x8 PATTERN ROP SPAN
+   Type-7 pattern fills now use a direct VRAM row loop under the same safe
+   envelope.  Pattern coordinates and 8x8 repetition are copied exactly from
+   the old per-pixel implementation.
+
+   Across-plane PixelControl selector modes 2/3 deliberately remain on the
+   original pixel datapath because they select foreground/background MIX results
+   from a transfer/destination bitplane and need separate proof.
+
+What does NOT change
+--------------------
+* 40 MHz / 25 ns graphics-engine timing
+* number of engine ticks consumed
+* command FIFO/BUSY/completion timing
+* command ordering
+* scissors semantics
+* color compare semantics (those commands fall back)
+* partial write masks (fall back)
+* across-plane foreground/background selection (fall back)
+* source/destination overlap order
+* S3 MIX truth table
+* VRAM layout / pitch / base addresses
+* guest-visible registers or IRQ state
+* reserved command types
+
+There is no Windows-specific or program-specific branch.  Windows is simply
+expected to benefit because it uses more of the accelerator's ROP/pattern
+vocabulary than a DOS prompt.
+
+Why this is a better next S3 target than presentation
+-----------------------------------------------------
+The current presentation path is ALREADY workerized: expensive rasterization is
+outside the machine ownership gate.  A boundary capture still copies the 2 MiB
+VRAM snapshot, but the UI requests frames at roughly 20 Hz and requests coalesce.
+
+That full snapshot is worth improving later with dirty pages, but it is not the
+same order of pathological work as thousands of per-pixel managed calls inside
+one graphics command.
+
+File changed
+------------
+DiamondStealthPro928.vb
+
+Test
+----
+After Brick 12 has its own build/boot result, apply this separately.
+
+Best test is Windows:
+  * idle Program Manager
+  * dragging/opening windows
+  * selecting icons / menus
+  * patterned/filled UI areas
+  * Games group or another window-heavy redraw
+
+Watch effective MT/s AND RunSlice max.  A useful result may show up more as
+fewer horrible dips / lower max slice latency than as a huge DOS number.

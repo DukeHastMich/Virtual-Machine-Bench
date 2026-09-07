@@ -1,4 +1,4 @@
-﻿Imports System
+Imports System
 
 ' CROMWELL 80287 OBJECT BRICK 1
 '
@@ -89,6 +89,7 @@ Public NotInheritable Class Intel80287
                                            instructionOffsetInBed As UShort,
                                            opcodeInBed As Byte,
                                            modRmInBed As Byte)
+        If Not RuntimeDiagnostics.Enabled Then Return
         _diagnosticInstructionValid = True
         _diagnosticInstructionCs = codeSegmentInBed
         _diagnosticInstructionIp = instructionOffsetInBed
@@ -950,9 +951,11 @@ Public NotInheritable Class Intel80287
         End If
         UpdateExceptionSummary()
         Dim maskedInBed As Boolean = IsMasked(Ie)
-        AppendDiagnosticError(If(overflowInBed, "STACK_OVERFLOW", "STACK_UNDERFLOW"),
-                              Ie Or Sf,
-                              maskedInBed)
+        If RuntimeDiagnostics.Enabled Then
+            AppendDiagnosticError(If(overflowInBed, "STACK_OVERFLOW", "STACK_UNDERFLOW"),
+                                  Ie Or Sf,
+                                  maskedInBed)
+        End If
         Return maskedInBed
     End Function
 
@@ -960,13 +963,14 @@ Public NotInheritable Class Intel80287
         _statusWord = CUShort(_statusWord Or flagInBed)
         UpdateExceptionSummary()
         Dim maskedInBed As Boolean = IsMasked(flagInBed)
-        If Not maskedInBed Then AppendDiagnosticError("EXCEPTION", flagInBed, maskedInBed)
+        If RuntimeDiagnostics.Enabled AndAlso Not maskedInBed Then AppendDiagnosticError("EXCEPTION", flagInBed, maskedInBed)
         Return maskedInBed
     End Function
 
     Private Sub AppendDiagnosticError(kindInBed As String,
                                       flagsInBed As UShort,
                                       maskedInBed As Boolean)
+        If Not RuntimeDiagnostics.Enabled Then Return
         Dim newlyLoggedFlagsInBed As UShort =
             CUShort(flagsInBed And ExceptionMask And Not _diagnosticLoggedPendingFlags)
         If newlyLoggedFlagsInBed = 0US Then Return

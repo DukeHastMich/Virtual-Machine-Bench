@@ -1,0 +1,93 @@
+PERFORMANCE BRICK 4 — S3 86C928 ENGINE BATCHING
+
+Purpose
+-------
+Keep the S3 graphics engine on the coordinated machine thread, at the same modeled
+40 MHz / 25 ns engine clock, while removing the host-side fiction that one hardware
+pixel clock must equal one large VB method call.
+
+Observed trigger
+----------------
+At the DOS prompt the machine reached roughly 8.222 MT-states/s / 32.9% realtime.
+Inside Windows 3.1 the same build fell to about 0.995 MT-states/s / 4.0%, with
+RunSlice costs as high as ~75 ms.  Windows is exactly the workload that exercises
+the S3 accelerated drawing engine heavily.
+
+What changed
+------------
+1. AdvanceGraphicsEngine now converts elapsed virtual time into a count of real
+   25 ns S3 engine ticks and advances the active command in deterministic batches.
+
+2. BUSY/FIFO/command completion timing remains tied to the same number of 25 ns
+   engine ticks.  There is NO worker thread and NO wall-clock shortcut.
+
+3. Line and short-stroke commands process multiple available engine pixels in one
+   host call while keeping the same Bresenham/radial state updates.
+
+4. Rectangle / BitBLT / pattern commands process one row span at a time instead
+   of recomputing width, height, MOD/DIV, command type and direction through a
+   giant StepEnhancedCommand call for every pixel.
+
+5. Two conservative datapath fast paths were added:
+
+   SOLID RECTANGLE FILL
+   - only normal scissors
+   - no color compare
+   - no PixelControl foreground/background selector
+   - full active-pixel write mask
+   - only MIX functions whose result is destination-independent
+   When all are true, a clipped row span is written directly.  8-bpp spans use
+   Array.Fill; 16/32-bpp use tight byte loops.
+
+   SRCCOPY BITBLT
+   - normal scissors
+   - no color compare
+   - simple foreground PixelControl
+   - Foreground MIX selects operation source and COPY (MIX=7)
+   - full active-pixel write mask
+   Non-overlapping row spans use Array.Copy.  Overlapping spans are copied in the
+   S3-programmed X direction, pixel by pixel, so an intentionally/wrongly directed
+   overlapping blit still produces the same hardware smear rather than host
+   memmove semantics.
+
+6. WAIT image-transfer commands no longer spend thousands of host calls proving
+   that PIX_TRANS is still empty/full while the CPU is frozen.  The first blocked
+   engine edge is retained; later provably idle edges in the same machine interval
+   are collapsed while preserving the free-running fractional 40 MHz phase.
+
+Board-integrity / guest-visible invariants
+------------------------------------------
+- S3 engine clock is still exactly EnginePixelPeriodPicoseconds = 25,000 ps.
+- Engine remains on the machine owner; no concurrent mutation of guest VRAM/state.
+- CPU-visible BUSY, FIFO, DATA_AVAIL and command-completion state changes occur
+  after the same number of modeled engine ticks.
+- FIFO command snapshots are unchanged.
+- Scissors, MIX, color compare, write/read masks, pixel control and weird cases
+  fall back to the original per-pixel datapath unless equivalence is proven.
+- Pattern fills still use the original per-pixel source/MIX datapath; only their
+  timing/row bookkeeping is batched.
+- Reserved/other CMD types keep the prior one-edge StepEnhancedCommand behavior.
+- No changes to VGA scanout timing, CPU, PIC/PIT/DMA, READY, IDE/ATAPI, audio, or
+  host presentation threading.
+
+File changed
+------------
+DiamondStealthPro928.vb
+
+Overlay compatibility
+---------------------
+This file is based on the DIAGNOSTICS-OFF S3 source.  Performance Bricks 1-3 did
+not modify DiamondStealthPro928.vb, so applying this over the current Brick-3 tree
+should not revert PIC INTR, prefetch-ring, or NEAT READY-cache work.
+
+Test gate
+---------
+1. Build/boot.
+2. Check the DOS prompt to make sure the non-S3 baseline is not worse.
+3. Open Windows 3.1 and move/resize/open windows as in the prior screenshot.
+4. Compare Effective T-state rate, realtime %, and especially RunSlice avg/max.
+
+Pre-brick Windows reference from the supplied screenshot:
+  Effective T-state rate : ~0.995 MT-states/s
+  Realtime ratio         : ~4.0%
+  RunSlice avg/min/max   : ~5.5 / 1.1 / 75.5 ms

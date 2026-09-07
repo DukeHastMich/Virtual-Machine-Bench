@@ -153,7 +153,13 @@ start:
     mov word [0x19*4], int19
     mov word [0x1A*4], int1a
     mov word [0x70*4], int70
-    mov word [0x76*4], int76
+    ; Install both standard fixed-disk IRQ vectors without moving the rest of
+    ; the ROM image.  IRQ14 retains the IBM-compatible completion flag handler;
+    ; IRQ15 gets its own slave/master PIC EOI path for the secondary IDE channel.
+    call install_disk_irq_vectors
+    nop
+    nop
+    nop
 
     call cmos_validate_or_default
 
@@ -5690,6 +5696,26 @@ setup_help_pane db 'PHALANX SETUP',10
            db '                                                             D  Load defaults',10,10
            db '                                                             F10 Save and exit',10
            db '                                                             ESC Exit',0
+
+; Secondary IDE was added after the original BIOS image layout was frozen.
+; Keep this helper in the previously unused ROM padding so the historical code
+; offsets remain stable while installing INT 76h and INT 77h at POST.
+install_disk_irq_vectors:
+    mov word [0x76*4], int76
+    mov word [0x77*4], int77
+    ret
+
+; IRQ15 / INT 77h secondary-IDE completion handler.  Unlike the IBM primary
+; fixed-disk handler above, do not set BDA 40:8Eh: that flag belongs to the
+; primary BIOS fixed-disk path.  The essential hardware job here is to EOI both
+; cascaded PICs so a DOS/Windows IDE driver can own the secondary channel.
+int77:
+    push ax
+    mov al, 0x20
+    out 0xA0, al
+    out 0x20, al
+    pop ax
+    iret
 
 times 0xFFF0-($-$$) db 0xFF
 reset_vector: jmp 0xF000:start

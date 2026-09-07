@@ -50,7 +50,8 @@ Public FrontPanel As New FrontPanelState
     Public Chipset As New NeatCs8221Chipset(Function() MachineClock.CpuClockHz)
     Public VideoCard As New DiamondStealthPro928
     Public FloppyController As New FloppyController765(MasterPic, DmaController)
-    Public IdeController As New IdeController(SlavePic)
+    Public IdeController As New IdeController(SlavePic, &H1F0US, &H3F6US, 14, "Primary")
+    Public SecondaryIdeController As New IdeController(SlavePic, &H170US, &H376US, 15, "Secondary")
     Public Com1 As New Uart16550A(&H3F8US, 4, MasterPic)
     Public Com2 As New Uart16550A(&H2F8US, 3, MasterPic)
     Public Lpt1 As New ParallelPortSpp(&H378US, 7, MasterPic)
@@ -96,6 +97,7 @@ Public FrontPanel As New FrontPanelState
         SystemBus.Register(VideoCard)
         SystemBus.Register(FloppyController)
         SystemBus.Register(IdeController)
+        SystemBus.Register(SecondaryIdeController)
         SystemBus.Register(Com1)
         SystemBus.Register(Com2)
         SystemBus.Register(SerialMouse)
@@ -107,6 +109,18 @@ Public FrontPanel As New FrontPanelState
         CPU0.PortBus = CpuBus
         CPU0.MemoryController = MotherboardMemory
         CPU0.InterruptAcknowledge = AddressOf AcknowledgeHardwareInterrupt
+
+        ' Physical AT interrupt wiring:
+        '   slave 8259A INT  -> master IRQ2
+        '   master 8259A INT -> 80286 INTR
+        '
+        ' The CPU now samples the electrical INTR level at instruction
+        ' boundaries and performs INTA only when that pin is asserted.  This
+        ' removes an unnecessary full PIC priority scan from the ordinary
+        ' no-interrupt instruction path.
+        AddHandler MasterPic.InterruptOutputChanged,
+            Sub(assertedInBed As Boolean) CPU0.SetInterruptRequestLine(assertedInBed)
+        CPU0.SetInterruptRequestLine(MasterPic.InterruptOutput)
 
         ' CROMWELL PCB REFIT PHASE 2 BRICK 8D - real motherboard bus ownership.
         MotherboardBridge.AttachCpuHoldInterface(
@@ -122,6 +136,20 @@ Public FrontPanel As New FrontPanelState
                 Return Chipset.GetReadyWaitTStates(cycleInBed)
             End Function,
             Function() Chipset.TimingDiagnosticText())
+
+        ' Performance Brick 3: cache ONLY the chipset's CPU-local 82C212 RB7
+        ' READY results at the motherboard bridge.  The chipset remains the
+        ' source of truth and pushes every reset/register change immediately.
+        MotherboardBridge.UpdateCpuLocalReadyWaitStates(
+            Chipset.RamWaitStates,
+            Chipset.RomWaitStates)
+        AddHandler Chipset.LocalReadyTimingChanged,
+            Sub(ramWaitTStatesInBed As Integer, romWaitTStatesInBed As Integer)
+                MotherboardBridge.UpdateCpuLocalReadyWaitStates(
+                    ramWaitTStatesInBed,
+                    romWaitTStatesInBed)
+            End Sub
+
         AddHandler DmaController.HoldRequestChanged,
             Sub(masterInBed As AtBusMaster286, assertedInBed As Boolean)
                 MotherboardBridge.SetDmaHoldRequest(masterInBed, assertedInBed)
@@ -151,7 +179,13 @@ Public FrontPanel As New FrontPanelState
         AddHandler FloppyController.DriveActivity,
             Sub(driveInBed As Integer) FrontPanel.PulseFloppy(driveInBed)
         AddHandler IdeController.Activity,
-            Sub() FrontPanel.PulseHardDisk(0)
+            Sub(slaveInBed As Boolean, kindInBed As IdeDeviceKind)
+                If kindInBed = IdeDeviceKind.AtaHardDisk Then FrontPanel.PulseHardDisk(If(slaveInBed, 1, 0))
+            End Sub
+        AddHandler SecondaryIdeController.Activity,
+            Sub(slaveInBed As Boolean, kindInBed As IdeDeviceKind)
+                If kindInBed = IdeDeviceKind.AtaHardDisk Then FrontPanel.PulseHardDisk(If(slaveInBed, 3, 2))
+            End Sub
         AddHandler Com1.TransmitActivity,
             Sub() FrontPanel.PulseSerialTransmit()
         AddHandler Com2.TransmitActivity,
@@ -294,7 +328,10 @@ Public FrontPanel As New FrontPanelState
     End Sub
 
     Private Function AcknowledgeHardwareInterrupt() As Integer
-        If Not MasterPic.HasPendingInterrupt Then Return -1
+        ' This callback is now an actual INTA transaction, not a polling probe.
+        ' Processor286 invokes it only while the master PIC's INTR output is
+        ' asserted.  Let Pic8259.Acknowledge() own the documented spurious IRQ7
+        ' case if the request vanishes between INTR observation and INTA.
         Dim masterVector As Integer = MasterPic.Acknowledge()
         Dim masterIrq As Integer = masterVector And 7
         If Not MasterPic.IsProgrammedCascadeInput(masterIrq) Then Return masterVector
@@ -314,12 +351,21 @@ Public FrontPanel As New FrontPanelState
         FloppyController.AttachMediaSource(drive, New PhysicalFloppyMediaSource(hostDriveRoot))
     End Sub
 
-    Public Sub MountHardDiskImage(path As String, Optional readOnlyMedia As Boolean = False)
-        IdeController.MountHardDisk(New HardDiskImage(path, readOnlyMedia))
+    Public Sub MountHardDiskImage(path As String,
+                                  Optional readOnlyMedia As Boolean = False,
+                                  Optional channelInBed As Integer = 0,
+                                  Optional slaveInBed As Boolean = False)
+        If channelInBed <> 0 AndAlso channelInBed <> 1 Then Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        Dim controllerInBed As IdeController = If(channelInBed = 0, IdeController, SecondaryIdeController)
+        controllerInBed.MountHardDisk(New HardDiskImage(path, readOnlyMedia), slaveInBed)
     End Sub
 
-    Public Sub MountIsoImage(path As String)
-        IdeController.MountCdRom(New IsoImage(path))
+    Public Sub MountIsoImage(path As String,
+                             Optional channelInBed As Integer = 0,
+                             Optional slaveInBed As Boolean = True)
+        If channelInBed <> 0 AndAlso channelInBed <> 1 Then Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        Dim controllerInBed As IdeController = If(channelInBed = 0, IdeController, SecondaryIdeController)
+        controllerInBed.MountCdRom(New IsoImage(path), slaveInBed)
     End Sub
 
 End Module
