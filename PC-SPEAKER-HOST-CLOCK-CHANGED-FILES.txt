@@ -1,3 +1,0 @@
-PcSpeakerAudio.vb
-HardwareBus.vb
-PC-SPEAKER-HOST-CLOCK-NOTES.txt

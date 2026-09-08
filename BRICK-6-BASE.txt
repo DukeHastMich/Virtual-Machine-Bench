@@ -1,3 +1,0 @@
-Apply this brick over the source tree after Wavetable Brick 5.
-No .sf2 files are included.
-No project-file change is required by Brick 6.

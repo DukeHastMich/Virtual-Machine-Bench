@@ -1,4 +1,0 @@
-Expansion Cards/Audio Cards/Soundblaster 16-ISA/SoundBlaster16Isa.vb
-Expansion Cards/Audio Cards/Soundblaster 16-ISA/Wavetable/HANDOFF.md
-BRICK-6.1B-NOTES.txt
-BRICK-6.1B-CHANGED-FILES.txt

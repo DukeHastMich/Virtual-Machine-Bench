@@ -1,4 +1,0 @@
-Apply over Wavetable Brick 6 Fixed.
-The IDE HDD hot-trace-disable patch is orthogonal and can remain applied.
-No .sf2 files are included.
-No project-file change is required.

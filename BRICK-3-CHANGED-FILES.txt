@@ -1,8 +1,0 @@
-VirtualComputer.Modern.vbproj
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\SoundBlaster16Isa.vb
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterConnector.vb
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterDaughterboard.vb
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\HANDOFF.md
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\README.md
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\WAVETABLE_ARCHITECTURE.md
-BRICK-3-NOTES.txt

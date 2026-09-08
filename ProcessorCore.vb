@@ -1664,7 +1664,25 @@ Partial Public Class Processor286
                     Push(AX) : Push(CX) : Push(DX) : Push(BX) : Push(originalSp) : Push(BP) : Push(SI) : Push(DI)
                 End If
             Case &H61
-                DI = PopWord() : SI = PopWord() : BP = PopWord() : PopWord() : BX = PopWord() : DX = PopWord() : CX = PopWord() : AX = PopWord()
+                ' Harris N80C286 POPA fetches the final AX stack word first into an
+                ' internal temporary, then reads DI, SI, BP, the discarded SP slot,
+                ' BX, DX, and CX in ascending stack order.  AX and the final SP
+                ' advance are committed only after those seven reads complete.
+                '
+                ' This ordering matters at the 64 KiB real-address boundary:
+                ' SP=FFF1h makes the initial AX probe start at FFFFh, so #GP(13)
+                ' occurs before any other POPA stack read or register update.
+                Dim popaAxOffsetInBed As UInt16 = CUShort((CInt(SP) + 14) And &HFFFF)
+                Dim popaAxValueInBed As UInt16 = ReadWord(SegmentAddress(2, popaAxOffsetInBed, 2))
+                DI = PopWord()
+                SI = PopWord()
+                BP = PopWord()
+                PopWord()
+                BX = PopWord()
+                DX = PopWord()
+                CX = PopWord()
+                AX = popaAxValueInBed
+                SP = CUShort((CInt(SP) + 2) And &HFFFF)
             Case &H62 : ExecuteBound()
             Case &H63 : ExecuteArpl()
             Case &H68 : Push(FetchWord())
@@ -1713,31 +1731,37 @@ Partial Public Class Processor286
                 Dim size = FetchWord(), level = FetchByte() And &H1F
                 RecordFusedEnterLevelInBed(level)
 
-                ' The Harris real-address corpus requires ENTER's FFFFh
-                ' word-boundary fault to be restartable before frame-building
-                ' writes become architecturally visible.  Preflight only the
-                ' word offsets here; normal bus/read/write order remains unchanged.
                 If Not ProtectedMode Then
-                    Dim enterFaultInBed As Boolean = False
-                    Dim pushCountInBed As Integer = If(level = 0, 1, level + 1)
-                    For pushIndexInBed As Integer = 1 To pushCountInBed
-                        Dim pushOffsetInBed As UInt16 = CUShort((CInt(SP) - (2 * pushIndexInBed)) And &HFFFF)
-                        If pushOffsetInBed = &HFFFFUS Then enterFaultInBed = True : Exit For
+                    ' Harris N80C286 real-address ENTER builds the frame through
+                    ' internal shadow SP/BP values.  Memory reads/writes become
+                    ' visible as they occur, but architectural SP/BP do not commit
+                    ' until the complete frame has been built successfully.
+                    '
+                    ' Therefore a later FFFFh word-boundary #GP(13) preserves all
+                    ' earlier frame writes while the exception frame itself uses
+                    ' the original architectural SP/BP.  The raw C8 MOO bus traces
+                    ' match this exact source-read/destination-write ordering.
+                    Dim enterWorkSpInBed As UInt16 = SP
+                    Dim enterWorkBpInBed As UInt16 = BP
+
+                    enterWorkSpInBed = CUShort((CInt(enterWorkSpInBed) - 2) And &HFFFF)
+                    WriteWord(SegmentAddress(2, enterWorkSpInBed, 2, True), BP)
+                    Dim enterFrameInBed As UInt16 = enterWorkSpInBed
+
+                    For enterIndexInBed As Integer = 1 To CInt(level) - 1
+                        enterWorkBpInBed = CUShort((CInt(enterWorkBpInBed) - 2) And &HFFFF)
+                        Dim enterSourceInBed As UInt16 = ReadWord(SegmentAddress(2, enterWorkBpInBed, 2))
+                        enterWorkSpInBed = CUShort((CInt(enterWorkSpInBed) - 2) And &HFFFF)
+                        WriteWord(SegmentAddress(2, enterWorkSpInBed, 2, True), enterSourceInBed)
                     Next
-                    If Not enterFaultInBed AndAlso level > 1 Then
-                        For sourceIndexInBed As Integer = 1 To level - 1
-                            Dim sourceOffsetInBed As UInt16 = CUShort((CInt(BP) - (2 * sourceIndexInBed)) And &HFFFF)
-                            If sourceOffsetInBed = &HFFFFUS Then enterFaultInBed = True : Exit For
-                        Next
+
+                    If level > 0 Then
+                        enterWorkSpInBed = CUShort((CInt(enterWorkSpInBed) - 2) And &HFFFF)
+                        WriteWord(SegmentAddress(2, enterWorkSpInBed, 2, True), enterFrameInBed)
                     End If
-                    If enterFaultInBed Then
-                        RaiseCpuException(13, "ENTER real-address frame wrap")
-                    Else
-                        Push(BP) : Dim frame = SP
-                        For i = 1 To level - 1 : BP = CUShort((CInt(BP) - 2) And &HFFFF) : Push(ReadWord(SegmentAddress(2, BP))) : Next
-                        If level > 0 Then Push(frame)
-                        BP = frame : SP = CUShort((CInt(SP) - size) And &HFFFF)
-                    End If
+
+                    BP = enterFrameInBed
+                    SP = CUShort((CInt(enterWorkSpInBed) - CInt(size)) And &HFFFF)
                 Else
                     Push(BP) : Dim frame = SP
                     For i = 1 To level - 1 : BP = CUShort((CInt(BP) - 2) And &HFFFF) : Push(ReadWord(SegmentAddress(2, BP))) : Next
@@ -2061,6 +2085,50 @@ Partial Public Class Processor286
         If word Then WriteRM16(m, Shift16(m.Reg, ReadRM16(m), count)) Else WriteRM8(m, Shift8(m.Reg, ReadRM8(m), count))
     End Sub
 
+    Private Sub ExecuteIdivByte286InBed(divisorByteInBed As Byte)
+        Dim dividendInBed As Integer = Signed16(AX)
+        Dim divisorInBed As Integer = Signed8(divisorByteInBed)
+        If divisorInBed = 0 Then
+            RaiseCpuException(0, "Divide by zero")
+            Return
+        End If
+
+        ' The Harris N80C286 byte IDIV divider does not behave like a host
+        ' signed divide followed by a mathematical range check.  The hardware
+        ' corpus is reproduced by the 286's eight-step byte divider: magnitude
+        ' division occurs through an 8-bit remainder path, so the high bit of a
+        ' shifted remainder is discarded before the compare/subtract stage.
+        ' Signed overflow is then decided from the resulting 8-bit quotient
+        ' magnitude.  This also reproduces the four hardware-only overflow
+        ' aliases where a true out-of-range quotient becomes -128.
+        Dim dividendMagnitudeInBed As Integer = Math.Abs(dividendInBed)
+        Dim divisorMagnitudeInBed As Integer = Math.Abs(divisorInBed)
+        Dim remainderMagnitudeInBed As Integer = (dividendMagnitudeInBed >> 8) And &HFF
+        Dim quotientMagnitudeInBed As Integer = dividendMagnitudeInBed And &HFF
+
+        For bitInBed As Integer = 0 To 7
+            Dim incomingBitInBed As Integer = (quotientMagnitudeInBed >> 7) And 1
+            quotientMagnitudeInBed = (quotientMagnitudeInBed << 1) And &HFF
+            remainderMagnitudeInBed = ((remainderMagnitudeInBed << 1) Or incomingBitInBed) And &HFF
+            If remainderMagnitudeInBed >= divisorMagnitudeInBed Then
+                remainderMagnitudeInBed -= divisorMagnitudeInBed
+                quotientMagnitudeInBed = quotientMagnitudeInBed Or 1
+            End If
+        Next
+
+        Dim negativeQuotientInBed As Boolean = (dividendInBed < 0) Xor (divisorInBed < 0)
+        Dim maximumMagnitudeInBed As Integer = If(negativeQuotientInBed, 128, 127)
+        If quotientMagnitudeInBed > maximumMagnitudeInBed Then
+            RaiseCpuException(0, "Divide overflow")
+            Return
+        End If
+
+        Dim quotientByteInBed As Integer = If(negativeQuotientInBed, (-quotientMagnitudeInBed) And &HFF, quotientMagnitudeInBed)
+        Dim remainderByteInBed As Integer = If(dividendInBed < 0, (-remainderMagnitudeInBed) And &HFF, remainderMagnitudeInBed)
+        AL = CByte(quotientByteInBed)
+        AH = CByte(remainderByteInBed)
+    End Sub
+
     Private Sub ExecuteGroup3(op As Byte)
         Dim m = DecodeModRM(), word = op = &HF7
         If word Then
@@ -2108,7 +2176,7 @@ Partial Public Class Processor286
                             AL = CByte(q) : AH = CByte(remainder)
                         End If
                     End If
-                Case 7 : If v = 0 Then RaiseCpuException(0, "Divide by zero") Else Dim n = Signed16(AX), divisor = Signed8(v), q = n \ divisor : If q < SByte.MinValue Or q > SByte.MaxValue Then RaiseCpuException(0, "Divide overflow") Else AL = CByte(q And &HFF) : AH = CByte((n Mod divisor) And &HFF)
+                Case 7 : ExecuteIdivByte286InBed(v)
             End Select
         End If
     End Sub
@@ -4834,10 +4902,13 @@ Partial Public Class Processor286
     Private Sub ExecuteAam()
         Dim baseValue As Byte = FetchByte()
         If baseValue = 0 Then
-            ' Harris 80C286 exposes the AAM flag-update stage before #DE for an
-            ' immediate base of zero.  AX is not adjusted, but SZP reflect the
-            ' pre-divide AL value; CF/AF/OF remain undefined and are left alone.
-            Szp8(AL)
+            ' Harris N80C286 AAM 0 reaches the flag-update point with the divider's
+            ' penultimate 7-bit remainder state.  For an 8-bit AL dividend that
+            ' state is AL >> 1.  AX itself is not committed before #DE.
+            '
+            ' All eleven AAM-0 vectors in D4.MOO.gz agree on SZP(AL >> 1);
+            ' CF/AF/OF are undefined by the corpus and remain untouched here.
+            Szp8(CByte(AL >> 1))
             RaiseCpuException(0, "AAM divide by zero")
             Return
         End If

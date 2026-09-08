@@ -1,6 +1,0 @@
-The canonical bank repository is now <project root>\Banks.
-
-If this old directory still exists after applying Brick 1, delete it once it is empty:
-Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Banks
-
-Do NOT move/copy the actual SF2 files back there.
