@@ -38,5 +38,5 @@ Desktop.ini
 /Banks/*.mlb
 
 
-# Local reference resources
-/Resources/
+# Local reference library (manuals, datasheets, catalogs)
+/Local Library/
