@@ -37,3 +37,6 @@ Desktop.ini
 /Banks/*.sfark
 /Banks/*.mlb
 
+
+# Local reference resources
+/Resources/

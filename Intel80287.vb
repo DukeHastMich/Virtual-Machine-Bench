@@ -450,6 +450,23 @@ Public NotInheritable Class Intel80287
             Return maskedInBed
         End If
 
+        ' Intel 80286/80287 Programmer's Reference (1987), Table 1-12:
+        ' IC=0 selects projective infinity. Both signed infinities compare
+        ' equal; infinity versus a finite value is invalid/unordered.
+        ' IC=1 selects affine infinity and retains the ordinary signed order.
+        If (_controlWord And &H1000US) = 0US Then
+            Dim currentInfiniteInBed As Boolean = Double.IsInfinity(currentInBed)
+            Dim valueInfiniteInBed As Boolean = Double.IsInfinity(valueInBed)
+            If currentInfiniteInBed AndAlso valueInfiniteInBed Then
+                _statusWord = CUShort(_statusWord Or C3)
+                Return True
+            ElseIf currentInfiniteInBed OrElse valueInfiniteInBed Then
+                Dim maskedInBed As Boolean = SignalException(Ie)
+                If maskedInBed Then SetUnorderedCondition()
+                Return maskedInBed
+            End If
+        End If
+
         If currentInBed < valueInBed Then
             _statusWord = CUShort(_statusWord Or C0)
         ElseIf currentInBed = valueInBed Then

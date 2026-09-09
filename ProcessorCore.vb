@@ -1331,30 +1331,30 @@ Partial Public Class Processor286
 
         CaptureInstructionStartStateInBed()
         If RuntimeDiagnostics.Enabled Then
-        ' Windows 3.1 deliberately executes 0F FF here to probe #UD delivery.
-        ' Start a fresh, narrowly targeted stream before fetching it so the
-        ' exception handler and every write that constructs its RETF frame are
-        ' retained independently of the earlier protected-mode-entry trace.
-        If ProtectedMode AndAlso
+            ' Windows 3.1 deliberately executes 0F FF here to probe #UD delivery.
+            ' Start a fresh, narrowly targeted stream before fetching it so the
+            ' exception handler and every write that constructs its RETF frame are
+            ' retained independently of the earlier protected-mode-entry trace.
+            If ProtectedMode AndAlso
            _instructionStartCs = &H48FUS AndAlso
            _instructionStartIp = &H9F05US Then
-            If _forensicTraceWriterInBed IsNot Nothing Then
-                EndForensicTraceInBed("superseded by targeted 048F:9F05 exception trace")
-            End If
-            BeginForensicTraceInBed()
-            WriteForensicEventInBed(
+                If _forensicTraceWriterInBed IsNot Nothing Then
+                    EndForensicTraceInBed("superseded by targeted 048F:9F05 exception trace")
+                End If
+                BeginForensicTraceInBed()
+                WriteForensicEventInBed(
                 "TARGET TRACE BEGIN: deliberate 0F FF at 048F:9F05")
-        End If
-        ' The Windows 3.1 DPMI host validates the synthetic callback return in
-        ' this short #GP-handler branch.  Preserve the actual instruction bytes
-        ' (the ordinary compact record intentionally stores only the opcode) so
-        ' a failed validation can be decoded without another broad trace.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso
+            End If
+            ' The Windows 3.1 DPMI host validates the synthetic callback return in
+            ' this short #GP-handler branch.  Preserve the actual instruction bytes
+            ' (the ordinary compact record intentionally stores only the opcode) so
+            ' a failed validation can be decoded without another broad trace.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso
            ProtectedMode AndAlso
            _instructionStartCs = &H70US AndAlso
            _instructionStartIp >= &H1335US AndAlso
            _instructionStartIp <= &H1385US Then
-            WriteForensicEventInBed(
+                WriteForensicEventInBed(
                 "DPMI GP VALIDATE at=0070:" & _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(10) & "]" &
                 " AX=" & AX.ToString("X4") & " BX=" & BX.ToString("X4") &
@@ -1362,13 +1362,13 @@ Partial Public Class Processor286
                 " DS=" & DS.ToString("X4") & " SS:SP=" &
                 SS.ToString("X4") & ":" & SP.ToString("X4") &
                 " FL=" & Flags.ToString("X4"))
-        End If
-        ' The Windows 3.1 Standard-mode host reaches this path only after its
-        ' movable-selector fault has been handled.  It validates the selector
-        ' and builds the controlled LOADALL shutdown frame here.  Record full
-        ' bytes only in these small ranges so a return to DOS identifies the
-        ' precise failed architectural test without another broad trace.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
+            End If
+            ' The Windows 3.1 Standard-mode host reaches this path only after its
+            ' movable-selector fault has been handled.  It validates the selector
+            ' and builds the controlled LOADALL shutdown frame here.  Record full
+            ' bytes only in these small ranges so a return to DOS identifies the
+            ' precise failed architectural test without another broad trace.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
            ((_instructionStartCs = &H53US AndAlso
              ((_instructionStartIp >= &H380US AndAlso _instructionStartIp <= &H4D9US) OrElse
               (_instructionStartIp >= &H1EB9US AndAlso _instructionStartIp <= &H1EF9US))) OrElse
@@ -1376,7 +1376,7 @@ Partial Public Class Processor286
              _instructionStartIp >= &HB62US AndAlso _instructionStartIp <= &HC01US) OrElse
             (_instructionStartCs = &H78US AndAlso
              _instructionStartIp >= &HC5EUS AndAlso _instructionStartIp <= &HC63US)) Then
-            WriteForensicEventInBed(
+                WriteForensicEventInBed(
                 "DPMI SHUTDOWN DECISION at=" & _instructionStartCs.ToString("X4") & ":" &
                 _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(10) & "]" &
@@ -1386,16 +1386,16 @@ Partial Public Class Processor286
                 " DS=" & DS.ToString("X4") & " ES=" & ES.ToString("X4") &
                 " SS:SP=" & SS.ToString("X4") & ":" & SP.ToString("X4") &
                 " FL=" & Flags.ToString("X4"))
-        End If
-        ' The Standard-mode loader reaches this compact cleanup/termination
-        ' block after its final real-mode DOS callback.  Capture complete bytes
-        ' here to identify the stored status value that selects INT 21h/4C01h;
-        ' the ordinary instruction record intentionally retains only an opcode.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso
+            End If
+            ' The Standard-mode loader reaches this compact cleanup/termination
+            ' block after its final real-mode DOS callback.  Capture complete bytes
+            ' here to identify the stored status value that selects INT 21h/4C01h;
+            ' the ordinary instruction record intentionally retains only an opcode.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso
            _instructionStartCs = &H48FUS AndAlso
            _instructionStartIp >= &H94E0US AndAlso
            _instructionStartIp <= &H9590US Then
-            WriteForensicEventInBed(
+                WriteForensicEventInBed(
                 "WINDOWS EXIT DECISION at=048F:" & _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(10) & "]" &
                 " AX=" & AX.ToString("X4") & " BX=" & BX.ToString("X4") &
@@ -1406,17 +1406,17 @@ Partial Public Class Processor286
                 SS.ToString("X4") & ":" & SP.ToString("X4") &
                 " FL=" & Flags.ToString("X4") &
                 " PE=" & If(ProtectedMode, "1", "0"))
-        End If
-        ' Windows' Standard-mode loader dispatches an installed module through
-        ' an indirect far call in 0497:14xx.  Capture the complete dispatcher,
-        ' the called 0DC7 entry stub, and the live stack arguments in one run.
-        ' This is observation only: it neither recognizes nor changes the guest.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
+            End If
+            ' Windows' Standard-mode loader dispatches an installed module through
+            ' an indirect far call in 0497:14xx.  Capture the complete dispatcher,
+            ' the called 0DC7 entry stub, and the live stack arguments in one run.
+            ' This is observation only: it neither recognizes nor changes the guest.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
            ((_instructionStartCs = &H497US AndAlso
              _instructionStartIp >= &H14E0US AndAlso _instructionStartIp <= &H1560US) OrElse
             (_instructionStartCs = &HDC7US AndAlso
              _instructionStartIp >= &H200US AndAlso _instructionStartIp <= &H240US)) Then
-            WriteForensicEventInBed(
+                WriteForensicEventInBed(
                 "WINDOWS MODULE DISPATCH at=" & _instructionStartCs.ToString("X4") & ":" &
                 _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(12) & "]" &
@@ -1431,24 +1431,24 @@ Partial Public Class Processor286
                 " DSBASE=" & _segmentBases(3).ToString("X6") &
                 " SSBASE=" & _segmentBases(2).ToString("X6") &
                 " STACK=[" & ForensicStackWordsInBed(16) & "]")
-        End If
-        ' Demand-loading an absent Windows segment enters these ring-3 loader
-        ' routines.  The 2026-08-22 capture proved that the compact helper at
-        ' 048F:5520 returns AX=0002 before the later inward RETF.  Windows then
-        ' takes its error-cleanup path and handles that RETF #GP normally, so
-        ' the protection check must not be weakened.  Preserve both the small
-        ' classifier and the epilogue to identify the state which selected 2.
-        '
-        ' This is diagnostic observation only.  The ranges describe the
-        ' Windows 3.1 Standard-mode kernel currently under investigation; they
-        ' do not alter instruction execution or fabricate a successful load.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
+            End If
+            ' Demand-loading an absent Windows segment enters these ring-3 loader
+            ' routines.  The 2026-08-22 capture proved that the compact helper at
+            ' 048F:5520 returns AX=0002 before the later inward RETF.  Windows then
+            ' takes its error-cleanup path and handles that RETF #GP normally, so
+            ' the protection check must not be weakened.  Preserve both the small
+            ' classifier and the epilogue to identify the state which selected 2.
+            '
+            ' This is diagnostic observation only.  The ranges describe the
+            ' Windows 3.1 Standard-mode kernel currently under investigation; they
+            ' do not alter instruction execution or fabricate a successful load.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
            _instructionStartCs = &H48FUS AndAlso
            ((_instructionStartIp >= &H5520US AndAlso _instructionStartIp <= &H5580US) OrElse
             (_instructionStartIp >= &H56E0US AndAlso _instructionStartIp <= &H5830US)) Then
-            ' This loader builds its fatal-error text in a temporary stack
-            ' buffer. Retain enough words for the module name and message.
-            WriteForensicEventInBed(
+                ' This loader builds its fatal-error text in a temporary stack
+                ' buffer. Retain enough words for the module name and message.
+                WriteForensicEventInBed(
                 "WINDOWS LOAD-SEGMENT RETURN at=048F:" & _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(12) & "]" &
                 " AX=" & AX.ToString("X4") & " BX=" & BX.ToString("X4") &
@@ -1459,25 +1459,25 @@ Partial Public Class Processor286
                 SS.ToString("X4") & ":" & SP.ToString("X4") &
                 " FL=" & Flags.ToString("X4") &
                 " STACK192=[" & ForensicStackWordsInBed(192) & "]")
-        End If
-        ' A demand-loaded NE segment is relocated in this compact KRNL286
-        ' routine.  Capture the link-chain walk, including the live DS cache;
-        ' an invalid link must be traced to its producer rather than evading
-        ' the 80286 limit check.  This is observational and uses direct DRAM
-        ' peeks, so it creates no guest-visible bus cycles.
-        If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
+            End If
+            ' A demand-loaded NE segment is relocated in this compact KRNL286
+            ' routine.  Capture the link-chain walk, including the live DS cache;
+            ' an invalid link must be traced to its producer rather than evading
+            ' the 80286 limit check.  This is observational and uses direct DRAM
+            ' peeks, so it creates no guest-visible bus cycles.
+            If _forensicTraceWriterInBed IsNot Nothing AndAlso ProtectedMode AndAlso
            _instructionStartCs = &H48FUS AndAlso
            _instructionStartIp >= &H6D00US AndAlso
            _instructionStartIp <= &H6D80US Then
-            Dim linkAddressInBed As UInteger =
+                Dim linkAddressInBed As UInteger =
                 (_segmentBases(3) + CUInt(DI)) And &HFFFFFFUI
-            Dim linkLowInBed As Byte = 0
-            Dim linkHighInBed As Byte = 0
-            Dim linkReadableInBed As Boolean =
+                Dim linkLowInBed As Byte = 0
+                Dim linkHighInBed As Byte = 0
+                Dim linkReadableInBed As Boolean =
                 DiagnosticTryPeekRamByteInBed(linkAddressInBed, linkLowInBed) AndAlso
                 DiagnosticTryPeekRamByteInBed(
                     (linkAddressInBed + 1UI) And &HFFFFFFUI, linkHighInBed)
-            WriteForensicEventInBed(
+                WriteForensicEventInBed(
                 "WINDOWS RELOCATION CHAIN at=048F:" &
                 _instructionStartIp.ToString("X4") &
                 " bytes=[" & ForensicInstructionBytesInBed(12) & "]" &
@@ -1493,7 +1493,7 @@ Partial Public Class Processor286
                    " LINKBYTES=[" & linkLowInBed.ToString("X2") & " " &
                    linkHighInBed.ToString("X2") & "]",
                    " LINKBYTES=[unmapped]"))
-        End If
+            End If
         End If
         _trapFlagSampleAtInstructionStartInBed = Flag(TF)
         _segOverride = -1 : _rep = 0 : _lockPrefixInBed = False
@@ -4359,7 +4359,7 @@ Partial Public Class Processor286
         '   in real-address mode bits 12..15 are always clear
         ' Protected-mode IOPL/NT privilege semantics are audited separately;
         ' this helper preserves their representable bits there.
-        Dim allowedMask As UInt16 = If(ProtectedMode, &H7FD5US, &H0FD5US)
+        Dim allowedMask As UInt16 = If(ProtectedMode, &H7FD5US, &HFD5US)
         Return CUShort((value And allowedMask) Or &H2US)
     End Function
 
@@ -5593,7 +5593,7 @@ Partial Public Class Processor286
         End If
 
         Dim fractionInBed As Double =
-            CDbl(significandInBed And &H7FFFFFFFFFFFFFFFUL) / 9223372036854775808.0 +
+            CDbl(significandInBed And &H7FFFFFFFFFFFFFFFUL) / 9.2233720368547758E+18 +
             If((significandInBed And &H8000000000000000UL) <> 0UL, 1.0, 0.0)
         Dim valueInBed As Double = fractionInBed * Math.Pow(2.0, exponentInBed - 16383)
         Return If(negativeInBed, -valueInBed, valueInBed)
@@ -5626,7 +5626,7 @@ Partial Public Class Processor286
             Dim exponentInBed As Integer = CInt(Math.Floor(Math.Log(absoluteInBed, 2.0)))
             Dim fractionInBed As Double = absoluteInBed / Math.Pow(2.0, exponentInBed)
             significandInBed = &H8000000000000000UL Or
-                CULng((fractionInBed - 1.0) * 9223372036854775808.0)
+                CULng((fractionInBed - 1.0) * 9.2233720368547758E+18)
             signExponentInBed = CUShort((exponentInBed + 16383) And &H7FFF)
             If valueInBed < 0.0 Then signExponentInBed = CUShort(signExponentInBed Or &H8000US)
         End If
@@ -7223,18 +7223,18 @@ Partial Public Class Processor286
         End If
         LastFault = message
         If RuntimeDiagnostics.Enabled Then
-        _diagnosticCpuFaultSequenceInBed += 1UL
-        If _diagnosticCpuFaultSequenceInBed = 2UL AndAlso _diagnosticGpHandlerTraceInBed.Count = 0 Then
-            _diagnosticGpHandlerRemainingInBed = DiagnosticGpHandlerCapacityInBed
-        End If
-        Dim instructionBytesInBed As New System.Text.StringBuilder()
-        For byteIndexInBed As Integer = 0 To 7
-            Dim codeOffsetInBed As UInteger = CUInt(_instructionStartIp) + CUInt(byteIndexInBed)
-            If codeOffsetInBed > _instructionStartCsLimitInBed Then Exit For
-            If instructionBytesInBed.Length > 0 Then instructionBytesInBed.Append(" ")
-            instructionBytesInBed.Append(ReadByte((_instructionStartCsBaseInBed + codeOffsetInBed) And &HFFFFFFUI).ToString("X2"))
-        Next
-        Dim faultEntryInBed As String =
+            _diagnosticCpuFaultSequenceInBed += 1UL
+            If _diagnosticCpuFaultSequenceInBed = 2UL AndAlso _diagnosticGpHandlerTraceInBed.Count = 0 Then
+                _diagnosticGpHandlerRemainingInBed = DiagnosticGpHandlerCapacityInBed
+            End If
+            Dim instructionBytesInBed As New System.Text.StringBuilder()
+            For byteIndexInBed As Integer = 0 To 7
+                Dim codeOffsetInBed As UInteger = CUInt(_instructionStartIp) + CUInt(byteIndexInBed)
+                If codeOffsetInBed > _instructionStartCsLimitInBed Then Exit For
+                If instructionBytesInBed.Length > 0 Then instructionBytesInBed.Append(" ")
+                instructionBytesInBed.Append(ReadByte((_instructionStartCsBaseInBed + codeOffsetInBed) And &HFFFFFFUI).ToString("X2"))
+            Next
+            Dim faultEntryInBed As String =
             "#" & _diagnosticCpuFaultSequenceInBed.ToString("000000") &
             " vec=" & vector.ToString("00") &
             " at=" & _instructionStartCs.ToString("X4") & ":" & _instructionStartIp.ToString("X4") &
@@ -7248,36 +7248,36 @@ Partial Public Class Processor286
             " err=" & If(hasErrorCodeInBed, errorCodeInBed.ToString("X4"), "----") &
             " msg=" & message &
             If(String.IsNullOrEmpty(_diagnosticFaultAccessContextInBed), "", " | " & _diagnosticFaultAccessContextInBed)
-        ' Windows Standard Mode uses #NP to demand-load movable segments.  A
-        ' reset separates this phase from the earlier DPMI callback probe, so
-        ' arm a fresh stream at the first post-reset #NP and retain the handler
-        ' path that either services or rejects the demand-load request.
-        If ProtectedMode AndAlso vector = 11 Then
-            ' Keep the most recent demand-load transaction.  Windows can load
-            ' many movable segments during Setup; retaining only the first one
-            ' lets the bounded stream expire long before a later bad fixup is
-            ' executed.  A new architectural #NP therefore supersedes the old
-            ' diagnostic file.  This changes observation only, not exception
-            ' delivery, descriptor state, or scheduler time.
-            If _forensicTraceWriterInBed IsNot Nothing Then
-                EndForensicTraceInBed("superseded by later protected-mode #NP demand load")
-            End If
-            BeginForensicTraceInBed()
-            WriteDiagnosticLdtHistoryToForensicTraceInBed()
-            Dim faultSelectorInBed As UInt16 =
+            ' Windows Standard Mode uses #NP to demand-load movable segments.  A
+            ' reset separates this phase from the earlier DPMI callback probe, so
+            ' arm a fresh stream at the first post-reset #NP and retain the handler
+            ' path that either services or rejects the demand-load request.
+            If ProtectedMode AndAlso vector = 11 Then
+                ' Keep the most recent demand-load transaction.  Windows can load
+                ' many movable segments during Setup; retaining only the first one
+                ' lets the bounded stream expire long before a later bad fixup is
+                ' executed.  A new architectural #NP therefore supersedes the old
+                ' diagnostic file.  This changes observation only, not exception
+                ' delivery, descriptor state, or scheduler time.
+                If _forensicTraceWriterInBed IsNot Nothing Then
+                    EndForensicTraceInBed("superseded by later protected-mode #NP demand load")
+                End If
+                BeginForensicTraceInBed()
+                WriteDiagnosticLdtHistoryToForensicTraceInBed()
+                Dim faultSelectorInBed As UInt16 =
                 CUShort(If(hasErrorCodeInBed, errorCodeInBed And &HFFFCUS, 0US))
-            Dim faultDescriptorInBed As Descriptor286
-            Dim faultDescriptorTextInBed As String = "unreadable"
-            If hasErrorCodeInBed AndAlso
+                Dim faultDescriptorInBed As Descriptor286
+                Dim faultDescriptorTextInBed As String = "unreadable"
+                If hasErrorCodeInBed AndAlso
                TryReadDescriptor(faultSelectorInBed, faultDescriptorInBed) Then
-                faultDescriptorTextInBed =
+                    faultDescriptorTextInBed =
                     "addr=" & faultDescriptorInBed.DescriptorAddress.ToString("X6") &
                     " base=" & faultDescriptorInBed.BaseAddress.ToString("X6") &
                     " limit=" & faultDescriptorInBed.Limit.ToString("X4") &
                     " access=" & faultDescriptorInBed.Access.ToString("X2") &
                     " present=" & If((faultDescriptorInBed.Access And &H80) <> 0, "1", "0")
-            End If
-            WriteForensicEventInBed(
+                End If
+                WriteForensicEventInBed(
                 "TARGET TRACE BEGIN: #NP at " &
                 _instructionStartCs.ToString("X4") & ":" &
                 _instructionStartIp.ToString("X4") &
@@ -7288,23 +7288,23 @@ Partial Public Class Processor286
                 " LDT=" & _ldtBaseInBed.ToString("X6") & ":" &
                 _ldtLimitInBed.ToString("X4") &
                 " descriptor=[" & faultDescriptorTextInBed & "]")
-        End If
-        Dim repetitiveWindowsDispatchFaultInBed As Boolean =
+            End If
+            Dim repetitiveWindowsDispatchFaultInBed As Boolean =
             vector = 13 AndAlso _instructionStartCs = &H78US AndAlso
             _instructionStartIp = &HC62US
-        If _diagnosticImportantIntTraceEnabled AndAlso ProtectedMode AndAlso
+            If _diagnosticImportantIntTraceEnabled AndAlso ProtectedMode AndAlso
            Not repetitiveWindowsDispatchFaultInBed Then
-            Dim gateAddressInBed As UInteger = IdtrBase + CUInt(vector * 8)
-            Dim gateDescriptionInBed As String
-            If CUInt(vector * 8 + 7) <= IdtrLimit Then
-                gateDescriptionInBed =
+                Dim gateAddressInBed As UInteger = IdtrBase + CUInt(vector * 8)
+                Dim gateDescriptionInBed As String
+                If CUInt(vector * 8 + 7) <= IdtrLimit Then
+                    gateDescriptionInBed =
                     ReadWord(gateAddressInBed + 2UI).ToString("X4") & ":" &
                     ReadWord(gateAddressInBed).ToString("X4") &
                     " access=" & ReadByte(gateAddressInBed + 5UI).ToString("X2")
-            Else
-                gateDescriptionInBed = "outside IDTR limit"
-            End If
-            TraceDiagnosticDpmi(
+                Else
+                    gateDescriptionInBed = "outside IDTR limit"
+                End If
+                TraceDiagnosticDpmi(
                 "CPU exception vec=" & vector.ToString("00") &
                 " at=" & _instructionStartCs.ToString("X4") & ":" & _instructionStartIp.ToString("X4") &
                 " bytes=[" & instructionBytesInBed.ToString() & "]" &
@@ -7312,16 +7312,16 @@ Partial Public Class Processor286
                 " SS:SP=" & SS.ToString("X4") & ":" & SP.ToString("X4") &
                 " FL=" & Flags.ToString("X4") &
                 " msg=" & message)
-            _diagnosticDpmiExceptionReturnPending = True
-        End If
-        While _diagnosticCpuFaultTraceInBed.Count >= DiagnosticCpuFaultCapacityInBed
-            _diagnosticCpuFaultTraceInBed.Dequeue()
-        End While
-        If _diagnosticCpuFirstFaultTraceInBed.Count < DiagnosticCpuFirstFaultCapacityInBed Then
-            _diagnosticCpuFirstFaultTraceInBed.Add(faultEntryInBed)
-        End If
-        _diagnosticCpuFaultTraceInBed.Enqueue(faultEntryInBed)
-        _diagnosticFaultAccessContextInBed = ""
+                _diagnosticDpmiExceptionReturnPending = True
+            End If
+            While _diagnosticCpuFaultTraceInBed.Count >= DiagnosticCpuFaultCapacityInBed
+                _diagnosticCpuFaultTraceInBed.Dequeue()
+            End While
+            If _diagnosticCpuFirstFaultTraceInBed.Count < DiagnosticCpuFirstFaultCapacityInBed Then
+                _diagnosticCpuFirstFaultTraceInBed.Add(faultEntryInBed)
+            End If
+            _diagnosticCpuFaultTraceInBed.Enqueue(faultEntryInBed)
+            _diagnosticFaultAccessContextInBed = ""
         Else
             _diagnosticFaultAccessContextInBed = ""
         End If

@@ -38,3 +38,29 @@ The target is a physical Intel 80287 attached to an 80286. Later 80387 instructi
 - The motherboard ERROR/BUSY latch and IRQ13 electrical path remains incomplete; the architectural status and ERROR output are retained for diagnosis.
 
 Do not replace any of these with host math shortcuts when guest-visible results, flags, tags, exceptions, or saved-state bytes would differ from an 80287.
+
+## Projective infinity comparisons - 2026-09-08
+
+`CompareSt0With` now honors control-word IC (bit 12). Intel 210498-005,
+Table 1-12, printed page 1-28 (PDF page 378), specifies:
+
+- IC=0: any signed infinity compared with either signed infinity is equal.
+- IC=0: infinity compared with a finite value (including zero) is invalid;
+  a masked exception reports unordered. An unmasked exception prevents pops.
+- IC=1: affine comparison retains the signed ordering -infinity < finite < +infinity.
+
+The supplied SCORCH.EXE's startup routine at image offset 032Ah executes
+FNINIT, FLD +infinity (CS:024Bh), FCHS, FCOMP +infinity, FSTSW AX, SAHF.
+Its JZ at 033Eh retains the 80287 classification (2); falling through increments
+it to 80387 (3), stored at DS:83B0h. The math runtime checks this variable before
+selecting FCOS (0561h), FSIN (0D78h), or FSINCOS (0ECAh). Ignoring IC caused
+false 80387 detection. Honoring IC selects the game's older-coprocessor path.
+
+Validation executes the extracted detection routine on the existing isolated
+SingleStep CPU/memory bed: before the fix it stores 3, after the fix it stores 2.
+`Tools/Test-80287Infinity.ps1 -AssemblyPath <built emulator DLL>` covers both
+IC modes, all infinity signs and operand orders, finite/zero comparisons,
+masked/unmasked exceptions, pop behavior, and the actual detection sequence.
+It also verifies that FSINCOS/FSIN/FCOS remain rejected. All 504 checks pass.
+The 80286 core, S3 card, and ROMs are unchanged. Full in-game verification of
+the corrected hardware path remains a separate live check.
