@@ -86,6 +86,13 @@ Public Class Form1
     Private _ideHardwareConfiguration As IdeHardwareConfiguration
     Private _pendingIdeHardwareConfiguration As IdeHardwareConfiguration
     Private _isaCardConfiguration As IsaExpansionCardConfiguration
+    Private _hardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
+    Private _pendingHardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
+    Private _installedCpuHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+    Private _installedNumericCoprocessorHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+    Private _installedVideoHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+    Private _installedAudioHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+    Private _installedNetworkHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
     Private _pendingSoundBlaster16Jumpers As SoundBlaster16JumperSettings
     Private _pendingNe2000Jumpers As Ne2000JumperSettings
 
@@ -636,27 +643,23 @@ Public Class Form1
         ' Preserve the emulated CRT face geometry when the host window is resized.
         PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
 
-        ' Load the physical ISA card straps before the devices are registered on
-        ' the motherboard bus.  This is host chassis state, not guest CMOS.
+        ' Physical population and card straps are chassis state, not guest CMOS.
+        InitializeHardwarePopulationConfigurationInBed()
         InitializeIsaExpansionCardConfigurationInBed()
 
-        ' Bring the real motherboard/device fabric up before the reset vector.
+        ' Bring up fixed motherboard fabric first, then populate the removable
+        ' CPU/NPX sockets and ISA connectors while chassis power is still off.
         InitializeHardware()
-
+        ApplyHardwarePopulationToMachineInBed()
 
         InitializeRamBanks()
         Dim romPath As String = Path.Combine(AppContext.BaseDirectory, "Firmware", "atbios.rom")
-        CPU0.MirrorLegacyMemory = False
-        CPU0.MirrorLegacyTextCells = False
-        CPU0.HostFirmwareInterrupts = False
-        CPU0.LoadSystemRom(File.ReadAllBytes(romPath))
-
-        Dim videoRomPath As String = Path.Combine(AppContext.BaseDirectory, "Firmware", "stealthpro.rom")
-        VideoCard.LoadOptionRom(File.ReadAllBytes(videoRomPath))
-
-        ' JP-DIAG is a host service jumper, not guest-visible VGA hardware.
-        ' Normal power-on state is OPEN: no forensic overlay.
-        VideoCard.DiagnosticOverlayJumperClosed = False
+        MotherboardMemory.MirrorLegacyMemory = False
+        MotherboardMemory.LoadSystemRom(File.ReadAllBytes(romPath))
+        If CPU0 IsNot Nothing Then
+            CPU0.MirrorLegacyTextCells = False
+            CPU0.HostFirmwareInterrupts = False
+        End If
         InitializeIdeHardwareConfigurationInBed()
         InitializeIdeDriveShelf()
         InitializeFloppyBox()
@@ -673,7 +676,7 @@ Public Class Form1
         GPU.Interval = 50
         GPU.Enabled = False
 
-        CPU0.Reset()
+        If CPU0 IsNot Nothing Then CPU0.Reset()
         ApplyFirmwareResetVectorSafetyGuardInBed()
         MachineClock.Reset()
         RestoreHostExecutionRateInBed()
@@ -684,26 +687,26 @@ Public Class Form1
         ' Presentation requests are serviced by the machine thread at a slice
         ' boundary while it already owns the guest. The raster worker never races
         ' the machine gate and therefore cannot starve for seconds under timing debt.
-        _videoPresentation = New DiamondStealthPro928PresentationWorker()
-        AddHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
-        _videoPresentation.Start()
         _machineRuntime.SetBoundaryService(
             Sub()
                 DrainSerialMouseHostMovementAtBoundaryInBed()
                 Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-                If presentationInBed IsNot Nothing Then
-                    presentationInBed.ServiceCaptureAtMachineBoundary(VideoCard)
+                Dim videoInBed As DiamondStealthPro928 = VideoCard
+                If presentationInBed IsNot Nothing AndAlso videoInBed IsNot Nothing Then
+                    presentationInBed.ServiceCaptureAtMachineBoundary(videoInBed)
                 End If
             End Sub)
-
+        ConfigureVideoPresentationForInstalledAdapterInBed()
+        IsaBackplane.SetChassisPowered(True)
         _machineRuntime.Start()
-        GPU.Enabled = True
+        GPU.Enabled = (VideoCard IsNot Nothing)
     End Sub
 
     ' Host reset-vector guard retained intentionally.  If firmware is blank at
     ' FFFF:0000 after any host-initiated reset/power-on, do not let uninitialized
     ' bytes execute as guest code. Architectural HLT behavior remains untouched.
     Private Sub ApplyFirmwareResetVectorSafetyGuardInBed()
+        If CPU0 Is Nothing Then Return
         If CPU0.ReadWord(&HFFFF0UI) = 0 AndAlso CPU0.ReadWord(&HFFFF2UI) = 0 Then
             CPU0.Halted = True
         End If
@@ -713,6 +716,9 @@ Public Class Form1
                                                    elapsedHostTicksInBed As Long,
                                                    executionHostTicksInBed As Long,
                                                    targetClockHzInBed As Long)
+        ' Empty-socket board time is not CPU execution. Do not turn the clock
+        ' accounting quantum into bogus MIPS/performance telemetry.
+        If CPU0 Is Nothing Then Return
         RecordCpuPerformanceInBed(consumedTStatesInBed,
                                   elapsedHostTicksInBed,
                                   executionHostTicksInBed,
@@ -788,8 +794,8 @@ Public Class Form1
         ' any sheet still under the virtual print head before process teardown.
         Lpt1Printer.Dispose()
         Lpt2Printer.Dispose()
-        SoundBlaster16.Dispose()
-        Ne2000.Dispose()
+        IsaBackplane.SetChassisPowered(False)
+        RemoveInstalledIsaCardsInBed()
         RealTimeClock.Save()
         If _systemConfigurationDrawer IsNot Nothing AndAlso Not _systemConfigurationDrawer.IsDisposed Then
             _systemConfigurationDrawer.Close()
@@ -892,11 +898,13 @@ Public Class Form1
         Dim serviceJumpers As New ToolStripMenuItem("Service Jumpers")
         Dim vgaDiagnosticJumper As New ToolStripMenuItem("JP-DIAG: VGA Diagnostic Overlay") With {
             .CheckOnClick = True,
-            .Checked = ReadMachineInBed(Function() VideoCard.DiagnosticOverlayJumperClosed),
+            .Checked = ReadMachineInBed(Function() VideoCard IsNot Nothing AndAlso VideoCard.DiagnosticOverlayJumperClosed),
             .ToolTipText = "Checked = jumper CLOSED/installed; unchecked = OPEN/off"
         }
         AddHandler vgaDiagnosticJumper.CheckedChanged,
-            Sub() WithMachineInBed(Sub() VideoCard.DiagnosticOverlayJumperClosed = vgaDiagnosticJumper.Checked)
+            Sub() WithMachineInBed(Sub()
+                                        If VideoCard IsNot Nothing Then VideoCard.DiagnosticOverlayJumperClosed = vgaDiagnosticJumper.Checked
+                                    End Sub)
         serviceJumpers.DropDownItems.Add(vgaDiagnosticJumper)
         machine.DropDownItems.Add(New ToolStripSeparator())
         machine.DropDownItems.Add(serviceJumpers)
@@ -913,25 +921,39 @@ Public Class Form1
         diagnosticsMenu.DropDownItems.Add("Keyboard live state...", Nothing, Sub() ShowKeyboardLiveState())
         diagnosticsMenu.DropDownItems.Add("Show raw keyboard wire trace...", Nothing, Sub() ShowKeyboardWireTrace())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.BeginDiagnosticBiosKeyboardTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.EndDiagnosticBiosKeyboardTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                              If CPU0 IsNot Nothing Then CPU0.BeginDiagnosticBiosKeyboardTrace()
+                                                          End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                             If CPU0 IsNot Nothing Then CPU0.EndDiagnosticBiosKeyboardTrace()
+                                                         End Sub))
         diagnosticsMenu.DropDownItems.Add("Show BIOS keyboard-ring trace...", Nothing, Sub() ShowBiosKeyboardRingTrace())
         diagnosticsMenu.DropDownItems.Add("BIOS keyboard-ring live state...", Nothing, Sub() ShowBiosKeyboardRingState())
         diagnosticsMenu.DropDownItems.Add("Clear raw keyboard wire trace", Nothing, Sub() WithMachineInBed(Sub() KeyboardController.ClearDiagnosticTrace()))
         diagnosticsMenu.DropDownItems.Add("Run keyboard hardware self-test...", Nothing, Sub() RunKeyboardHardwareSelfTest())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear VGA mode trace", Nothing, Sub() WithMachineInBed(Sub() VideoCard.BeginDiagnosticVgaTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop VGA mode trace", Nothing, Sub() WithMachineInBed(Sub() VideoCard.EndDiagnosticVgaTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear VGA mode trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                        If VideoCard IsNot Nothing Then VideoCard.BeginDiagnosticVgaTrace()
+                                                    End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop VGA mode trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                       If VideoCard IsNot Nothing Then VideoCard.EndDiagnosticVgaTrace()
+                                                   End Sub))
         diagnosticsMenu.DropDownItems.Add("Show VGA mode trace...", Nothing, Sub() ShowVgaModeTrace())
         diagnosticsMenu.DropDownItems.Add("VGA live state...", Nothing, Sub() ShowVgaStateSnapshot())
         diagnosticsMenu.DropDownItems.Add("80287 flight recorder...", Nothing, Sub() ShowNumericCoprocessorFlightRecorderInBed())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear important INTn trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.BeginDiagnosticImportantIntTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop important INTn trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.EndDiagnosticImportantIntTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear important INTn trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                           If CPU0 IsNot Nothing Then CPU0.BeginDiagnosticImportantIntTrace()
+                                                       End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop important INTn trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                          If CPU0 IsNot Nothing Then CPU0.EndDiagnosticImportantIntTrace()
+                                                      End Sub))
         diagnosticsMenu.DropDownItems.Add("Show important INTn trace...", Nothing, Sub() ShowImportantIntTrace())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
         diagnosticsMenu.DropDownItems.Add("Show QB EXEC forensic trace...", Nothing, Sub() ShowQbExecForensicTraceInBed())
-        diagnosticsMenu.DropDownItems.Add("Clear/disarm QB EXEC forensic trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.ClearDiagnosticQbExecTrace()))
+        diagnosticsMenu.DropDownItems.Add("Clear/disarm QB EXEC forensic trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                        If CPU0 IsNot Nothing Then CPU0.ClearDiagnosticQbExecTrace()
+                                                    End Sub))
         machine.DropDownItems.Add(diagnosticsMenu)
         ramBanksMenu = BuildRamBanksMenu()
         machine.DropDownItems.Add(ramBanksMenu)
@@ -977,12 +999,12 @@ Public Class Form1
 
         rootInBed.DropDownItems.Add("Sound Blaster 16 diagnostics", Nothing,
             Sub()
-                Dim textInBed As String = ReadMachineInBed(Function() SoundBlaster16.DiagnosticText())
+                Dim textInBed As String = ReadMachineInBed(Function() If(SoundBlaster16 Is Nothing, "No Sound Blaster 16 installed.", SoundBlaster16.DiagnosticText()))
                 ShowDumpableDiagnosticInBed("Sound Blaster 16", textInBed, "soundblaster16-diagnostic.txt", 980, 700)
             End Sub)
         rootInBed.DropDownItems.Add("NE2000 diagnostics", Nothing,
             Sub()
-                Dim textInBed As String = ReadMachineInBed(Function() Ne2000.DiagnosticText())
+                Dim textInBed As String = ReadMachineInBed(Function() If(Ne2000 Is Nothing, "No NE2000 installed.", Ne2000.DiagnosticText()))
                 ShowDumpableDiagnosticInBed("NE2000", textInBed, "ne2000-diagnostic.txt", 980, 700)
             End Sub)
 
@@ -1011,13 +1033,18 @@ Public Class Form1
                     If Not Integer.TryParse(peerTextInBed, peerPortInBed) OrElse peerPortInBed < 1 OrElse peerPortInBed > 65535 Then
                         Throw New ArgumentException("Peer UDP port must be 1 through 65535.")
                     End If
-                    WithMachineInBed(Sub() Ne2000.ConfigureUdpTunnel(localPortInBed, peerHostInBed, peerPortInBed))
+                    WithMachineInBed(Sub()
+                                         If Ne2000 Is Nothing Then Throw New InvalidOperationException("No NE2000 is installed.")
+                                         Ne2000.ConfigureUdpTunnel(localPortInBed, peerHostInBed, peerPortInBed)
+                                     End Sub)
                 Catch ex As Exception
                     MessageBox.Show(Me, ex.Message, "NE2000 cable", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 End Try
             End Sub)
         rootInBed.DropDownItems.Add("Disconnect NE2000 cable", Nothing,
-            Sub() WithMachineInBed(Sub() Ne2000.DisconnectUdpTunnel()))
+            Sub() WithMachineInBed(Sub()
+                                          If Ne2000 IsNot Nothing Then Ne2000.DisconnectUdpTunnel()
+                                      End Sub))
         rootInBed.DropDownItems.Add("Start NE2000 PCAP capture...", Nothing,
             Sub()
                 Using dialogInBed As New SaveFileDialog()
@@ -1028,20 +1055,33 @@ Public Class Form1
                     dialogInBed.FileName = "ne2000-capture.pcap"
                     If dialogInBed.ShowDialog(Me) <> DialogResult.OK Then Return
                     Try
-                        WithMachineInBed(Sub() Ne2000.SetPcapCapture(dialogInBed.FileName))
+                        WithMachineInBed(Sub()
+                                             If Ne2000 Is Nothing Then Throw New InvalidOperationException("No NE2000 is installed.")
+                                             Ne2000.SetPcapCapture(dialogInBed.FileName)
+                                         End Sub)
                     Catch ex As Exception
                         MessageBox.Show(Me, ex.Message, "NE2000 capture", MessageBoxButtons.OK, MessageBoxIcon.Error)
                     End Try
                 End Using
             End Sub)
         rootInBed.DropDownItems.Add("Stop NE2000 PCAP capture", Nothing,
-            Sub() WithMachineInBed(Sub() Ne2000.SetPcapCapture(Nothing)))
+            Sub() WithMachineInBed(Sub()
+                                          If Ne2000 IsNot Nothing Then Ne2000.SetPcapCapture(Nothing)
+                                      End Sub))
 
         AddHandler rootInBed.DropDownOpening,
             Sub()
-                sbStatusInBed.Text = "SB16: " & SoundBlaster16.BasePort.ToString("X3") & "h / IRQ" & SoundBlaster16.Irq.ToString() &
-                                     " / DMA" & SoundBlaster16.Dma8Channel.ToString() & "/" & SoundBlaster16.Dma16Channel.ToString()
-                neStatusInBed.Text = "NE2000: " & Ne2000.BasePort.ToString("X3") & "h / IRQ" & Ne2000.Irq.ToString() & " / " & Ne2000.MacAddressText
+                If SoundBlaster16 Is Nothing Then
+                    sbStatusInBed.Text = "SB16: None — ISA slot empty"
+                Else
+                    sbStatusInBed.Text = "SB16: " & SoundBlaster16.BasePort.ToString("X3") & "h / IRQ" & SoundBlaster16.Irq.ToString() &
+                                         " / DMA" & SoundBlaster16.Dma8Channel.ToString() & "/" & SoundBlaster16.Dma16Channel.ToString()
+                End If
+                If Ne2000 Is Nothing Then
+                    neStatusInBed.Text = "NE2000: None — ISA slot empty"
+                Else
+                    neStatusInBed.Text = "NE2000: " & Ne2000.BasePort.ToString("X3") & "h / IRQ" & Ne2000.Irq.ToString() & " / " & Ne2000.MacAddressText
+                End If
             End Sub
 
         Return rootInBed
@@ -1238,6 +1278,10 @@ Public Class Form1
 
     Private Function GetSystemConfigurationSnapshotUnlockedInBed() As SystemConfigurationSnapshot
         Dim snapshotInBed As New SystemConfigurationSnapshot()
+        Dim currentPopulationInBed As MachineHardwarePopulationConfiguration =
+            If(_hardwarePopulationConfiguration, New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory))
+        Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+
         snapshotInBed.Chassis = "AT chassis profile not yet modeled"
         snapshotInBed.PowerSupply = "Power-supply profile not yet modeled"
         snapshotInBed.Motherboard = "C&T CS8221 NEAT-class AT motherboard"
@@ -1249,22 +1293,45 @@ Public Class Form1
         snapshotInBed.ChipsetConfigurationPorts = "NEAT indexed configuration interface — 22h index / 23h data"
         snapshotInBed.ChipsetTiming = Chipset.TimingDiagnosticText()
         snapshotInBed.Bios = "Cromwell AT BIOS — Firmware\atbios.rom"
-        snapshotInBed.Cpu = MachineProfile286.ProcessorVendor & " " & MachineProfile286.ProcessorModel
-        snapshotInBed.CpuClock = (MachineClock.CpuClockHz \ 1000000L).ToString() & " MHz" & If(MachineClock.TurboEnabled, " — Turbo", " — Normal")
+
+        snapshotInBed.CpuHardwareId = effectivePopulationInBed.CpuId
+        snapshotInBed.NumericCoprocessorHardwareId = effectivePopulationInBed.NumericCoprocessorId
+        snapshotInBed.VideoHardwareId = effectivePopulationInBed.VideoCardId
+        snapshotInBed.AudioHardwareId = effectivePopulationInBed.AudioCardId
+        snapshotInBed.NetworkHardwareId = effectivePopulationInBed.NetworkCardId
+
+        snapshotInBed.Cpu = If(CPU0 Is Nothing,
+                               ProcessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId),
+                               ProcessorCatalog286.DisplayName(currentPopulationInBed.CpuId))
+        snapshotInBed.CpuClock = If(CPU0 Is Nothing,
+                                    "No CPU clocked — socket empty",
+                                    (MachineClock.CpuClockHz \ 1000000L).ToString() & " MHz" & If(MachineClock.TurboEnabled, " — Turbo", " — Normal"))
         snapshotInBed.HostExecutionRatePercent = MachineClock.HostExecutionRatePercent
         snapshotInBed.HostExecutionRate = If(MachineClock.HostExecutionRatePercent = 0,
                                                 "Unlimited — host limited",
                                                 (CDbl(MachineClock.HostExecutionRatePercent) / 100.0R).ToString("0.##") & "× real time")
-        snapshotInBed.NumericCoprocessor = "Intel 80287"
+        snapshotInBed.NumericCoprocessor = If(NumericCoprocessor0 Is Nothing,
+                                              NumericCoprocessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId),
+                                              NumericCoprocessorCatalog286.DisplayName(currentPopulationInBed.NumericCoprocessorId))
         snapshotInBed.InstalledMemoryMb = If(_ramBanks Is Nothing, 0, _ramBanks.InstalledMemoryMb)
         snapshotInBed.Memory = snapshotInBed.InstalledMemoryMb.ToString() & " MB"
         snapshotInBed.PendingMemoryMb = _pendingMemoryMb
-        snapshotInBed.Video = "Diamond Stealth Pro ISA — S3 86C928 — 2 MiB VRAM"
-        snapshotInBed.VideoRom = "Diamond Stealth Pro option ROM — Firmware\stealthpro.rom"
-        snapshotInBed.ExpansionAudio = "Creative Sound Blaster 16 — " & SoundBlaster16.BasePort.ToString("X3") & "h — IRQ" & SoundBlaster16.Irq.ToString() &
-                                       " — DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & " — OPL3"
+        snapshotInBed.Video = If(VideoCard Is Nothing,
+                                 IsaCardCatalog286.VideoDisplayName(MachineHardwarePopulationConfiguration.NoneId),
+                                 IsaCardCatalog286.VideoDisplayName(currentPopulationInBed.VideoCardId))
+        snapshotInBed.VideoRom = If(VideoCard Is Nothing,
+                                    "None — no video option ROM installed",
+                                    "Diamond Stealth Pro option ROM — Firmware\stealthpro.rom")
+        If SoundBlaster16 Is Nothing Then
+            snapshotInBed.ExpansionAudio = IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.NoneId)
+        Else
+            snapshotInBed.ExpansionAudio = "Creative Sound Blaster 16 — " & SoundBlaster16.BasePort.ToString("X3") & "h — IRQ" & SoundBlaster16.Irq.ToString() &
+                                           " — DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & " — OPL3"
+        End If
         snapshotInBed.Speaker = "Motherboard PC speaker — PIT channel 2 / port 61h"
-        snapshotInBed.Network = "Novell NE2000-compatible — " & Ne2000.BasePort.ToString("X3") & "h — IRQ" & Ne2000.Irq.ToString() & " — " & Ne2000.MacAddressText
+        snapshotInBed.Network = If(Ne2000 Is Nothing,
+                                   IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.NoneId),
+                                   "Novell NE2000-compatible — " & Ne2000.BasePort.ToString("X3") & "h — IRQ" & Ne2000.Irq.ToString() & " — " & Ne2000.MacAddressText)
         snapshotInBed.FloppyController = "NEC uPD765A / Intel 8272-compatible FDC"
         snapshotInBed.FloppyDriveA = "AT floppy drive unit A — swappable drive profile"
         snapshotInBed.FloppyDriveB = "AT floppy drive unit B — swappable drive profile"
@@ -1292,27 +1359,37 @@ Public Class Form1
         snapshotInBed.Com2 = "NS16550A-compatible UART — 2F8h — IRQ3 — DB-9 connector"
         snapshotInBed.Lpt1 = "IBM-compatible SPP / Centronics — 378h — IRQ7"
         snapshotInBed.Lpt2 = "IBM-compatible SPP / Centronics — 278h — IRQ5"
-        snapshotInBed.GamePort = If(SoundBlaster16.GamePortEnabled,
+        If SoundBlaster16 Is Nothing Then
+            snapshotInBed.GamePort = "None — no expansion game port installed"
+            snapshotInBed.Midi = "None — no MPU-401 interface installed"
+        Else
+            snapshotInBed.GamePort = If(SoundBlaster16.GamePortEnabled,
                                         "Sound Blaster 16 game port — 201h — no joystick attached",
                                         "Sound Blaster 16 game port — disabled by card jumper")
-        snapshotInBed.Midi = "MPU-401 UART-compatible — " & SoundBlaster16.MpuBasePort.ToString("X3") & "h (Sound Blaster 16)"
+            snapshotInBed.Midi = "MPU-401 UART-compatible — " & SoundBlaster16.MpuBasePort.ToString("X3") & "h (Sound Blaster 16)"
+        End If
         snapshotInBed.PendingHardwareSummary = GetPendingHardwareSummaryInBed()
-        snapshotInBed.ResourceSummary =
-            "NEAT config: 22h/23h" & Environment.NewLine &
-            "DMA: 00h-0Fh, 80h-8Fh, C0h-DEh" & Environment.NewLine &
-            "PIC: 20h/21h + A0h/A1h" & Environment.NewLine &
-            "PIT / speaker gate: 40h-43h + 61h" & Environment.NewLine &
-            "RTC / CMOS: 70h/71h, IRQ8" & Environment.NewLine &
-            "Keyboard: 60h/64h, IRQ1" & Environment.NewLine &
-            "Floppy: 3F2h-3F5h + 3F7h, IRQ6, DMA2" & Environment.NewLine &
-            "Primary IDE: 1F0h-1F7h + 3F6h, IRQ14" & Environment.NewLine &
-            "Secondary IDE: 170h-177h + 376h, IRQ15" & Environment.NewLine &
-            "VGA/S3: legacy VGA I/O + A0000h-BFFFFh, option ROM C0000h-C7FFFh" & Environment.NewLine &
-            "COM1: 3F8h-3FFh, IRQ4; COM2: 2F8h-2FFh, IRQ3" & Environment.NewLine &
-            "LPT1: 378h-37Ah, IRQ7; LPT2: 278h-27Ah, IRQ5" & Environment.NewLine &
-            "Sound Blaster 16: " & SoundBlaster16.BasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.BasePort) + &HF).ToString("X3") & "h + 388h-38Bh, IRQ" & SoundBlaster16.Irq.ToString() & ", DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & Environment.NewLine &
-            "MPU-401 UART: " & SoundBlaster16.MpuBasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.MpuBasePort) + 1).ToString("X3") & "h (SB16); game port: " & If(SoundBlaster16.GamePortEnabled, "201h", "disabled") & Environment.NewLine &
-            "NE2000: " & Ne2000.BasePort.ToString("X3") & "h-" & (CInt(Ne2000.BasePort) + &H1F).ToString("X3") & "h, IRQ" & Ne2000.Irq.ToString() & ", 16 KiB packet RAM"
+
+        Dim resourcesInBed As New System.Text.StringBuilder()
+        resourcesInBed.AppendLine("NEAT config: 22h/23h")
+        resourcesInBed.AppendLine("DMA: 00h-0Fh, 80h-8Fh, C0h-DEh")
+        resourcesInBed.AppendLine("PIC: 20h/21h + A0h/A1h")
+        resourcesInBed.AppendLine("PIT / speaker gate: 40h-43h + 61h")
+        resourcesInBed.AppendLine("RTC / CMOS: 70h/71h, IRQ8")
+        resourcesInBed.AppendLine("Keyboard: 60h/64h, IRQ1")
+        resourcesInBed.AppendLine("Floppy: 3F2h-3F5h + 3F7h, IRQ6, DMA2")
+        resourcesInBed.AppendLine("Primary IDE: 1F0h-1F7h + 3F6h, IRQ14")
+        resourcesInBed.AppendLine("Secondary IDE: 170h-177h + 376h, IRQ15")
+        If NumericCoprocessor0 IsNot Nothing Then resourcesInBed.AppendLine("80287 numeric processor extension: IRQ13 error path")
+        If VideoCard IsNot Nothing Then resourcesInBed.AppendLine("VGA/S3: legacy VGA I/O + A0000h-BFFFFh, option ROM C0000h-C7FFFh")
+        resourcesInBed.AppendLine("COM1: 3F8h-3FFh, IRQ4; COM2: 2F8h-2FFh, IRQ3")
+        resourcesInBed.AppendLine("LPT1: 378h-37Ah, IRQ7; LPT2: 278h-27Ah, IRQ5")
+        If SoundBlaster16 IsNot Nothing Then
+            resourcesInBed.AppendLine("Sound Blaster 16: " & SoundBlaster16.BasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.BasePort) + &HF).ToString("X3") & "h + 388h-38Bh, IRQ" & SoundBlaster16.Irq.ToString() & ", DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString())
+            resourcesInBed.AppendLine("MPU-401 UART: " & SoundBlaster16.MpuBasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.MpuBasePort) + 1).ToString("X3") & "h (SB16); game port: " & If(SoundBlaster16.GamePortEnabled, "201h", "disabled"))
+        End If
+        If Ne2000 IsNot Nothing Then resourcesInBed.Append("NE2000: " & Ne2000.BasePort.ToString("X3") & "h-" & (CInt(Ne2000.BasePort) + &H1F).ToString("X3") & "h, IRQ" & Ne2000.Irq.ToString() & ", 16 KiB packet RAM")
+        snapshotInBed.ResourceSummary = resourcesInBed.ToString().TrimEnd()
         Return snapshotInBed
     End Function
 
@@ -1443,6 +1520,7 @@ Public Class Form1
     Friend Sub RevertPendingSystemConfigurationInBed()
         _pendingMemoryMb = Nothing
         _pendingIdeHardwareConfiguration = Nothing
+        _pendingHardwarePopulationConfiguration = Nothing
         _pendingSoundBlaster16Jumpers = Nothing
         _pendingNe2000Jumpers = Nothing
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
@@ -1452,7 +1530,12 @@ Public Class Form1
         If _isaCardConfiguration Is Nothing Then Return
         Dim sbInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
         Dim neInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
-        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.SoundBlaster16, sbInBed, neInBed)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.SoundBlaster16,
+                                                    sbInBed,
+                                                    neInBed,
+                                                    soundBlasterInstalledInBed:=Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                    ne2000InstalledInBed:=Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
             If panelInBed.ShowDialog(Me) = DialogResult.OK Then
                 StageSoundBlaster16JumpersInBed(panelInBed.SoundBlasterSettings)
             End If
@@ -1463,7 +1546,12 @@ Public Class Form1
         If _isaCardConfiguration Is Nothing Then Return
         Dim sbInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
         Dim neInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
-        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.Ne2000, sbInBed, neInBed)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.Ne2000,
+                                                    sbInBed,
+                                                    neInBed,
+                                                    soundBlasterInstalledInBed:=Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                    ne2000InstalledInBed:=Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
             If panelInBed.ShowDialog(Me) = DialogResult.OK Then
                 StageNe2000JumpersInBed(panelInBed.Ne2000Settings)
             End If
@@ -1472,7 +1560,11 @@ Public Class Form1
 
     Private Sub StageSoundBlaster16JumpersInBed(settingsInBed As SoundBlaster16JumperSettings)
         If settingsInBed Is Nothing OrElse _isaCardConfiguration Is Nothing Then Return
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(settingsInBed, EffectiveNe2000JumpersInBed())
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(settingsInBed, EffectiveNe2000JumpersInBed(),
+                                                                                   Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
         If conflictsInBed.Count > 0 Then
             MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
@@ -1487,7 +1579,11 @@ Public Class Form1
 
     Private Sub StageNe2000JumpersInBed(settingsInBed As Ne2000JumperSettings)
         If settingsInBed Is Nothing OrElse _isaCardConfiguration Is Nothing Then Return
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(), settingsInBed)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(), settingsInBed,
+                                                                                   Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
         If conflictsInBed.Count > 0 Then
             MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
@@ -1531,6 +1627,7 @@ Public Class Form1
         Dim pendingInBed As New List(Of String)()
         If _pendingMemoryMb.HasValue Then pendingInBed.Add("memory " & _pendingMemoryMb.Value.ToString() & " MB")
         If _pendingIdeHardwareConfiguration IsNot Nothing Then pendingInBed.Add("IDE " & _pendingIdeHardwareConfiguration.Summary())
+        If _pendingHardwarePopulationConfiguration IsNot Nothing Then pendingInBed.Add("population " & _pendingHardwarePopulationConfiguration.Summary())
         If _pendingSoundBlaster16Jumpers IsNot Nothing Then pendingInBed.Add("SB16 " & _pendingSoundBlaster16Jumpers.Summary())
         If _pendingNe2000Jumpers IsNot Nothing Then pendingInBed.Add("NE2000 " & _pendingNe2000Jumpers.Summary())
         Return String.Join("; ", pendingInBed)
@@ -1540,7 +1637,8 @@ Public Class Form1
         Dim cardChangesInBed As Boolean =
             _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
         Dim ideChangesInBed As Boolean = _pendingIdeHardwareConfiguration IsNot Nothing
-        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed Then Return
+        Dim populationChangesInBed As Boolean = _pendingHardwarePopulationConfiguration IsNot Nothing
+        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed AndAlso Not populationChangesInBed Then Return
 
         Dim wasPoweredInBed As Boolean = _machinePoweredInBed
         If wasPoweredInBed Then SetMachinePowerInBed(False)
@@ -1628,6 +1726,13 @@ Public Class Form1
             End If
         End If
 
+        If populationChangesInBed Then
+            _hardwarePopulationConfiguration = _pendingHardwarePopulationConfiguration.CloneConfiguration()
+            _pendingHardwarePopulationConfiguration = Nothing
+            _hardwarePopulationConfiguration.SaveConfiguration()
+            ApplyHardwarePopulationToMachineInBed()
+        End If
+
         If wasPoweredInBed Then SetMachinePowerInBed(True)
 
         RebuildRamBanksMenu()
@@ -1635,28 +1740,275 @@ Public Class Form1
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
     End Sub
 
+    Private Sub InitializeHardwarePopulationConfigurationInBed()
+        _hardwarePopulationConfiguration = New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory)
+        _hardwarePopulationConfiguration.LoadConfiguration()
+        _hardwarePopulationConfiguration.SaveConfiguration()
+    End Sub
+
+    Private Function EffectiveHardwarePopulationInBed() As MachineHardwarePopulationConfiguration
+        If _pendingHardwarePopulationConfiguration IsNot Nothing Then Return _pendingHardwarePopulationConfiguration.CloneConfiguration()
+        If _hardwarePopulationConfiguration Is Nothing Then
+            Return New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory)
+        End If
+        Return _hardwarePopulationConfiguration.CloneConfiguration()
+    End Function
+
+    Private Shared Function SameHardwarePopulationInBed(aInBed As MachineHardwarePopulationConfiguration,
+                                                         bInBed As MachineHardwarePopulationConfiguration) As Boolean
+        If aInBed Is Nothing OrElse bInBed Is Nothing Then Return False
+        Return String.Equals(aInBed.CpuId, bInBed.CpuId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.NumericCoprocessorId, bInBed.NumericCoprocessorId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.VideoCardId, bInBed.VideoCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.AudioCardId, bInBed.AudioCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.NetworkCardId, bInBed.NetworkCardId, StringComparison.OrdinalIgnoreCase)
+    End Function
+
+    Private Sub StageHardwarePopulationInBed(kindInBed As String, idInBed As String)
+        If _hardwarePopulationConfiguration Is Nothing Then Return
+        Dim nextInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Select Case kindInBed
+            Case "cpu"
+                nextInBed.CpuId = MachineHardwarePopulationConfiguration.NormalizeCpuId(idInBed)
+            Case "npx"
+                nextInBed.NumericCoprocessorId = MachineHardwarePopulationConfiguration.NormalizeNumericCoprocessorId(idInBed)
+            Case "video"
+                nextInBed.VideoCardId = MachineHardwarePopulationConfiguration.NormalizeVideoCardId(idInBed)
+            Case "audio"
+                nextInBed.AudioCardId = MachineHardwarePopulationConfiguration.NormalizeAudioCardId(idInBed)
+            Case "network"
+                nextInBed.NetworkCardId = MachineHardwarePopulationConfiguration.NormalizeNetworkCardId(idInBed)
+            Case Else
+                Return
+        End Select
+
+        Dim sbInstalledInBed As Boolean = Not String.Equals(nextInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim neInstalledInBed As Boolean = Not String.Equals(nextInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim npxInstalledInBed As Boolean = Not String.Equals(nextInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(),
+                                                                                   EffectiveNe2000JumpersInBed(),
+                                                                                   sbInstalledInBed,
+                                                                                   neInstalledInBed,
+                                                                                   npxInstalledInBed)
+        If conflictsInBed.Count > 0 Then
+            MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If SameHardwarePopulationInBed(nextInBed, _hardwarePopulationConfiguration) Then
+            _pendingHardwarePopulationConfiguration = Nothing
+        Else
+            _pendingHardwarePopulationConfiguration = nextInBed
+        End If
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Sub StageCpuSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("cpu", idInBed)
+    End Sub
+
+    Friend Sub StageNumericCoprocessorSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("npx", idInBed)
+    End Sub
+
+    Friend Sub StageVideoSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("video", idInBed)
+    End Sub
+
+    Friend Sub StageAudioSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("audio", idInBed)
+    End Sub
+
+    Friend Sub StageNetworkSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("network", idInBed)
+    End Sub
+
+    Friend Function GetProcessorChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, ProcessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.HarrisCs80C28625Id, ProcessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.HarrisCs80C28625Id))
+        }
+    End Function
+
+    Friend Function GetNumericCoprocessorChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, NumericCoprocessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.Intel80287Id, NumericCoprocessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.Intel80287Id))
+        }
+    End Function
+
+    Friend Function GetVideoCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.VideoDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.DiamondStealthPro928Id, IsaCardCatalog286.VideoDisplayName(MachineHardwarePopulationConfiguration.DiamondStealthPro928Id))
+        }
+    End Function
+
+    Friend Function GetAudioCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.SoundBlaster16Id, IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.SoundBlaster16Id))
+        }
+    End Function
+
+    Friend Function GetNetworkCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.Ne2000Id, IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.Ne2000Id))
+        }
+    End Function
+
+    Private Sub RemoveInstalledIsaCardsInBed()
+        For Each slotIdInBed As String In New String() {VideoIsaSlotId, AudioIsaSlotId, NetworkIsaSlotId}
+            Dim slotInBed As IsaBackplaneSlot286 = IsaBackplane.FindSlot(slotIdInBed)
+            If slotInBed IsNot Nothing AndAlso Not slotInBed.IsEmpty Then IsaBackplane.RemoveCard(slotIdInBed)
+        Next
+        VideoCard = Nothing
+        SoundBlaster16 = Nothing
+        Ne2000 = Nothing
+        _installedVideoHardwareId = MachineHardwarePopulationConfiguration.NoneId
+        _installedAudioHardwareId = MachineHardwarePopulationConfiguration.NoneId
+        _installedNetworkHardwareId = MachineHardwarePopulationConfiguration.NoneId
+    End Sub
+
+    Private Sub ApplyHardwarePopulationToMachineInBed()
+        If _hardwarePopulationConfiguration Is Nothing Then Return
+        If _machineRuntime.IsRunning Then Throw New InvalidOperationException("Hardware population may only change while chassis power is off.")
+        IsaBackplane.SetChassisPowered(False)
+
+        Dim targetCpuInBed As String = MachineHardwarePopulationConfiguration.NormalizeCpuId(_hardwarePopulationConfiguration.CpuId)
+        If Not String.Equals(_installedCpuHardwareId, targetCpuInBed, StringComparison.OrdinalIgnoreCase) Then
+            SetProcessorPackageInBed(Nothing)
+            If Not String.Equals(targetCpuInBed, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then
+                SetProcessorPackageInBed(ProcessorCatalog286.CreateProcessor(targetCpuInBed))
+            End If
+            _installedCpuHardwareId = targetCpuInBed
+        End If
+
+        Dim targetNpxInBed As String = MachineHardwarePopulationConfiguration.NormalizeNumericCoprocessorId(_hardwarePopulationConfiguration.NumericCoprocessorId)
+        If Not String.Equals(_installedNumericCoprocessorHardwareId, targetNpxInBed, StringComparison.OrdinalIgnoreCase) Then
+            SetNumericCoprocessorPackageInBed(Nothing)
+            If Not String.Equals(targetNpxInBed, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then
+                SetNumericCoprocessorPackageInBed(NumericCoprocessorCatalog286.CreateNumericCoprocessor(targetNpxInBed))
+            End If
+            _installedNumericCoprocessorHardwareId = targetNpxInBed
+        End If
+        _machineRuntime.SetProcessor(CPU0)
+
+        If CPU0 IsNot Nothing Then
+            CPU0.MirrorLegacyTextCells = False
+            CPU0.HostFirmwareInterrupts = False
+        End If
+
+        Dim targetVideoInBed As String = MachineHardwarePopulationConfiguration.NormalizeVideoCardId(_hardwarePopulationConfiguration.VideoCardId)
+        If Not String.Equals(_installedVideoHardwareId, targetVideoInBed, StringComparison.OrdinalIgnoreCase) Then
+            Dim slotInBed As IsaBackplaneSlot286 = IsaBackplane.FindSlot(VideoIsaSlotId)
+            If slotInBed IsNot Nothing AndAlso Not slotInBed.IsEmpty Then IsaBackplane.RemoveCard(VideoIsaSlotId)
+            VideoCard = Nothing
+            If Not String.Equals(targetVideoInBed, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then
+                Dim definitionInBed As New IsaCardDefinition286(MachineHardwarePopulationConfiguration.DiamondStealthPro928Id,
+                                                                IsaCardCatalog286.VideoDisplayName(targetVideoInBed),
+                                                                IsaSlotConnectorWidth286.SixteenBit,
+                                                                Function() New DiamondStealthPro928())
+                VideoCard = DirectCast(IsaBackplane.InstallCard(VideoIsaSlotId, definitionInBed), DiamondStealthPro928)
+                Dim videoRomPathInBed As String = Path.Combine(AppContext.BaseDirectory, "Firmware", "stealthpro.rom")
+                If File.Exists(videoRomPathInBed) Then VideoCard.LoadOptionRom(File.ReadAllBytes(videoRomPathInBed))
+                VideoCard.DiagnosticOverlayJumperClosed = False
+            End If
+            _installedVideoHardwareId = targetVideoInBed
+        End If
+
+        Dim targetAudioInBed As String = MachineHardwarePopulationConfiguration.NormalizeAudioCardId(_hardwarePopulationConfiguration.AudioCardId)
+        If Not String.Equals(_installedAudioHardwareId, targetAudioInBed, StringComparison.OrdinalIgnoreCase) Then
+            Dim slotInBed As IsaBackplaneSlot286 = IsaBackplane.FindSlot(AudioIsaSlotId)
+            If slotInBed IsNot Nothing AndAlso Not slotInBed.IsEmpty Then IsaBackplane.RemoveCard(AudioIsaSlotId)
+            SoundBlaster16 = Nothing
+            If Not String.Equals(targetAudioInBed, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then
+                Dim sbSettingsInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
+                Dim definitionInBed As New IsaCardDefinition286(MachineHardwarePopulationConfiguration.SoundBlaster16Id,
+                                                                IsaCardCatalog286.AudioDisplayName(targetAudioInBed),
+                                                                IsaSlotConnectorWidth286.SixteenBit,
+                                                                Function()
+                                                                    Dim cardInBed As New SoundBlaster16Isa(sbSettingsInBed.BasePort, sbSettingsInBed.Irq, sbSettingsInBed.Dma8, sbSettingsInBed.Dma16, MasterPic, SlavePic, DmaController)
+                                                                    cardInBed.ConfigureHardware(sbSettingsInBed.BasePort, sbSettingsInBed.Irq, sbSettingsInBed.Dma8, sbSettingsInBed.Dma16, sbSettingsInBed.MpuPort, sbSettingsInBed.GamePortEnabled)
+                                                                    cardInBed.ConfigureWavetableHardware(sbSettingsInBed.Wavetable)
+                                                                    Return cardInBed
+                                                                End Function)
+                SoundBlaster16 = DirectCast(IsaBackplane.InstallCard(AudioIsaSlotId, definitionInBed), SoundBlaster16Isa)
+            End If
+            _installedAudioHardwareId = targetAudioInBed
+        End If
+
+        Dim targetNetworkInBed As String = MachineHardwarePopulationConfiguration.NormalizeNetworkCardId(_hardwarePopulationConfiguration.NetworkCardId)
+        If Not String.Equals(_installedNetworkHardwareId, targetNetworkInBed, StringComparison.OrdinalIgnoreCase) Then
+            Dim slotInBed As IsaBackplaneSlot286 = IsaBackplane.FindSlot(NetworkIsaSlotId)
+            If slotInBed IsNot Nothing AndAlso Not slotInBed.IsEmpty Then IsaBackplane.RemoveCard(NetworkIsaSlotId)
+            Ne2000 = Nothing
+            If Not String.Equals(targetNetworkInBed, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then
+                Dim neSettingsInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
+                Dim definitionInBed As New IsaCardDefinition286(MachineHardwarePopulationConfiguration.Ne2000Id,
+                                                                IsaCardCatalog286.NetworkDisplayName(targetNetworkInBed),
+                                                                IsaSlotConnectorWidth286.SixteenBit,
+                                                                Function()
+                                                                    Dim cardInBed As New Ne2000Isa(neSettingsInBed.BasePort, neSettingsInBed.Irq, MasterPic, SlavePic)
+                                                                    cardInBed.ConfigureHardware(neSettingsInBed.BasePort, neSettingsInBed.Irq)
+                                                                    Return cardInBed
+                                                                End Function)
+                Ne2000 = DirectCast(IsaBackplane.InstallCard(NetworkIsaSlotId, definitionInBed), Ne2000Isa)
+            End If
+            _installedNetworkHardwareId = targetNetworkInBed
+        End If
+
+        ConfigureVideoPresentationForInstalledAdapterInBed()
+    End Sub
+
+    Private Sub ConfigureVideoPresentationForInstalledAdapterInBed()
+        If VideoCard Is Nothing Then
+            GPU.Enabled = False
+            If _videoPresentation IsNot Nothing Then
+                RemoveHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
+                _videoPresentation.Dispose()
+                _videoPresentation = Nothing
+            End If
+            If _machinePoweredInBed Then ShowPowerOffArtworkInBed()
+            Return
+        End If
+
+        If _videoPresentation Is Nothing Then
+            _videoPresentation = New DiamondStealthPro928PresentationWorker()
+            AddHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
+            _videoPresentation.Start()
+        End If
+        GPU.Enabled = _machinePoweredInBed
+    End Sub
+
     Private Sub InitializeIsaExpansionCardConfigurationInBed()
         _isaCardConfiguration = New IsaExpansionCardConfiguration(AppContext.BaseDirectory)
         _isaCardConfiguration.LoadConfiguration()
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(_isaCardConfiguration.SoundBlaster16, _isaCardConfiguration.Ne2000)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(_isaCardConfiguration.SoundBlaster16,
+                                                                                    _isaCardConfiguration.Ne2000,
+                                                                                    Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                    Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                    Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
         If conflictsInBed.Count > 0 Then
-            ' An externally edited INI may describe an impossible build.  Refuse
-            ' to wire a conflicted ISA backplane at startup and recover to the
-            ' known-clean factory strap set instead.
+            ' Preserve the installed-card population but recover impossible strap
+            ' values to the clean factory positions before the backplane is wired.
             _isaCardConfiguration.SoundBlaster16 = New SoundBlaster16JumperSettings()
             _isaCardConfiguration.Ne2000 = New Ne2000JumperSettings()
         End If
         _isaCardConfiguration.SaveConfiguration()
-        ApplyIsaExpansionCardConfigurationToDevicesInBed()
     End Sub
 
     Private Sub ApplyIsaExpansionCardConfigurationToDevicesInBed()
         If _isaCardConfiguration Is Nothing Then Return
         Dim sbInBed As SoundBlaster16JumperSettings = _isaCardConfiguration.SoundBlaster16
         Dim neInBed As Ne2000JumperSettings = _isaCardConfiguration.Ne2000
-        SoundBlaster16.ConfigureHardware(sbInBed.BasePort, sbInBed.Irq, sbInBed.Dma8, sbInBed.Dma16, sbInBed.MpuPort, sbInBed.GamePortEnabled)
-        SoundBlaster16.ConfigureWavetableHardware(sbInBed.Wavetable)
-        Ne2000.ConfigureHardware(neInBed.BasePort, neInBed.Irq)
+        If SoundBlaster16 IsNot Nothing Then
+            SoundBlaster16.ConfigureHardware(sbInBed.BasePort, sbInBed.Irq, sbInBed.Dma8, sbInBed.Dma16, sbInBed.MpuPort, sbInBed.GamePortEnabled)
+            SoundBlaster16.ConfigureWavetableHardware(sbInBed.Wavetable)
+        End If
+        If Ne2000 IsNot Nothing Then Ne2000.ConfigureHardware(neInBed.BasePort, neInBed.Irq)
     End Sub
 
     Private Sub InitializeRamBanks()
@@ -1664,7 +2016,7 @@ Public Class Form1
         _ramBanks.LoadConfiguration()
         ' Persist the default too, so the chassis configuration is explicit.
         _ramBanks.SaveConfiguration()
-        CPU0.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb, clearRam:=True)
+        MotherboardMemory.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb, clearRam:=True)
     End Sub
 
     Private Function BuildRamBanksMenu() As ToolStripMenuItem
@@ -2240,7 +2592,7 @@ Public Class Form1
         Try
             _machineRuntime.ExecuteWithHostTimeRebase(
                 Sub()
-                    CPU0.HostFirmwareInterrupts = False
+                    If CPU0 IsNot Nothing Then CPU0.HostFirmwareInterrupts = False
                     ResetHardwareMachine()
                     ApplyFirmwareResetVectorSafetyGuardInBed()
                     FrontPanel.SetCpuStateByte(0)
@@ -2283,6 +2635,7 @@ Public Class Form1
             ' the sole machine owner thread and leave mounted media/CMOS attached.
             ReleaseSerialMouseCaptureInBed()
             _machineRuntime.Stop()
+            IsaBackplane.SetChassisPowered(False)
             _machinePoweredInBed = False
             FrontPanel.SetCpuStateByte(0)
             FrontPanel.SetPower(False)
@@ -2300,11 +2653,11 @@ Public Class Form1
                 Sub()
                     If _ramBanks IsNot Nothing AndAlso
                        RamBankConfiguration.IsSupported(_ramBanks.InstalledMemoryMb) Then
-                        CPU0.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb,
-                                                               clearRam:=True)
+                        MotherboardMemory.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb,
+                                                                          clearRam:=True)
                     End If
 
-                    CPU0.HostFirmwareInterrupts = False
+                    If CPU0 IsNot Nothing Then CPU0.HostFirmwareInterrupts = False
                     PowerCycleHardwareMachine()
                     ApplyFirmwareResetVectorSafetyGuardInBed()
                     FrontPanel.SetCpuStateByte(0)
@@ -2314,11 +2667,14 @@ Public Class Form1
             _machinePoweredInBed = True
             FrontPanel.SetPower(True)
             PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
+            IsaBackplane.SetChassisPowered(True)
             _machineRuntime.Start()
+            GPU.Enabled = (VideoCard IsNot Nothing)
 
             Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
             If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
         Catch
+            IsaBackplane.SetChassisPowered(False)
             _machinePoweredInBed = False
             FrontPanel.SetPower(False)
             Throw
@@ -3153,7 +3509,9 @@ Public Class Form1
             Return
         End If
 
-        WithMachineInBed(Sub() CPU0.ResetHotPathProfiler())
+        WithMachineInBed(Sub()
+                             If CPU0 IsNot Nothing Then CPU0.ResetHotPathProfiler()
+                         End Sub)
         SyncLock _cpuPerfLockInBed
             _cpuPerfAccumulatedTStates = 0
             _cpuPerfAccumulatedHostTicks = 0
@@ -3337,7 +3695,7 @@ Public Class Form1
             "Flushes port / MMIO    : " & batchPortInBed.ToString("N0") & " / " & batchMemoryInBed.ToString("N0") & Environment.NewLine &
             "Flushes wake / ceiling : " & batchWakeInBed.ToString("N0") & " / " & batchCeilingFlushInBed.ToString("N0") & Environment.NewLine &
             "Flushes end / other    : " & batchEndInBed.ToString("N0") & " / " & batchOtherInBed.ToString("N0") & Environment.NewLine & Environment.NewLine &
-            CPU0.HotPathDiagnosticText() & Environment.NewLine & Environment.NewLine &
+            If(CPU0 Is Nothing, "No CPU installed.", CPU0.HotPathDiagnosticText()) & Environment.NewLine & Environment.NewLine &
             CpuBus.DiagnosticText() & Environment.NewLine &
             MotherboardBridge.DiagnosticText() & Environment.NewLine & Environment.NewLine &
             MotherboardMemory.DiagnosticText() & Environment.NewLine & Environment.NewLine &

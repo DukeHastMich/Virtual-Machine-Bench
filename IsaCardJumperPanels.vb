@@ -172,20 +172,31 @@ Public NotInheritable Class IsaResourceConflictDetector
     End Class
 
     Public Shared Function Validate(sb As SoundBlaster16JumperSettings,
-                                    ne As Ne2000JumperSettings) As List(Of String)
+                                    ne As Ne2000JumperSettings,
+                                    Optional soundBlasterInstalledInBed As Boolean = True,
+                                    Optional ne2000InstalledInBed As Boolean = True,
+                                    Optional numericCoprocessorInstalledInBed As Boolean = True) As List(Of String)
         Dim conflicts As New List(Of String)()
-        If sb Is Nothing OrElse ne Is Nothing Then
-            conflicts.Add("Both ISA card configurations must be present.")
+        If soundBlasterInstalledInBed AndAlso sb Is Nothing Then
+            conflicts.Add("The installed Sound Blaster 16 has no jumper configuration.")
+            Return conflicts
+        End If
+        If ne2000InstalledInBed AndAlso ne Is Nothing Then
+            conflicts.Add("The installed NE2000 has no jumper configuration.")
             Return conflicts
         End If
 
-        If Array.IndexOf(IsaExpansionCardConfiguration.Sb16BasePorts, sb.BasePort) < 0 Then conflicts.Add("SB16 base I/O selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Irqs, sb.Irq) < 0 Then conflicts.Add("SB16 IRQ selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Dma8Channels, sb.Dma8) < 0 Then conflicts.Add("SB16 8-bit DMA selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Dma16Channels, sb.Dma16) < 0 Then conflicts.Add("SB16 16-bit DMA selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Sb16MpuPorts, sb.MpuPort) < 0 Then conflicts.Add("SB16 MPU-401 I/O selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Ne2000BasePorts, ne.BasePort) < 0 Then conflicts.Add("NE2000 base I/O selection is not supported.")
-        If Array.IndexOf(IsaExpansionCardConfiguration.Ne2000Irqs, ne.Irq) < 0 Then conflicts.Add("NE2000 IRQ selection is not supported.")
+        If soundBlasterInstalledInBed Then
+            If Array.IndexOf(IsaExpansionCardConfiguration.Sb16BasePorts, sb.BasePort) < 0 Then conflicts.Add("SB16 base I/O selection is not supported.")
+            If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Irqs, sb.Irq) < 0 Then conflicts.Add("SB16 IRQ selection is not supported.")
+            If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Dma8Channels, sb.Dma8) < 0 Then conflicts.Add("SB16 8-bit DMA selection is not supported.")
+            If Array.IndexOf(IsaExpansionCardConfiguration.Sb16Dma16Channels, sb.Dma16) < 0 Then conflicts.Add("SB16 16-bit DMA selection is not supported.")
+            If Array.IndexOf(IsaExpansionCardConfiguration.Sb16MpuPorts, sb.MpuPort) < 0 Then conflicts.Add("SB16 MPU-401 I/O selection is not supported.")
+        End If
+        If ne2000InstalledInBed Then
+            If Array.IndexOf(IsaExpansionCardConfiguration.Ne2000BasePorts, ne.BasePort) < 0 Then conflicts.Add("NE2000 base I/O selection is not supported.")
+            If Array.IndexOf(IsaExpansionCardConfiguration.Ne2000Irqs, ne.Irq) < 0 Then conflicts.Add("NE2000 IRQ selection is not supported.")
+        End If
 
         Dim fixedClaims As New List(Of IoClaim) From {
             New IoClaim(&H20, &H21, "master PIC"),
@@ -194,27 +205,26 @@ Public NotInheritable Class IsaResourceConflictDetector
             New IoClaim(&H70, &H71, "RTC/CMOS"),
             New IoClaim(&H170, &H177, "secondary IDE"),
             New IoClaim(&H1F0, &H1F7, "primary IDE"),
-            New IoClaim(&H201, &H201, "SB16 game port"),
             New IoClaim(&H278, &H27A, "LPT2"),
             New IoClaim(&H2F8, &H2FF, "COM2"),
             New IoClaim(&H376, &H376, "secondary IDE control"),
             New IoClaim(&H378, &H37A, "LPT1"),
-            New IoClaim(&H388, &H38B, "OPL2/OPL3"),
             New IoClaim(&H3F2, &H3F5, "floppy controller"),
             New IoClaim(&H3F6, &H3F6, "primary IDE control"),
             New IoClaim(&H3F7, &H3F7, "floppy controller"),
             New IoClaim(&H3F8, &H3FF, "COM1"),
             New IoClaim(&HA0, &HA1, "slave PIC")
         }
-        If Not sb.GamePortEnabled Then
-            fixedClaims.RemoveAll(Function(c) c.Owner = "SB16 game port")
-        End If
 
-        Dim cardClaims As New List(Of IoClaim) From {
-            New IoClaim(sb.BasePort, sb.BasePort + &HF, "Sound Blaster 16"),
-            New IoClaim(sb.MpuPort, sb.MpuPort + 1, "SB16 MPU-401"),
-            New IoClaim(ne.BasePort, ne.BasePort + &H1F, "NE2000")
-        }
+        Dim cardClaims As New List(Of IoClaim)()
+        If soundBlasterInstalledInBed Then
+            cardClaims.Add(New IoClaim(sb.BasePort, sb.BasePort + &HF, "Sound Blaster 16"))
+            cardClaims.Add(New IoClaim(sb.MpuPort, sb.MpuPort + 1, "SB16 MPU-401"))
+            cardClaims.Add(New IoClaim(&H388, &H38B, "SB16 OPL2/OPL3"))
+            If sb.GamePortEnabled Then cardClaims.Add(New IoClaim(&H201, &H201, "SB16 game port"))
+        End If
+        If ne2000InstalledInBed Then cardClaims.Add(New IoClaim(ne.BasePort, ne.BasePort + &H1F, "NE2000"))
+
         For Each card As IoClaim In cardClaims
             For Each fixedClaim As IoClaim In fixedClaims
                 If Overlaps(card, fixedClaim) Then
@@ -232,13 +242,13 @@ Public NotInheritable Class IsaResourceConflictDetector
 
         Dim fixedIrqs As New Dictionary(Of Integer, String) From {
             {1, "keyboard"}, {3, "COM2"}, {4, "COM1"}, {5, "LPT2"}, {6, "floppy"},
-            {7, "LPT1"}, {8, "RTC"}, {13, "numeric coprocessor"},
-            {14, "primary IDE"}, {15, "secondary IDE"}
+            {7, "LPT1"}, {8, "RTC"}, {14, "primary IDE"}, {15, "secondary IDE"}
         }
+        If numericCoprocessorInstalledInBed Then fixedIrqs(13) = "numeric coprocessor"
         Dim owner As String = Nothing
-        If fixedIrqs.TryGetValue(sb.Irq, owner) Then conflicts.Add("SB16 IRQ" & sb.Irq.ToString() & " conflicts with " & owner & ".")
-        If fixedIrqs.TryGetValue(ne.Irq, owner) Then conflicts.Add("NE2000 IRQ" & ne.Irq.ToString() & " conflicts with " & owner & ".")
-        If sb.Irq = ne.Irq Then conflicts.Add("SB16 and NE2000 are both strapped to IRQ" & sb.Irq.ToString() & ".")
+        If soundBlasterInstalledInBed AndAlso fixedIrqs.TryGetValue(sb.Irq, owner) Then conflicts.Add("SB16 IRQ" & sb.Irq.ToString() & " conflicts with " & owner & ".")
+        If ne2000InstalledInBed AndAlso fixedIrqs.TryGetValue(ne.Irq, owner) Then conflicts.Add("NE2000 IRQ" & ne.Irq.ToString() & " conflicts with " & owner & ".")
+        If soundBlasterInstalledInBed AndAlso ne2000InstalledInBed AndAlso sb.Irq = ne.Irq Then conflicts.Add("SB16 and NE2000 are both strapped to IRQ" & sb.Irq.ToString() & ".")
 
         Return conflicts
     End Function
@@ -267,6 +277,8 @@ Friend NotInheritable Class IsaCardJumperDialog
     Private ReadOnly _kind As IsaJumperCardKind
     Private ReadOnly _otherSb As SoundBlaster16JumperSettings
     Private ReadOnly _otherNe As Ne2000JumperSettings
+    Private ReadOnly _soundBlasterInstalledInBed As Boolean
+    Private ReadOnly _ne2000InstalledInBed As Boolean
     Private ReadOnly _baseCombo As New ComboBox()
     Private ReadOnly _irqCombo As New ComboBox()
     Private ReadOnly _dma8Combo As New ComboBox()
@@ -283,8 +295,12 @@ Friend NotInheritable Class IsaCardJumperDialog
 
     Public Sub New(kind As IsaJumperCardKind,
                    sb As SoundBlaster16JumperSettings,
-                   ne As Ne2000JumperSettings)
+                   ne As Ne2000JumperSettings,
+                   Optional soundBlasterInstalledInBed As Boolean = True,
+                   Optional ne2000InstalledInBed As Boolean = True)
         _kind = kind
+        _soundBlasterInstalledInBed = soundBlasterInstalledInBed
+        _ne2000InstalledInBed = ne2000InstalledInBed
         _otherSb = If(sb, New SoundBlaster16JumperSettings()).CloneSettings()
         _otherNe = If(ne, New Ne2000JumperSettings()).CloneSettings()
         SoundBlasterSettings = _otherSb.CloneSettings()
@@ -463,7 +479,11 @@ Friend NotInheritable Class IsaCardJumperDialog
             Ne2000Settings.Irq = IsaExpansionCardConfiguration.Ne2000Irqs(_irqCombo.SelectedIndex)
         End If
 
-        Dim conflicts As List(Of String) = IsaResourceConflictDetector.Validate(SoundBlasterSettings, Ne2000Settings)
+        Dim conflicts As List(Of String) = IsaResourceConflictDetector.Validate(SoundBlasterSettings,
+                                                                                 Ne2000Settings,
+                                                                                 _soundBlasterInstalledInBed,
+                                                                                 _ne2000InstalledInBed,
+                                                                                 numericCoprocessorInstalledInBed:=False)
         If conflicts.Count = 0 Then
             _conflictLabel.ForeColor = Color.DarkGreen
             _conflictLabel.Text = "Resource map clean — no ISA I/O or IRQ collisions detected."

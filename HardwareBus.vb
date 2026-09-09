@@ -1579,6 +1579,97 @@ Public Class HardwareBus
         _registeredObjects.Add(device)
     End Sub
 
+    ' Register a newly inserted cold-service device immediately before an
+    ' existing physical decode anchor. Removable ISA boards use the motherboard
+    ' open-bus memory terminator as that anchor so a card reinserted after startup
+    ' retains the same electrical decode priority it had at initial assembly.
+    Public Sub RegisterBefore(device As Object, beforeDeviceInBed As Object)
+        If device Is Nothing Then Throw New ArgumentNullException(NameOf(device))
+        If beforeDeviceInBed Is Nothing Then Throw New ArgumentNullException(NameOf(beforeDeviceInBed))
+        If IsRegistered(device) Then
+            Throw New InvalidOperationException("The same physical device instance is already registered on this bus.")
+        End If
+
+        Dim anchorIndexInBed As Integer = RegisteredObjectIndexInBed(beforeDeviceInBed)
+        If anchorIndexInBed < 0 Then
+            Throw New InvalidOperationException("The requested registration anchor is not installed on this bus.")
+        End If
+
+        SynchronizePendingTime(ClockBatchFlushReason.Explicit)
+
+        Dim portDeviceInBed As IPortDevice = TryCast(device, IPortDevice)
+        If portDeviceInBed IsNot Nothing Then
+            Dim insertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IPortDevice Then insertIndexInBed += 1
+            Next
+            _devices.Insert(insertIndexInBed, portDeviceInBed)
+        End If
+
+        Dim clockedInBed As IClockedDevice = TryCast(device, IClockedDevice)
+        If clockedInBed IsNot Nothing Then
+            Dim insertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IClockedDevice Then insertIndexInBed += 1
+            Next
+            _clockedDevices.Insert(insertIndexInBed, clockedInBed)
+
+            Dim wakeSourceInBed As IClockWakeSource = TryCast(device, IClockWakeSource)
+            If wakeSourceInBed IsNot Nothing Then
+                Dim wakeInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    If TypeOf _registeredObjects(indexInBed) Is IClockWakeSource Then wakeInsertIndexInBed += 1
+                Next
+                _wakeSources.Insert(wakeInsertIndexInBed, wakeSourceInBed)
+            End If
+        End If
+
+        Dim memoryDeviceInBed As IMemoryMappedDevice = TryCast(device, IMemoryMappedDevice)
+        If memoryDeviceInBed IsNot Nothing Then
+            Dim memoryInsertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IMemoryMappedDevice Then memoryInsertIndexInBed += 1
+            Next
+            _memoryDevices.Insert(memoryInsertIndexInBed, memoryDeviceInBed)
+
+            If TypeOf memoryDeviceInBed Is IPageCoherentMemoryDecode Then
+                Dim pageInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    Dim priorMemoryInBed As IMemoryMappedDevice = TryCast(_registeredObjects(indexInBed), IMemoryMappedDevice)
+                    If priorMemoryInBed IsNot Nothing AndAlso TypeOf priorMemoryInBed Is IPageCoherentMemoryDecode Then pageInsertIndexInBed += 1
+                Next
+                _pageCoherentMemoryDevices.Insert(pageInsertIndexInBed, memoryDeviceInBed)
+            Else
+                Dim uncachedInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    Dim priorMemoryInBed As IMemoryMappedDevice = TryCast(_registeredObjects(indexInBed), IMemoryMappedDevice)
+                    If priorMemoryInBed IsNot Nothing AndAlso Not TypeOf priorMemoryInBed Is IPageCoherentMemoryDecode Then uncachedInsertIndexInBed += 1
+                Next
+                _uncachedMemoryDevices.Insert(uncachedInsertIndexInBed, memoryDeviceInBed)
+            End If
+        End If
+
+        Dim decodeSourceInBed As IMemoryDecodeChangeSource = TryCast(device, IMemoryDecodeChangeSource)
+        If decodeSourceInBed IsNot Nothing Then
+            AddHandler decodeSourceInBed.MemoryDecodeChanged, AddressOf InvalidateMemoryDecodeCache
+        End If
+
+        Dim resettableInBed As IResettableDevice = TryCast(device, IResettableDevice)
+        If resettableInBed IsNot Nothing Then
+            Dim resetInsertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IResettableDevice Then resetInsertIndexInBed += 1
+            Next
+            _resettableDevices.Insert(resetInsertIndexInBed, resettableInBed)
+        End If
+
+        _registeredObjects.Insert(anchorIndexInBed, device)
+        RebuildPortDecodeInBed()
+        RebuildClockClassificationInBed()
+        InvalidateMemoryDecodeCache()
+        NotifyTimingTopologyChanged()
+    End Sub
+
     ' Remove one physical device from the motherboard fabric.  This is a cold
     ' chassis/service operation, not ISA hot-plug emulation.  The caller owns the
     ' policy which guarantees that the machine is powered down before invoking it.

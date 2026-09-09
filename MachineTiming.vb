@@ -249,7 +249,6 @@ Public NotInheritable Class MachineClock286
                              bus As HardwareBus,
                              elapsedStopwatchTicks As Long,
                              maxTStates As Long) As Long
-        If cpu Is Nothing Then Throw New ArgumentNullException(NameOf(cpu))
         If bus Is Nothing Then Throw New ArgumentNullException(NameOf(bus))
         If elapsedStopwatchTicks < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedStopwatchTicks))
         If maxTStates <= 0 Then Throw New ArgumentOutOfRangeException(NameOf(maxTStates))
@@ -265,6 +264,31 @@ Public NotInheritable Class MachineClock286
 
         Dim requested As Long = Math.Min(availableTStates, maxTStates)
         Dim tStatePs As Long = PicosecondsPerTState
+
+        ' An empty CPU socket is a valid powered-board configuration. The crystal,
+        ' PIT, RTC, DMA and other independently clocked motherboard hardware keep
+        ' seeing physical time, but no processor is scheduled and no bus cycles are
+        ' invented on its behalf. Use CPU T-state duration only as the existing
+        ' bounded host-slice quantum for accounting.
+        If cpu Is Nothing Then
+            Dim elapsedPicosecondsInBed As Long = requested * tStatePs
+            bus.AdvanceTime(elapsedPicosecondsInBed)
+            _pendingPicoseconds -= elapsedPicosecondsInBed
+            _totalPicoseconds += elapsedPicosecondsInBed
+            _lastClockBatchFlushCount = 0
+            _lastClockBatchMaximumTStates = 0
+            _lastClockBatchConsumedTStates = requested
+            _lastClockBatchLargestFlushTStates = 0
+            _lastClockBatchPortFlushCount = 0
+            _lastClockBatchMemoryFlushCount = 0
+            _lastClockBatchWakeFlushCount = 0
+            _lastClockBatchCeilingFlushCount = 0
+            _lastClockBatchEndFlushCount = 0
+            _lastClockBatchExplicitFlushCount = 0
+            RaiseEvent CpuStateSampled(0)
+            Return requested
+        End If
+
         Dim maximumBatchTStates As Long =
             If(bus.HasUnclassifiedClockedDevices, LegacyMaximumBatchTStates, PreferredMaximumBatchTStates)
         Dim maximumBatchPicoseconds As Long = maximumBatchTStates * tStatePs
@@ -509,7 +533,7 @@ Public NotInheritable Class MachineRuntime286
     Public Const MaximumTStatesPerSlice As Long = 25000L
     Private Const MinimumTStatesPerSliceInBed As Long = 256L
 
-    Private ReadOnly _cpuInBed As Processor286
+    Private _cpuInBed As Processor286
     Private ReadOnly _busInBed As HardwareBus
     Private ReadOnly _clockInBed As MachineClock286
     Private ReadOnly _executionGateInBed As New Object()
@@ -534,7 +558,6 @@ Public NotInheritable Class MachineRuntime286
     Public Sub New(cpuInBed As Processor286,
                    busInBed As HardwareBus,
                    clockInBed As MachineClock286)
-        If cpuInBed Is Nothing Then Throw New ArgumentNullException(NameOf(cpuInBed))
         If busInBed Is Nothing Then Throw New ArgumentNullException(NameOf(busInBed))
         If clockInBed Is Nothing Then Throw New ArgumentNullException(NameOf(clockInBed))
         _cpuInBed = cpuInBed
@@ -547,6 +570,31 @@ Public NotInheritable Class MachineRuntime286
             Return Volatile.Read(_runningInBed) <> 0
         End Get
     End Property
+
+    Public ReadOnly Property ProcessorInstalled As Boolean
+        Get
+            SyncLock _executionGateInBed
+                Return _cpuInBed IsNot Nothing
+            End SyncLock
+        End Get
+    End Property
+
+    ' Cold socket operation. Callers stop the runtime for a physical CPU swap.
+    ' Nothing is not a halted CPU; it means there is no processor object scheduled.
+    Public Sub SetProcessor(cpuInBed As Processor286)
+        ThrowIfDisposedInBed()
+        EnterExternalGateInBed()
+        Try
+            If _runningInBed <> 0 Then
+                Throw New InvalidOperationException("The CPU package may only be replaced while the machine runtime is stopped.")
+            End If
+            _cpuInBed = cpuInBed
+            _lastHostTimestampInBed = Stopwatch.GetTimestamp()
+        Finally
+            ExitExternalGateInBed()
+        End Try
+        _wakeInBed.Set()
+    End Sub
 
     Public ReadOnly Property CurrentMaximumTStatesPerSlice As Long
         Get

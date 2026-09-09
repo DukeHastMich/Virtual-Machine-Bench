@@ -40,7 +40,8 @@
     </Compile>
     <Compile Include="HardwareBus.vb" />
     <Compile Include="LegacyIoPorts.vb" />
-    <Compile Include="Ne2000Isa.vb" />
+    <Compile Include="Expansion Cards\Network Cards\NE2000-ISA\Ne2000Isa.vb" />
+    <Compile Include="Expansion Cards\IsaCardCatalog286.vb" />
     <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\SoundBlaster16Isa.vb" />
     <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableProfile.vb" />
     <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableMidiParser.vb" />
@@ -60,7 +61,8 @@
     <Compile Include="SuperIoRealityDiagnostics.vb" />
     <Compile Include="AtKeyboard101.vb" />
     <Compile Include="MotherboardDevices.vb" />
-    <Compile Include="ProcessorCore.vb" />
+    <Compile Include="Processors\80286\ProcessorCore.vb" />
+    <Compile Include="Processors\ProcessorCatalog286.vb" />
     <Compile Include="SingleStep80286TestHost.vb" />
     <Compile Include="StorageDevices.vb" />
     <Compile Include="My Project\Resources.Designer.vb">
@@ -73,7 +75,7 @@
       <DesignTimeSharedInput>true</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-  <Compile Include="MachineTiming.vb" /><Compile Include="ProcessorTiming.vb" /></ItemGroup>
+  <Compile Include="MachineTiming.vb" /><Compile Include="Processors\80286\ProcessorTiming.vb" /></ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="ChassisPanelForm.resx" />
     <EmbeddedResource Include="Form1.resx">
@@ -93,7 +95,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="DiamondStealthPro928.vb" />
+    <Compile Include="Expansion Cards\Video Cards\Diamond Stealth Pro 928-Isa\DiamondStealthPro928.vb" />
     <None Update="Firmware\stealthpro.rom"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
   </ItemGroup>
   <ItemGroup>
@@ -104,6 +106,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MachineConfiguration.vb" />
+    <Compile Include="HardwarePopulation.vb" />
     <Compile Include="IsaCardJumperPanels.vb" />
     <Compile Include="IsaBackplane.vb" />
     <Compile Include="SystemConfigurationDrawer.vb" />
@@ -117,7 +120,8 @@
     <Compile Include="SneakerNet.vb" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Intel80287.vb" />
+    <Compile Include="Math Coprocessors\Intel 80287\Intel80287.vb" />
+    <Compile Include="Math Coprocessors\NumericCoprocessorCatalog286.vb" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="PcSpeakerAudio.vb" />

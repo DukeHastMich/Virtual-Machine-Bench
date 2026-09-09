@@ -96,12 +96,14 @@ End Class
 
 Public NotInheritable Class IsaBackplane286
     Private ReadOnly _busInBed As HardwareBus
+    Private ReadOnly _decodeAnchorInBed As Object
     Private ReadOnly _slotsInBed As New Dictionary(Of String, IsaBackplaneSlot286)(StringComparer.OrdinalIgnoreCase)
     Private _chassisPoweredInBed As Boolean
 
-    Public Sub New(busInBed As HardwareBus)
+    Public Sub New(busInBed As HardwareBus, Optional decodeAnchorInBed As Object = Nothing)
         If busInBed Is Nothing Then Throw New ArgumentNullException(NameOf(busInBed))
         _busInBed = busInBed
+        _decodeAnchorInBed = decodeAnchorInBed
     End Sub
 
     ' Defines a physical connector.  This does not install a board.
@@ -175,7 +177,11 @@ Public NotInheritable Class IsaBackplane286
 
         Dim deviceInBed As Object = definitionInBed.CreatePhysicalDeviceInBed()
         Try
-            _busInBed.Register(deviceInBed)
+            If _decodeAnchorInBed IsNot Nothing AndAlso _busInBed.IsRegistered(_decodeAnchorInBed) Then
+                _busInBed.RegisterBefore(deviceInBed, _decodeAnchorInBed)
+            Else
+                _busInBed.Register(deviceInBed)
+            End If
         Catch
             DisposePhysicalDeviceInBed(deviceInBed, swallowErrorsInBed:=True)
             Throw

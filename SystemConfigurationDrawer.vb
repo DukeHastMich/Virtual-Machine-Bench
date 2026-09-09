@@ -24,19 +24,24 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property ChipsetTiming As String
     Public Property Bios As String
     Public Property Cpu As String
+    Public Property CpuHardwareId As String
     Public Property CpuClock As String
     Public Property HostExecutionRatePercent As Integer
     Public Property HostExecutionRate As String
     Public Property NumericCoprocessor As String
+    Public Property NumericCoprocessorHardwareId As String
     Public Property Memory As String
     Public Property InstalledMemoryMb As Integer
     Public Property PendingMemoryMb As Integer?
     Public Property PendingHardwareSummary As String
     Public Property Video As String
+    Public Property VideoHardwareId As String
     Public Property VideoRom As String
     Public Property ExpansionAudio As String
+    Public Property AudioHardwareId As String
     Public Property Speaker As String
     Public Property Network As String
+    Public Property NetworkHardwareId As String
     Public Property FloppyController As String
     Public Property FloppyDriveA As String
     Public Property FloppyDriveB As String
@@ -327,11 +332,12 @@ Public NotInheritable Class SystemConfigurationDrawer
             SetValueInBed("psu", snapshotInBed.PowerSupply)
 
             SelectChoiceInBed("motherboard", snapshotInBed.Motherboard)
-            SelectChoiceInBed("cpu", snapshotInBed.Cpu)
-            SelectChoiceInBed("video", snapshotInBed.Video)
-            SelectChoiceInBed("audio", snapshotInBed.ExpansionAudio)
+            SelectChoiceInBed("cpu", snapshotInBed.CpuHardwareId)
+            SelectChoiceInBed("npx-selector", snapshotInBed.NumericCoprocessorHardwareId)
+            SelectChoiceInBed("video", snapshotInBed.VideoHardwareId)
+            SelectChoiceInBed("audio", snapshotInBed.AudioHardwareId)
             SelectChoiceInBed("speaker", snapshotInBed.Speaker)
-            SelectChoiceInBed("network", snapshotInBed.Network)
+            SelectChoiceInBed("network", snapshotInBed.NetworkHardwareId)
             SelectChoiceInBed("fdc", snapshotInBed.FloppyController)
             SelectChoiceInBed("floppy-a-drive", snapshotInBed.FloppyDriveA)
             SelectChoiceInBed("floppy-b-drive", snapshotInBed.FloppyDriveB)
@@ -575,11 +581,11 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                 Case "processor"
                     _pageTitleInBed.Text = "PROCESSOR"
-                    AddSelectorInBed("CPU", "cpu", {New HardwareProfileChoice(snapshotInBed.Cpu, snapshotInBed.Cpu)}, Nothing)
+                    AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
                     AddValueInBed("Running clock", "clock", snapshotInBed.CpuClock)
                     AddHostExecutionRateControlInBed(snapshotInBed.HostExecutionRatePercent,
                                                      snapshotInBed.HostExecutionRate)
-                    AddSelectorInBed("Numeric coprocessor", "npx-selector", {New HardwareProfileChoice(snapshotInBed.NumericCoprocessor, snapshotInBed.NumericCoprocessor)}, Nothing)
+                    AddSelectorInBed("Numeric coprocessor", "npx-selector", _ownerInBed.GetNumericCoprocessorChoicesInBed(), AddressOf NumericCoprocessorSelectionChangedInBed)
                     AddNoteInBed("Execution rate is host pacing only. It accelerates the complete machine timeline without changing the guest-visible CPU clock, PIT, ISA bus, DMA, video or storage timing ratios. CPU and NPX replacement remain powered chassis changes.")
 
                 Case "memory"
@@ -642,20 +648,20 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                 Case "video"
                     _pageTitleInBed.Text = "VIDEO"
-                    AddSelectorInBed("Installed adapter", "video", {New HardwareProfileChoice(snapshotInBed.Video, snapshotInBed.Video)}, Nothing)
+                    AddSelectorInBed("Installed adapter", "video", _ownerInBed.GetVideoCardChoicesInBed(), AddressOf VideoSelectionChangedInBed)
                     AddValueInBed("Option ROM", "video-rom", snapshotInBed.VideoRom)
-                    AddNoteInBed("The running adapter is the Diamond Stealth Pro 928 path. Additional video boards will become alternate profiles in this same selector.")
+                    AddNoteInBed("This is the physical ISA video slot population. None leaves the slot electrically empty; an installed adapter contributes only its real I/O, memory and option-ROM decode.")
 
                 Case "audio"
                     _pageTitleInBed.Text = "AUDIO"
-                    AddSelectorInBed("Expansion audio", "audio", {New HardwareProfileChoice(snapshotInBed.ExpansionAudio, snapshotInBed.ExpansionAudio)}, Nothing, AddressOf AudioJumperButtonClickedInBed)
+                    AddSelectorInBed("Expansion audio", "audio", _ownerInBed.GetAudioCardChoicesInBed(), AddressOf AudioSelectionChangedInBed, AddressOf AudioJumperButtonClickedInBed)
                     AddSelectorInBed("Chassis speaker", "speaker", {New HardwareProfileChoice(snapshotInBed.Speaker, snapshotInBed.Speaker)}, Nothing)
-                    AddNoteInBed("The installed SB16 exposes a DSP 4.x command interface, mixer-controlled ISA IRQ/DMA resources, 8/16-bit PCM DMA playback and OPL-compatible FM ports. Host waveOut is only the final speaker transducer; guest software still drives the emulated card through ISA I/O, DMA and interrupts.")
+                    AddNoteInBed("This is the physical ISA audio slot population. None removes the card, its I/O decode, IRQ/DMA participation, game port and MPU-401. With an SB16 installed, guest software still reaches it only through ISA hardware paths.")
 
                 Case "network"
                     _pageTitleInBed.Text = "NETWORK"
-                    AddSelectorInBed("Installed adapter", "network", {New HardwareProfileChoice(snapshotInBed.Network, snapshotInBed.Network)}, Nothing, AddressOf NetworkJumperButtonClickedInBed)
-                    AddNoteInBed("The installed NE2000-compatible adapter exposes the DP8390 register pages, station PROM, remote-DMA data port and 16 KiB receive/transmit packet RAM. Host attachment is optional; an unplugged virtual cable leaves the guest-visible board installed exactly like a physical NIC with no Ethernet lead connected.")
+                    AddSelectorInBed("Installed adapter", "network", _ownerInBed.GetNetworkCardChoicesInBed(), AddressOf NetworkSelectionChangedInBed, AddressOf NetworkJumperButtonClickedInBed)
+                    AddNoteInBed("This is the physical ISA network slot population. None removes all adapter decode and clock participation. An installed NE2000 may still have its virtual Ethernet cable unplugged without removing the board itself.")
 
                 Case "io"
                     _pageTitleInBed.Text = "I/O && PORTS"
@@ -696,17 +702,17 @@ Public NotInheritable Class SystemConfigurationDrawer
                     _pageTitleInBed.Text = "SYSTEM OVERVIEW"
                     AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
-                    AddSelectorInBed("CPU", "cpu", {New HardwareProfileChoice(snapshotInBed.Cpu, snapshotInBed.Cpu)}, Nothing)
+                    AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
                     Dim memoryChoicesInBed As New List(Of HardwareProfileChoice)()
                     For Each mbInBed As Integer In RamBankConfiguration.SupportedMemoryMegabytes
                         memoryChoicesInBed.Add(New HardwareProfileChoice(mbInBed.ToString(), mbInBed.ToString() & " MB"))
                     Next
                     AddSelectorInBed("Memory", "memory", memoryChoicesInBed, AddressOf MemorySelectionChangedInBed)
-                    AddSelectorInBed("Video", "video", {New HardwareProfileChoice(snapshotInBed.Video, snapshotInBed.Video)}, Nothing)
-                    AddSelectorInBed("Audio card", "audio", {New HardwareProfileChoice(snapshotInBed.ExpansionAudio, snapshotInBed.ExpansionAudio)}, Nothing, AddressOf AudioJumperButtonClickedInBed)
-                    AddSelectorInBed("Network", "network", {New HardwareProfileChoice(snapshotInBed.Network, snapshotInBed.Network)}, Nothing, AddressOf NetworkJumperButtonClickedInBed)
+                    AddSelectorInBed("Video", "video", _ownerInBed.GetVideoCardChoicesInBed(), AddressOf VideoSelectionChangedInBed)
+                    AddSelectorInBed("Audio card", "audio", _ownerInBed.GetAudioCardChoicesInBed(), AddressOf AudioSelectionChangedInBed, AddressOf AudioJumperButtonClickedInBed)
+                    AddSelectorInBed("Network", "network", _ownerInBed.GetNetworkCardChoicesInBed(), AddressOf NetworkSelectionChangedInBed, AddressOf NetworkJumperButtonClickedInBed)
                     AddValueInBed("CPU clock", "clock", snapshotInBed.CpuClock)
-                    AddValueInBed("Numeric coprocessor", "npx", snapshotInBed.NumericCoprocessor)
+                    AddSelectorInBed("Numeric coprocessor", "npx-selector", _ownerInBed.GetNumericCoprocessorChoicesInBed(), AddressOf NumericCoprocessorSelectionChangedInBed)
                     AddValueInBed("Floppy A", "floppy-a-media", snapshotInBed.FloppyMediaA)
                     AddValueInBed("Floppy B", "floppy-b-media", snapshotInBed.FloppyMediaB)
                     AddValueInBed("Channel 1 Drive 0 (Master)", "hdd0", snapshotInBed.HardDisk0)
@@ -1106,6 +1112,56 @@ Public NotInheritable Class SystemConfigurationDrawer
         Dim slotInBed As String = CStr(comboInBed.Tag)
         _ownerInBed.StageIdeDriveModelInBed(slotInBed, choiceInBed.Id)
         BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub CpuSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageCpuSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub NumericCoprocessorSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageNumericCoprocessorSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub VideoSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageVideoSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub AudioSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageAudioSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub NetworkSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageNetworkSelectionInBed(choiceInBed.Id)
         RefreshFromMachine()
     End Sub
 

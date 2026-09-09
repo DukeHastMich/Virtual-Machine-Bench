@@ -49,6 +49,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowQbExecForensicTraceInBed()
+        If CPU0 Is Nothing Then
+            ShowDumpableDiagnosticInBed("QB EXEC Forensic Trace", "No CPU installed.", "qb-exec-forensic-trace.txt", 900, 500)
+            Return
+        End If
         Using viewerInBed As New Form()
             viewerInBed.Text = "QB EXEC Forensic Trace"
             viewerInBed.StartPosition = FormStartPosition.CenterParent
@@ -70,6 +74,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowImportantIntTrace()
+        If CPU0 Is Nothing Then
+            ShowDumpableDiagnosticInBed("Important INTn Trace", "No CPU installed.", "important-int-trace.txt", 900, 500)
+            Return
+        End If
         ShowDumpableDiagnosticInBed(
             "Important INTn Trace",
             ReadMachineInBed(Function() CPU0.GetDiagnosticImportantIntTrace()),
@@ -94,16 +102,20 @@ Partial Public Class Form1
                         reportInBed.AppendLine(DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff zzz"))
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== CPU CORE / PROTECTION =====")
-                        reportInBed.AppendLine(CPU0.CoreRefitDiagnosticText())
-                        reportInBed.AppendLine(CPU0.HotPathDiagnosticText())
-                        reportInBed.AppendLine(CPU0.DiagnosticExecutionHistoryText())
-                        reportInBed.AppendLine(CPU0.DiagnosticCpuFaultTraceText())
-                        reportInBed.AppendLine(CPU0.DiagnosticProtectionGateText(13))
-                        reportInBed.AppendLine(CPU0.DiagnosticSelectorWriteTraceText())
-                        reportInBed.AppendLine(CPU0.DiagnosticSelectorWriterHistoryText())
-                        reportInBed.AppendLine(CPU0.DiagnosticSecondCliEntryHistoryText())
-                        reportInBed.AppendLine(CPU0.DiagnosticGpReturnHistoryText())
-                        reportInBed.AppendLine(CPU0.DiagnosticGpHandlerTraceText())
+                        If CPU0 Is Nothing Then
+                            reportInBed.AppendLine("No CPU installed — processor socket is empty.")
+                        Else
+                            reportInBed.AppendLine(CPU0.CoreRefitDiagnosticText())
+                            reportInBed.AppendLine(CPU0.HotPathDiagnosticText())
+                            reportInBed.AppendLine(CPU0.DiagnosticExecutionHistoryText())
+                            reportInBed.AppendLine(CPU0.DiagnosticCpuFaultTraceText())
+                            reportInBed.AppendLine(CPU0.DiagnosticProtectionGateText(13))
+                            reportInBed.AppendLine(CPU0.DiagnosticSelectorWriteTraceText())
+                            reportInBed.AppendLine(CPU0.DiagnosticSelectorWriterHistoryText())
+                            reportInBed.AppendLine(CPU0.DiagnosticSecondCliEntryHistoryText())
+                            reportInBed.AppendLine(CPU0.DiagnosticGpReturnHistoryText())
+                            reportInBed.AppendLine(CPU0.DiagnosticGpHandlerTraceText())
+                        End If
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== HOST PERFORMANCE =====")
                         SyncLock _cpuPerfLockInBed
@@ -130,7 +142,7 @@ Partial Public Class Form1
                         If presentationInBed IsNot Nothing Then reportInBed.AppendLine(presentationInBed.DiagnosticText())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== SOFTWARE INTERRUPTS / DOS FILE SERVICES =====")
-                        reportInBed.AppendLine(CPU0.GetDiagnosticImportantIntTrace())
+                        reportInBed.AppendLine(If(CPU0 Is Nothing, "No CPU installed.", CPU0.GetDiagnosticImportantIntTrace()))
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== ATA / ATAPI STORAGE =====")
                         reportInBed.AppendLine(Declares.IdeController.DiagnosticText())
@@ -149,8 +161,8 @@ Partial Public Class Form1
                         reportInBed.AppendLine(PcSpeaker.DiagnosticText())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== ISA EXPANSION CARDS =====")
-                        reportInBed.AppendLine(SoundBlaster16.DiagnosticText())
-                        reportInBed.AppendLine(Ne2000.DiagnosticText())
+                        reportInBed.AppendLine(If(SoundBlaster16 Is Nothing, "Sound Blaster 16: not installed", SoundBlaster16.DiagnosticText()))
+                        reportInBed.AppendLine(If(Ne2000 Is Nothing, "NE2000: not installed", Ne2000.DiagnosticText()))
                         reportInBed.AppendLine(SerialMouse.DiagnosticText())
                         reportInBed.AppendLine(
                             $"Serial mouse host frontend: input=WM_INPUT captured={_serialMouseCapturedInBed} " &
@@ -174,15 +186,24 @@ Partial Public Class Form1
                                                $"(discarded {Lpt1Printer.DroppedBytes}/{Lpt2Printer.DroppedBytes})")
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== 80287 =====")
-                        reportInBed.AppendLine(CPU0.NumericCoprocessor.DiagnosticText())
-                        reportInBed.AppendLine(CPU0.NumericCoprocessor.DiagnosticFlightRecorderText())
+                        If NumericCoprocessor0 Is Nothing Then
+                            reportInBed.AppendLine("No numeric coprocessor installed.")
+                        Else
+                            reportInBed.AppendLine(NumericCoprocessor0.DiagnosticText())
+                            reportInBed.AppendLine(NumericCoprocessor0.DiagnosticFlightRecorderText())
+                        End If
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== VGA / S3 86C928 =====")
-                        reportInBed.AppendLine("BDA video mode: " & CPU0.ReadByte(&H449UI).ToString("X2") & "h")
-                        reportInBed.AppendLine("INT 10h vector: " & CPU0.ReadWord(&H42UI).ToString("X4") & ":" &
-                                                CPU0.ReadWord(&H40UI).ToString("X4"))
-                        reportInBed.AppendLine(VideoCard.GetDiagnosticVgaStateSnapshot())
-                        reportInBed.AppendLine(VideoCard.GetDiagnosticVgaTrace())
+                        If VideoCard Is Nothing Then
+                            reportInBed.AppendLine("No video adapter installed.")
+                        Else
+                            If CPU0 IsNot Nothing Then
+                                reportInBed.AppendLine("BDA video mode: " & CPU0.ReadByte(&H449UI).ToString("X2") & "h")
+                                reportInBed.AppendLine("INT 10h vector: " & CPU0.ReadWord(&H42UI).ToString("X4") & ":" & CPU0.ReadWord(&H40UI).ToString("X4"))
+                            End If
+                            reportInBed.AppendLine(VideoCard.GetDiagnosticVgaStateSnapshot())
+                            reportInBed.AppendLine(VideoCard.GetDiagnosticVgaTrace())
+                        End If
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== AT KEYBOARD / 8042 / BIOS KEY RING =====")
                         Dim keyboardStatusInBed As Byte = KeyboardController.StatusRegister
@@ -219,8 +240,12 @@ Partial Public Class Form1
                         reportInBed.AppendLine("Last port 60h value      : " &
                                                KeyboardController.LastPort60Value.ToString("X2") & "h")
                         reportInBed.AppendLine()
-                        reportInBed.AppendLine(CPU0.GetDiagnosticBiosKeyboardState())
-                        reportInBed.AppendLine(CPU0.GetDiagnosticBiosKeyboardTrace())
+                        If CPU0 Is Nothing Then
+                            reportInBed.AppendLine("BIOS keyboard ring unavailable: no CPU installed.")
+                        Else
+                            reportInBed.AppendLine(CPU0.GetDiagnosticBiosKeyboardState())
+                            reportInBed.AppendLine(CPU0.GetDiagnosticBiosKeyboardTrace())
+                        End If
                         reportInBed.AppendLine(KeyboardController.GetDiagnosticTrace())
                         reportInBed.AppendLine()
                         reportInBed.AppendLine("===== PIC / PIT / LOCAL BUS =====")
@@ -253,6 +278,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowVgaModeTrace()
+        If CPU0 Is Nothing OrElse VideoCard Is Nothing Then
+            ShowDumpableDiagnosticInBed("VGA / S3 Mode Transition Trace", If(VideoCard Is Nothing, "No video adapter installed.", "No CPU installed."), "vga-mode-trace.txt", 900, 500)
+            Return
+        End If
         Dim traceTextInBed As String =
             ReadMachineInBed(
                 Function() As String
@@ -271,6 +300,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowVgaStateSnapshot()
+        If CPU0 Is Nothing OrElse VideoCard Is Nothing Then
+            ShowDumpableDiagnosticInBed("VGA / S3 Live State", If(VideoCard Is Nothing, "No video adapter installed.", "No CPU installed."), "vga-live-state.txt", 900, 500)
+            Return
+        End If
         Dim stateTextInBed As String =
             ReadMachineInBed(
                 Function() As String
@@ -280,7 +313,7 @@ Partial Public Class Form1
                            Environment.NewLine &
                            VideoCard.GetDiagnosticVgaStateSnapshot() &
                            Environment.NewLine &
-                           CPU0.NumericCoprocessor.DiagnosticText()
+                           If(NumericCoprocessor0 Is Nothing, "No numeric coprocessor installed.", NumericCoprocessor0.DiagnosticText())
                 End Function)
         ShowDumpableDiagnosticInBed("VGA / S3 Live State",
                                     stateTextInBed,
@@ -290,8 +323,12 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowNumericCoprocessorFlightRecorderInBed()
+        If NumericCoprocessor0 Is Nothing Then
+            ShowDumpableDiagnosticInBed("80287 Flight Recorder", "No numeric coprocessor installed.", "80287-flight-recorder.txt", 900, 500)
+            Return
+        End If
         Dim traceTextInBed As String =
-            ReadMachineInBed(Function() CPU0.NumericCoprocessor.DiagnosticFlightRecorderText())
+            ReadMachineInBed(Function() NumericCoprocessor0.DiagnosticFlightRecorderText())
         ShowDumpableDiagnosticInBed("80287 Flight Recorder",
                                     traceTextInBed,
                                     "80287-flight-recorder.txt",
@@ -300,6 +337,15 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowCpuInterruptLiveStateInBed()
+        If CPU0 Is Nothing Then
+            Dim boardTextInBed As String = ReadMachineInBed(Function() "No CPU installed — motherboard continues to run." & Environment.NewLine & Environment.NewLine &
+                                                                      "MASTER " & MasterPic.DiagnosticText() & Environment.NewLine & Environment.NewLine &
+                                                                      "SLAVE " & SlavePic.DiagnosticText() & Environment.NewLine & Environment.NewLine &
+                                                                      SystemTimer.DiagnosticText() & Environment.NewLine & Environment.NewLine &
+                                                                      CpuBus.DiagnosticText() & Environment.NewLine & MotherboardBridge.DiagnosticText())
+            ShowDumpableDiagnosticInBed("CPU / PIC / PIT Live State", boardTextInBed, "cpu-interrupt-live-state.txt", 1000, 780)
+            Return
+        End If
         Dim stateTextInBed As String =
             ReadMachineInBed(
                 Function() As String
@@ -391,6 +437,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowBiosKeyboardRingTrace()
+        If CPU0 Is Nothing Then
+            ShowDumpableDiagnosticInBed("BIOS Keyboard Ring / IVT Forensics", "No CPU installed.", "bios-keyboard-ring-trace.txt", 900, 500)
+            Return
+        End If
         Using viewerInBed As New Form()
             viewerInBed.Text = "BIOS Keyboard Ring / IVT Forensics"
             viewerInBed.StartPosition = FormStartPosition.CenterParent
@@ -412,6 +462,10 @@ Partial Public Class Form1
     End Sub
 
     Private Sub ShowBiosKeyboardRingState()
+        If CPU0 Is Nothing Then
+            MessageBox.Show(Me, "No CPU installed.", "BIOS Keyboard Ring / IVT Live State", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
         MessageBox.Show(Me,
                         ReadMachineInBed(Function() CPU0.GetDiagnosticBiosKeyboardState()),
                         "BIOS Keyboard Ring / IVT Live State",

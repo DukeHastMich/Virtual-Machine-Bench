@@ -10,10 +10,10 @@ Module Declares
     }
     Public MotherboardBridge As New NeatMotherboardBridge286(SystemBus, MotherboardMemory)
     Public CpuBus As New CpuLocalBus286(MotherboardBridge)
-    Public CPU0 As New Processor286 With {
-        .PortBus = CpuBus,
-        .MemoryController = MotherboardMemory
-    }
+    ' Physical processor packages are chassis population, not permanent globals.
+    ' Nothing means the CPU socket is electrically empty.
+    Public CPU0 As Processor286 = Nothing
+    Public NumericCoprocessor0 As Intel80287 = Nothing
     Public MachineClock As New MachineClock286
 Public FrontPanel As New FrontPanelState
     Public MasterPic As New Pic8259
@@ -48,7 +48,7 @@ Public FrontPanel As New FrontPanelState
     Public PcSpeaker As New PcSpeakerDevice(SystemTimer, SystemControl)
     Public NmiGate As New AtNmiGate
     Public Chipset As New NeatCs8221Chipset(Function() MachineClock.CpuClockHz)
-    Public VideoCard As New DiamondStealthPro928
+    Public VideoCard As DiamondStealthPro928 = Nothing
     Public FloppyController As New FloppyController765(MasterPic, DmaController)
     Public IdeController As New IdeController(SlavePic, &H1F0US, &H3F6US, 14, "Primary")
     Public SecondaryIdeController As New IdeController(SlavePic, &H170US, &H376US, 15, "Secondary")
@@ -65,12 +65,16 @@ Public FrontPanel As New FrontPanelState
     ' CROMWELL ISA EXPANSION BRICK - period expansion cards on the same AT bus.
     ' IRQ10/11 are slave-8259 inputs 2/3, keeping the existing master IRQ lines
     ' available to COM/LPT/FDC.  Sound DMA stays on the real 8237 path.
-    Public SoundBlaster16 As New SoundBlaster16Isa(&H220US, 10, 1, 5, MasterPic, SlavePic, DmaController)
-    Public Ne2000 As New Ne2000Isa(&H300US, 11, MasterPic, SlavePic)
+    Public SoundBlaster16 As SoundBlaster16Isa = Nothing
+    Public Ne2000 As Ne2000Isa = Nothing
     Public Com1DiagnosticPeripheral As New DiagnosticSerialPeripheral()
     Public Com2DiagnosticPeripheral As New DiagnosticSerialPeripheral()
     Public SerialMouse As New MicrosoftSerialMouse()
     Public IsaMemoryHole As New AtIsaMemoryHole
+    Public IsaBackplane As New IsaBackplane286(SystemBus, IsaMemoryHole)
+    Public Const VideoIsaSlotId As String = "isa-video"
+    Public Const AudioIsaSlotId As String = "isa-audio"
+    Public Const NetworkIsaSlotId As String = "isa-network"
     Private HardwareInitialized As Boolean
     Private KeyboardA20Enabled As Boolean
     Private ChipsetForcesA20Low As Boolean
@@ -84,8 +88,6 @@ Public FrontPanel As New FrontPanelState
         SystemBus.Register(MasterPic)
         SystemBus.Register(SlavePic)
         SystemBus.Register(DmaController)
-        SystemBus.Register(SoundBlaster16)
-        SystemBus.Register(Ne2000)
         ' Speaker samples the beginning-of-interval PIT state, so it MUST
         ' precede SystemTimer in the physical-time clock list.
         SystemBus.Register(PcSpeaker)
@@ -94,7 +96,6 @@ Public FrontPanel As New FrontPanelState
         SystemBus.Register(KeyboardController)
         SystemBus.Register(RealTimeClock)
         SystemBus.Register(Chipset)
-        SystemBus.Register(VideoCard)
         SystemBus.Register(FloppyController)
         SystemBus.Register(IdeController)
         SystemBus.Register(SecondaryIdeController)
@@ -106,9 +107,10 @@ Public FrontPanel As New FrontPanelState
         SystemBus.Register(IsaMemoryHole)
         SystemBus.Register(NmiGate)
 
-        CPU0.PortBus = CpuBus
-        CPU0.MemoryController = MotherboardMemory
-        CPU0.InterruptAcknowledge = AddressOf AcknowledgeHardwareInterrupt
+        IsaBackplane.DefineSlot(VideoIsaSlotId, "ISA video slot", IsaSlotConnectorWidth286.SixteenBit)
+        IsaBackplane.DefineSlot(AudioIsaSlotId, "ISA audio slot", IsaSlotConnectorWidth286.SixteenBit)
+        IsaBackplane.DefineSlot(NetworkIsaSlotId, "ISA network slot", IsaSlotConnectorWidth286.SixteenBit)
+        ConfigureInstalledProcessorInBed()
 
         ' Physical AT interrupt wiring:
         '   slave 8259A INT  -> master IRQ2
@@ -119,18 +121,18 @@ Public FrontPanel As New FrontPanelState
         ' removes an unnecessary full PIC priority scan from the ordinary
         ' no-interrupt instruction path.
         AddHandler MasterPic.InterruptOutputChanged,
-            Sub(assertedInBed As Boolean) CPU0.SetInterruptRequestLine(assertedInBed)
-        CPU0.SetInterruptRequestLine(MasterPic.InterruptOutput)
+            Sub(assertedInBed As Boolean) SetCpuInterruptRequestLineInBed(assertedInBed)
+        SetCpuInterruptRequestLineInBed(MasterPic.InterruptOutput)
 
         ' CROMWELL PCB REFIT PHASE 2 BRICK 8D - real motherboard bus ownership.
         MotherboardBridge.AttachCpuHoldInterface(
-            Sub(assertedInBed As Boolean) CPU0.SetBusHoldRequest(assertedInBed),
-            Function() CPU0.HoldAcknowledgeAsserted)
+            Sub(assertedInBed As Boolean) SetCpuHoldRequestInBed(assertedInBed),
+            Function() CpuHoldAcknowledgeInBed())
         MotherboardBridge.AttachCpuResetPulseInterface(AddressOf ResetProcessorAfterShutdown)
         ' CROMWELL PCB REFIT PHASE 2 BRICK 8F - clock-qualified READY policy.
         MotherboardBridge.AttachReadyInterface(
             Sub(waitTStatesInBed As Integer, cpuReadyCycleInBed As Boolean)
-                CPU0.RegisterReadyWaitStates(waitTStatesInBed, cpuReadyCycleInBed)
+                RegisterCpuReadyWaitStatesInBed(waitTStatesInBed, cpuReadyCycleInBed)
             End Sub,
             Function(cycleInBed As AtReadyCycle286) As Integer
                 Return Chipset.GetReadyWaitTStates(cycleInBed)
@@ -215,6 +217,10 @@ Public FrontPanel As New FrontPanelState
         AddHandler MachineClock.CpuStateSampled,
             Sub(stateByteInBed As Byte)
                 FrontPanel.SetCpuStateByte(stateByteInBed)
+                ' No package in the socket means there is no processor RUN/SHUTDOWN
+                ' output to observe.  The board clock still advances independently.
+                If CPU0 Is Nothing Then Return
+
                 If (stateByteInBed And CByte(ProcessorStateByte.Shutdown)) = 0 Then
                     MotherboardBridge.ObserveProcessorRunning()
                     Return
@@ -247,7 +253,9 @@ Public FrontPanel As New FrontPanelState
         AddHandler SystemControl.NmiLineChanged,
             Sub(asserted As Boolean) NmiGate.SetSource(asserted)
         AddHandler SystemControl.NumericCoprocessorReset,
-            Sub() CPU0.ResetNumericCoprocessor()
+            Sub()
+                If NumericCoprocessor0 IsNot Nothing Then NumericCoprocessor0.HardwareReset()
+            End Sub
         ' Port F0h clears the motherboard NPX busy/error latch, not the 80287's
         ' architectural status word.  Keep NumericCoprocessorBusyReset as the
         ' physical board signal until the asynchronous ERROR/BUSY/IRQ13 path is
@@ -257,10 +265,52 @@ Public FrontPanel As New FrontPanelState
         AddHandler Chipset.ReadyTimeoutNmiRequested,
             Sub() NmiGate.PulseSource()
         AddHandler NmiGate.NmiEdge,
-            Sub() CPU0.RequestNmi()
+            Sub()
+                If CPU0 IsNot Nothing Then CPU0.RequestNmi()
+            End Sub
 
         NmiGate.SetMasked(RealTimeClock.NmiDisabled)
         HardwareInitialized = True
+    End Sub
+
+    Public Sub SetProcessorPackageInBed(processorInBed As Processor286)
+        If CPU0 IsNot Nothing Then CPU0.DetachNumericCoprocessor()
+        CPU0 = processorInBed
+        ConfigureInstalledProcessorInBed()
+    End Sub
+
+    Public Sub SetNumericCoprocessorPackageInBed(coprocessorInBed As Intel80287)
+        If CPU0 IsNot Nothing Then CPU0.DetachNumericCoprocessor()
+        NumericCoprocessor0 = coprocessorInBed
+        If CPU0 IsNot Nothing AndAlso NumericCoprocessor0 IsNot Nothing Then
+            CPU0.AttachNumericCoprocessor(NumericCoprocessor0)
+        End If
+    End Sub
+
+    Private Sub ConfigureInstalledProcessorInBed()
+        If CPU0 Is Nothing Then Return
+        CPU0.PortBus = CpuBus
+        CPU0.MemoryController = MotherboardMemory
+        CPU0.InterruptAcknowledge = AddressOf AcknowledgeHardwareInterrupt
+        If NumericCoprocessor0 IsNot Nothing Then CPU0.AttachNumericCoprocessor(NumericCoprocessor0)
+        CPU0.SetInterruptRequestLine(MasterPic.InterruptOutput)
+        MotherboardBridge.ResynchronizeCpuHoldInterface()
+    End Sub
+
+    Private Sub SetCpuInterruptRequestLineInBed(assertedInBed As Boolean)
+        If CPU0 IsNot Nothing Then CPU0.SetInterruptRequestLine(assertedInBed)
+    End Sub
+
+    Private Sub SetCpuHoldRequestInBed(assertedInBed As Boolean)
+        If CPU0 IsNot Nothing Then CPU0.SetBusHoldRequest(assertedInBed)
+    End Sub
+
+    Private Function CpuHoldAcknowledgeInBed() As Boolean
+        Return CPU0 IsNot Nothing AndAlso CPU0.HoldAcknowledgeAsserted
+    End Function
+
+    Private Sub RegisterCpuReadyWaitStatesInBed(waitTStatesInBed As Integer, cpuReadyCycleInBed As Boolean)
+        If CPU0 IsNot Nothing Then CPU0.RegisterReadyWaitStates(waitTStatesInBed, cpuReadyCycleInBed)
     End Sub
 
     Private Sub SetKeyboardA20Gate(enabled As Boolean)
@@ -274,11 +324,11 @@ Public FrontPanel As New FrontPanelState
     End Sub
 
     Private Sub RecomputeA20()
-        CPU0.A20Enabled = KeyboardA20Enabled AndAlso Not ChipsetForcesA20Low
+        MotherboardMemory.A20Enabled = KeyboardA20Enabled AndAlso Not ChipsetForcesA20Low
     End Sub
 
     Private Sub ResetProcessorOnly()
-        CPU0.Reset()
+        If CPU0 IsNot Nothing Then CPU0.Reset()
         ' A processor-only RESET does not reset the motherboard arbiter. If an
         ' external master still owns HOLD, re-present that physical line to the
         ' reset CPU before execution resumes.
@@ -290,6 +340,7 @@ Public FrontPanel As New FrontPanelState
     End Sub
 
     Private Sub ResetProcessorAfterShutdown()
+        If CPU0 Is Nothing Then Return
         ' An AT shutdown reset is part of the 80286 protected/real-mode
         ' transition.  Keep the already-bounded CPU forensic stream alive so it
         ' records firmware dispatch through CMOS 0Fh and the saved resume frame.
@@ -312,7 +363,7 @@ Public FrontPanel As New FrontPanelState
         MotherboardBridge.ResetArbitration()
         KeyboardA20Enabled = False
         ChipsetForcesA20Low = Chipset.ForceA20Low
-        CPU0.Reset()
+        If CPU0 IsNot Nothing Then CPU0.Reset()
         RecomputeA20()
         MachineClock.Reset()
     End Sub
@@ -322,7 +373,7 @@ Public FrontPanel As New FrontPanelState
         MotherboardBridge.ResetArbitration()
         KeyboardA20Enabled = False
         ChipsetForcesA20Low = Chipset.ForceA20Low
-        CPU0.Reset()
+        If CPU0 IsNot Nothing Then CPU0.Reset()
         RecomputeA20()
         MachineClock.Reset()
     End Sub
