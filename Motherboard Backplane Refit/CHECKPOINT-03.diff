@@ -1,0 +1,276 @@
+diff -ruN '--exclude=Motherboard Backplane Refit' /mnt/data/mbrefit/cp2/vmb_work/Form1.vb /mnt/data/mbrefit/cp3/vmb_work/Form1.vb
+--- /mnt/data/mbrefit/cp2/vmb_work/Form1.vb	2026-09-09 08:18:00.410532384 +0000
++++ /mnt/data/mbrefit/cp3/vmb_work/Form1.vb	2026-09-09 08:19:58.496600433 +0000
+@@ -88,6 +88,7 @@
+     Private _isaCardConfiguration As IsaExpansionCardConfiguration
+     Private _hardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
+     Private _pendingHardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
++    Private ReadOnly _motherboardRuntimeInBed As New MotherboardRuntimeManager()
+     Private _installedCpuHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+     Private _installedNumericCoprocessorHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+     Private _installedVideoHardwareId As String = MachineHardwarePopulationConfiguration.NoneId
+@@ -647,9 +648,9 @@
+         InitializeHardwarePopulationConfigurationInBed()
+         InitializeIsaExpansionCardConfigurationInBed()
+ 
+-        ' Bring up fixed motherboard fabric first, then populate the removable
+-        ' CPU/NPX sockets and ISA connectors while chassis power is still off.
+-        InitializeHardware()
++        ' Bring up fixed motherboard fabric through the motherboard runtime
++        ' factory, then populate removable sockets/connectors while power is off.
++        _motherboardRuntimeInBed.Initialize(_hardwarePopulationConfiguration.MotherboardId)
+         ApplyHardwarePopulationToMachineInBed()
+ 
+         InitializeRamBanks()
+@@ -1287,8 +1288,9 @@
+         snapshotInBed.PowerSupply = "Power-supply profile not yet modeled"
+         snapshotInBed.MotherboardHardwareId = motherboardProfileInBed.Id
+         snapshotInBed.Motherboard = motherboardProfileInBed.DisplayName
+-        snapshotInBed.MotherboardRuntimeStatus = If(motherboardProfileInBed.RuntimeBackplaneAvailable,
+-                                                    "Runtime backplane implemented",
++        Dim selectedRuntimeInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(motherboardProfileInBed.Id)
++        snapshotInBed.MotherboardRuntimeStatus = If(selectedRuntimeInBed.FixedFabricAvailable,
++                                                    selectedRuntimeInBed.RuntimeDisplayName,
+                                                     "Physical profile complete — runtime backplane pending; no substitute chipset will be fabricated")
+         snapshotInBed.CpuSocket = motherboardProfileInBed.CpuSocketDisplayName
+         snapshotInBed.ClockGenerator = motherboardProfileInBed.ClockGeneratorDisplayName
+@@ -1300,8 +1302,9 @@
+         Next
+         snapshotInBed.ExpansionTopology = String.Join(Environment.NewLine, expansionTextInBed)
+         Dim currentMotherboardProfileInBed As MotherboardProfile = MotherboardCatalog.Require(currentPopulationInBed.MotherboardId)
++        Dim liveRuntimeInBed As IMotherboardRuntimeBackplane = _motherboardRuntimeInBed.Current
+         Dim liveChipsetSuffixInBed As String = If(String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase),
+-                                                  " (" & Chipset.GetType().Name & ")",
++                                                  " (" & If(liveRuntimeInBed Is Nothing, Chipset.GetType().Name, liveRuntimeInBed.RuntimeDisplayName) & ")",
+                                                   " — pending selection; live board remains " & currentMotherboardProfileInBed.DisplayName)
+         snapshotInBed.Chipset = motherboardProfileInBed.ChipsetDisplayName & liveChipsetSuffixInBed
+         snapshotInBed.ChipsetCpuBus = motherboardProfileInBed.ChipsetCpuBus
+@@ -1311,7 +1314,7 @@
+         snapshotInBed.ChipsetConfigurationPorts = motherboardProfileInBed.ChipsetConfigurationPorts
+         snapshotInBed.ChipsetTiming = If(String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase),
+                                             Chipset.TimingDiagnosticText(),
+-                                            "Pending motherboard selection — live NEAT timing remains asserted until the cold replacement is committed")
++                                            "Pending motherboard selection — live board remains asserted until the cold replacement is committed" & Environment.NewLine & _motherboardRuntimeInBed.DiagnosticText())
+         snapshotInBed.Bios = motherboardProfileInBed.BiosDisplayName
+ 
+         snapshotInBed.CpuHardwareId = effectivePopulationInBed.CpuId
+@@ -1657,10 +1660,10 @@
+ 
+     Friend Sub ApplyPendingSystemConfigurationAndPowerCycleInBed()
+         If _pendingHardwarePopulationConfiguration IsNot Nothing Then
+-            Dim pendingBoardInBed As MotherboardProfile = MotherboardCatalog.Require(_pendingHardwarePopulationConfiguration.MotherboardId)
+-            If Not pendingBoardInBed.RuntimeBackplaneAvailable Then
++            Dim runtimeReasonInBed As String = String.Empty
++            If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId, runtimeReasonInBed) Then
+                 MessageBox.Show(Me,
+-                                pendingBoardInBed.DisplayName & " is a valid physical/configurator profile, but its runtime motherboard backplane is not installed in this checkpoint. The running machine has not been altered.",
++                                runtimeReasonInBed & " The running machine has not been altered.",
+                                 "Motherboard runtime pending",
+                                 MessageBoxButtons.OK,
+                                 MessageBoxIcon.Information)
+diff -ruN '--exclude=Motherboard Backplane Refit' /mnt/data/mbrefit/cp2/vmb_work/Motherboards/MotherboardRuntime.vb /mnt/data/mbrefit/cp3/vmb_work/Motherboards/MotherboardRuntime.vb
+--- /mnt/data/mbrefit/cp2/vmb_work/Motherboards/MotherboardRuntime.vb	1970-01-01 00:00:00.000000000 +0000
++++ /mnt/data/mbrefit/cp3/vmb_work/Motherboards/MotherboardRuntime.vb	2026-09-09 08:19:57.330407851 +0000
+@@ -0,0 +1,191 @@
++Imports System
++
++' Runtime side of a motherboard profile.  Profiles answer "what board is this?";
++' runtime backplanes answer "which fixed electrical fabric is currently wired to
++' the machine bus?"  Keeping the two separate lets the configurator describe a
++' real board before its processor core exists without ever substituting another
++' chipset behind the label.
++Public Interface IMotherboardRuntimeBackplane
++    ReadOnly Property ProfileId As String
++    ReadOnly Property ImplementationId As String
++    ReadOnly Property RuntimeDisplayName As String
++    ReadOnly Property FixedFabricAvailable As Boolean
++    ReadOnly Property ProcessorExecutionAvailable As Boolean
++    ReadOnly Property ProcessorArchitecture As String
++
++    Sub InitializeFixedFabric()
++    Function SupportsProcessorPackage(cpuIdInBed As String) As Boolean
++    Function DiagnosticText() As String
++End Interface
++
++' Adapter over the existing, proven 286 motherboard graph.  Checkpoint 03 does
++' not reconstruct or reorder any of Declares.InitializeHardware's device graph;
++' it merely puts that graph behind the same factory boundary future boards use.
++Public NotInheritable Class NeatAt286RuntimeBackplane
++    Implements IMotherboardRuntimeBackplane
++
++    Public ReadOnly Property ProfileId As String Implements IMotherboardRuntimeBackplane.ProfileId
++        Get
++            Return MotherboardCatalog.CtCs8221NeatAt286Id
++        End Get
++    End Property
++
++    Public ReadOnly Property ImplementationId As String Implements IMotherboardRuntimeBackplane.ImplementationId
++        Get
++            Return MotherboardCatalog.CtCs8221NeatBackplaneImplementationId
++        End Get
++    End Property
++
++    Public ReadOnly Property RuntimeDisplayName As String Implements IMotherboardRuntimeBackplane.RuntimeDisplayName
++        Get
++            Return "C&T CS8221 NEAT AT runtime backplane"
++        End Get
++    End Property
++
++    Public ReadOnly Property FixedFabricAvailable As Boolean Implements IMotherboardRuntimeBackplane.FixedFabricAvailable
++        Get
++            Return True
++        End Get
++    End Property
++
++    Public ReadOnly Property ProcessorExecutionAvailable As Boolean Implements IMotherboardRuntimeBackplane.ProcessorExecutionAvailable
++        Get
++            Return True
++        End Get
++    End Property
++
++    Public ReadOnly Property ProcessorArchitecture As String Implements IMotherboardRuntimeBackplane.ProcessorArchitecture
++        Get
++            Return "80286"
++        End Get
++    End Property
++
++    Public Sub InitializeFixedFabric() Implements IMotherboardRuntimeBackplane.InitializeFixedFabric
++        Declares.InitializeHardware()
++    End Sub
++
++    Public Function SupportsProcessorPackage(cpuIdInBed As String) As Boolean Implements IMotherboardRuntimeBackplane.SupportsProcessorPackage
++        Return String.Equals(cpuIdInBed, ProcessorPackageCatalog.NoneId, StringComparison.OrdinalIgnoreCase) OrElse
++               String.Equals(cpuIdInBed, ProcessorPackageCatalog.HarrisCs80C28625Id, StringComparison.OrdinalIgnoreCase)
++    End Function
++
++    Public Function DiagnosticText() As String Implements IMotherboardRuntimeBackplane.DiagnosticText
++        Return "Runtime motherboard       : " & RuntimeDisplayName & Environment.NewLine &
++               "  profile                  : " & ProfileId & Environment.NewLine &
++               "  implementation           : " & ImplementationId & Environment.NewLine &
++               "  processor architecture   : " & ProcessorArchitecture & Environment.NewLine &
++               "  fixed fabric             : wired" & Environment.NewLine &
++               "  processor execution      : available"
++    End Function
++End Class
++
++' CP03 placeholder returned for a known physical board whose live electrical
++' fabric has not yet been attached.  It is deliberately incapable of registering
++' hardware.  CP04 replaces this class in the factory with the real OPTi backplane.
++Public NotInheritable Class QdiOpti895RuntimeBackplanePending
++    Implements IMotherboardRuntimeBackplane
++
++    Public ReadOnly Property ProfileId As String Implements IMotherboardRuntimeBackplane.ProfileId
++        Get
++            Return MotherboardCatalog.QdiV4P895P3SmtV5Id
++        End Get
++    End Property
++
++    Public ReadOnly Property ImplementationId As String Implements IMotherboardRuntimeBackplane.ImplementationId
++        Get
++            Return MotherboardCatalog.QdiV4P895P3BackplaneImplementationId
++        End Get
++    End Property
++
++    Public ReadOnly Property RuntimeDisplayName As String Implements IMotherboardRuntimeBackplane.RuntimeDisplayName
++        Get
++            Return "QDI V4P895P3/SMT OPTi 895 runtime backplane — pending"
++        End Get
++    End Property
++
++    Public ReadOnly Property FixedFabricAvailable As Boolean Implements IMotherboardRuntimeBackplane.FixedFabricAvailable
++        Get
++            Return False
++        End Get
++    End Property
++
++    Public ReadOnly Property ProcessorExecutionAvailable As Boolean Implements IMotherboardRuntimeBackplane.ProcessorExecutionAvailable
++        Get
++            Return False
++        End Get
++    End Property
++
++    Public ReadOnly Property ProcessorArchitecture As String Implements IMotherboardRuntimeBackplane.ProcessorArchitecture
++        Get
++            Return "80486"
++        End Get
++    End Property
++
++    Public Sub InitializeFixedFabric() Implements IMotherboardRuntimeBackplane.InitializeFixedFabric
++        Throw New InvalidOperationException("The QDI OPTi 895 fixed motherboard fabric is not wired in this checkpoint.")
++    End Sub
++
++    Public Function SupportsProcessorPackage(cpuIdInBed As String) As Boolean Implements IMotherboardRuntimeBackplane.SupportsProcessorPackage
++        Return String.Equals(cpuIdInBed, ProcessorPackageCatalog.NoneId, StringComparison.OrdinalIgnoreCase)
++    End Function
++
++    Public Function DiagnosticText() As String Implements IMotherboardRuntimeBackplane.DiagnosticText
++        Return "Runtime motherboard       : " & RuntimeDisplayName & Environment.NewLine &
++               "  profile                  : " & ProfileId & Environment.NewLine &
++               "  implementation           : " & ImplementationId & Environment.NewLine &
++               "  processor architecture   : " & ProcessorArchitecture & Environment.NewLine &
++               "  fixed fabric             : pending CP04" & Environment.NewLine &
++               "  processor execution      : 80486 core not present"
++    End Function
++End Class
++
++Public NotInheritable Class MotherboardRuntimeFactory
++    Private Sub New()
++    End Sub
++
++    Public Shared Function Create(profileIdInBed As String) As IMotherboardRuntimeBackplane
++        Select Case MotherboardCatalog.NormalizeId(profileIdInBed)
++            Case MotherboardCatalog.CtCs8221NeatAt286Id
++                Return New NeatAt286RuntimeBackplane()
++            Case MotherboardCatalog.QdiV4P895P3SmtV5Id
++                Return New QdiOpti895RuntimeBackplanePending()
++            Case Else
++                Throw New InvalidOperationException("No runtime motherboard factory is registered for '" & If(profileIdInBed, String.Empty) & "'.")
++        End Select
++    End Function
++End Class
++
++Public NotInheritable Class MotherboardRuntimeManager
++    Private _currentInBed As IMotherboardRuntimeBackplane
++
++    Public ReadOnly Property Current As IMotherboardRuntimeBackplane
++        Get
++            Return _currentInBed
++        End Get
++    End Property
++
++    Public Sub Initialize(profileIdInBed As String)
++        If _currentInBed IsNot Nothing Then Return
++        Dim nextInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(profileIdInBed)
++        If Not nextInBed.FixedFabricAvailable Then
++            Throw New InvalidOperationException(nextInBed.RuntimeDisplayName & " cannot be activated because its fixed fabric is not implemented.")
++        End If
++        nextInBed.InitializeFixedFabric()
++        _currentInBed = nextInBed
++    End Sub
++
++    Public Function CanActivate(profileIdInBed As String, ByRef reasonInBed As String) As Boolean
++        Dim candidateInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(profileIdInBed)
++        If Not candidateInBed.FixedFabricAvailable Then
++            reasonInBed = candidateInBed.RuntimeDisplayName & " has no fixed-fabric implementation yet."
++            Return False
++        End If
++        reasonInBed = String.Empty
++        Return True
++    End Function
++
++    Public Function DiagnosticText() As String
++        If _currentInBed Is Nothing Then Return "Runtime motherboard       : not initialized"
++        Return _currentInBed.DiagnosticText()
++    End Function
++End Class
+diff -ruN '--exclude=Motherboard Backplane Refit' /mnt/data/mbrefit/cp2/vmb_work/VirtualComputer.Modern.vbproj /mnt/data/mbrefit/cp3/vmb_work/VirtualComputer.Modern.vbproj
+--- /mnt/data/mbrefit/cp2/vmb_work/VirtualComputer.Modern.vbproj	2026-09-09 07:58:53.000000000 +0000
++++ /mnt/data/mbrefit/cp3/vmb_work/VirtualComputer.Modern.vbproj	2026-09-09 08:19:57.810569101 +0000
+@@ -107,6 +107,7 @@
+   <ItemGroup>
+     <Compile Include="MachineConfiguration.vb" />
+     <Compile Include="Motherboards\MotherboardCatalog.vb" />
++    <Compile Include="Motherboards\MotherboardRuntime.vb" />
+     <Compile Include="HardwarePopulation.vb" />
+     <Compile Include="IsaCardJumperPanels.vb" />
+     <Compile Include="IsaBackplane.vb" />

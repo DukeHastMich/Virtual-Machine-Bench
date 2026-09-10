@@ -1,4 +1,4 @@
-Imports System
+﻿Imports System
 Imports System.Collections.Generic
 Imports System.Drawing
 Imports System.IO
@@ -34,8 +34,12 @@ Public NotInheritable Class SoundBlaster16JumperSettings
 
     Public Function Summary() As String
         Dim wavetableInBed As WavetableAttachmentSettings = If(Wavetable, New WavetableAttachmentSettings())
+        Dim dma16TextInBed As String =
+            If(Dma16 = IsaExpansionCardConfiguration.Sb16Dma16ViaLowChannel,
+               "low DMA (16-bit over DMA" & Dma8.ToString() & ")",
+               "DMA" & Dma16.ToString())
         Return BasePort.ToString("X3") & "h / IRQ" & Irq.ToString() &
-               " / DMA" & Dma8.ToString() & "/" & Dma16.ToString() &
+               " / DMA" & Dma8.ToString() & "/" & dma16TextInBed &
                " / MPU " & MpuPort.ToString("X3") & "h" &
                If(GamePortEnabled, " / game 201h", " / game disabled") &
                " / " & wavetableInBed.Summary()
@@ -59,10 +63,11 @@ Public NotInheritable Class IsaExpansionCardConfiguration
     Private Const MachineConfigurationName As String = "VirtualComputer.machine.ini"
     Private ReadOnly _configurationPath As String
 
-    Public Shared ReadOnly Sb16BasePorts As UInt16() = {&H220US, &H240US}
+    Public Const Sb16Dma16ViaLowChannel As Integer = -1
+    Public Shared ReadOnly Sb16BasePorts As UInt16() = {&H220US, &H240US, &H260US, &H280US}
     Public Shared ReadOnly Sb16Irqs As Integer() = {5, 7, 9, 10}
     Public Shared ReadOnly Sb16Dma8Channels As Integer() = {0, 1, 3}
-    Public Shared ReadOnly Sb16Dma16Channels As Integer() = {5, 6, 7}
+    Public Shared ReadOnly Sb16Dma16Channels As Integer() = {Sb16Dma16ViaLowChannel, 5, 6, 7}
     Public Shared ReadOnly Sb16MpuPorts As UInt16() = {&H300US, &H330US}
     Public Shared ReadOnly Ne2000BasePorts As UInt16() = {&H280US, &H300US, &H320US, &H340US, &H360US}
     Public Shared ReadOnly Ne2000Irqs As Integer() = {3, 4, 5, 9, 10, 11, 12, 15}
@@ -415,7 +420,10 @@ Friend NotInheritable Class IsaCardJumperDialog
             FillHex(_baseCombo, IsaExpansionCardConfiguration.Sb16BasePorts, SoundBlasterSettings.BasePort)
             FillInts(_irqCombo, IsaExpansionCardConfiguration.Sb16Irqs, SoundBlasterSettings.Irq, Function(v) If(v = 9, "IRQ 2/9", "IRQ " & v.ToString()))
             FillInts(_dma8Combo, IsaExpansionCardConfiguration.Sb16Dma8Channels, SoundBlasterSettings.Dma8, Function(v) "DMA " & v.ToString())
-            FillInts(_dma16Combo, IsaExpansionCardConfiguration.Sb16Dma16Channels, SoundBlasterSettings.Dma16, Function(v) "DMA " & v.ToString())
+            FillInts(_dma16Combo, IsaExpansionCardConfiguration.Sb16Dma16Channels, SoundBlasterSettings.Dma16,
+                     Function(v) If(v = IsaExpansionCardConfiguration.Sb16Dma16ViaLowChannel,
+                                    "Use low DMA for 16-bit",
+                                    "DMA " & v.ToString()))
             FillHex(_mpuCombo, IsaExpansionCardConfiguration.Sb16MpuPorts, SoundBlasterSettings.MpuPort)
             _gameCheck.Checked = SoundBlasterSettings.GamePortEnabled
             If SoundBlasterSettings.Wavetable Is Nothing Then SoundBlasterSettings.Wavetable = New WavetableAttachmentSettings()

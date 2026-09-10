@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
@@ -106,6 +106,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MachineConfiguration.vb" />
+    <Compile Include="Motherboards\MotherboardCatalog.vb" />
+    <Compile Include="Motherboards\MotherboardRuntime.vb" />
+    <Compile Include="Motherboards\QDI V4P895P3\Opti895Chipset486.vb" />
     <Compile Include="HardwarePopulation.vb" />
     <Compile Include="IsaCardJumperPanels.vb" />
     <Compile Include="IsaBackplane.vb" />
@@ -133,4 +136,10 @@
   <ItemGroup>
     <PackageReference Include="MeltySynth" Version="2.4.1" />
   </ItemGroup>
+  <Target Name="AssembleVideoBios" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Firmware\build-video-bios.ps1&quot;" />
+  </Target>
+  <Target Name="AssembleSystemBios" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\Firmware\build-bios.ps1&quot;" />
+  </Target>
 </Project>

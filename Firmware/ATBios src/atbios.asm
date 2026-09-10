@@ -73,6 +73,9 @@ cpu 286
 %define HDW_MODE            0x03C8
 %define HDW_ERROR           0x03C9
 
+; Fixed-disk parameter table for INT 41h.  Lives in the EBDA so POST can
+; publish the geometry discovered from IDENTIFY without occupying ROM.
+%define HD_FDPT             0x03A0
 %define HD_CYLINDERS        0x03E0
 %define HD_TOTAL_LOW        0x03E2
 %define HD_TOTAL_HIGH       0x03E4
@@ -86,9 +89,26 @@ cpu 286
 %define POST_GDTR_PHYS      0x8020
 %define POST_EXT_KB_RESULT  0x8030
 %define POST_MEMORY_FLAGS   0x8032
+%define POST_NPX_PROBE      0x8034
+
+; EBDA POST hardware-population inventory.  These fields describe what the
+; firmware actually observed on the guest-visible buses; they are not host-side
+; configuration shortcuts.
+%define IDE_SLOT_PM_KIND    0x0220
+%define IDE_SLOT_PS_KIND    0x0221
+%define IDE_SLOT_SM_KIND    0x0222
+%define IDE_SLOT_SS_KIND    0x0223
+%define SETUP_PAGE_WORK      0x0224
+%define IDE_KIND_NONE       0x00
+%define IDE_KIND_ATA        0x01
+%define IDE_KIND_ATAPI      0x02
+
 %define CMOS_SETUP_FLAGS    0x20
 %define SETUP_NUMLOCK_ON    0x01
 %define SETUP_HDD_FIRST     0x02
+%define SETUP_FAST_BOOT     0x04
+%define SETUP_HALT_KBD_ERR  0x08
+%define NPX_PRESENT         0x03E9
 %define SETUP_FLAGS_WORK    0x03EA
 %define SETUP_RTC_CENTURY   0x03EB
 %define SETUP_RTC_YEAR      0x03EC
@@ -150,6 +170,7 @@ start:
     mov word [0x15*4], int15
     mov word [0x16*4], int16
     mov word [0x17*4], int17
+    mov word [0x18*4], int18_basic
     mov word [0x19*4], int19
     mov word [0x1A*4], int1a
     mov word [0x70*4], int70
@@ -198,6 +219,14 @@ start:
     mov word [es:0x7C], 0x0101       ; COM1-2 BIOS timeout seconds
     mov word [es:0x7E], 0x0101       ; COM3-4 (unpopulated)
 
+    ; Probe the optional 80287 through the real ESC processor-extension path.
+    ; With an empty socket the 80286 retires these ESC opcodes without a data
+    ; transfer, leaving the sentinel unchanged.  An installed 80287 FNSTSW
+    ; replaces it with the reset status word.  Publish the result into the
+    ; ordinary AT equipment word/CMOS rather than consulting host population.
+    call post_detect_numeric_coprocessor
+    call cmos_sync_numeric_coprocessor
+
     ; Master/slave 8259 and 18.2 Hz PIT.
     mov al, 0x11
     out 0x20, al
@@ -241,6 +270,7 @@ post_memory_resume:
     call keyboard_init
     call apply_cmos_keyboard_preferences
 
+    call ide_detect_all
     call ata_detect
     call cmos_sync_detected_hardware
 
@@ -248,8 +278,18 @@ post_memory_resume:
     ; address windows.  The Diamond Stealth Pro VGA BIOS at C000:0000 hooks
     ; INT 10h during this pass; the system BIOS remains the fallback handler.
     call scan_option_roms
+    ; INT 1Eh/41h are data pointers, not code.  Leave them as IRET through the
+    ; option-ROM scan so a ROM that issues those interrupts still returns, then
+    ; publish the AT tables for DOS.
+    xor ax, ax
+    mov ds, ax
+    mov word [0x1E*4], floppy_dpt
+    mov word [0x1E*4+2], 0xF000
+    mov word [0x41*4], HD_FDPT
+    mov word [0x41*4+2], EBDA_SEG
     mov ax, 0x0003
     int 0x10
+    call post_beep
     push cs
     pop ds                         ; embedded POST strings live in the ROM segment
 
@@ -298,6 +338,8 @@ post_memory_resume:
     call print_memory_summary
     mov si, post_text_after_memory
     call print
+    call print_post_population_summary
+    call print_ide_post_summary
     ; The prompt remains truthful on the completed POST screen: accept Delete
     ; for one final controller-owned interval before selecting boot media.
     call setup_entry_window
@@ -305,6 +347,7 @@ post_memory_resume:
     call cmos_setup
 .boot_after_post:
     call apply_cmos_keyboard_preferences
+    call post_keyboard_error_policy
     int 0x19
 .halt: hlt
     jmp .halt
@@ -638,6 +681,12 @@ post_memory_size_and_test:
     mov byte [POST_GDTR_PHYS + 5], 0
     mov word [POST_EXT_KB_RESULT], 0
     mov byte [POST_MEMORY_FLAGS], 0
+    mov al, CMOS_SETUP_FLAGS
+    call cmos_read
+    test al, SETUP_FAST_BOOT
+    jz short .memory_mode_ready
+    or byte [POST_MEMORY_FLAGS], 0x02
+.memory_mode_ready:
 
     call post_enable_a20
     lgdt [POST_GDTR_PHYS]
@@ -661,6 +710,13 @@ post_memory_pm_entry:
     mov byte [POST_GDT_PHYS + 16 + 4], bl
     mov ax, 0x0010
     mov es, ax                      ; reload descriptor cache with new base
+
+    ; Fast POST performs one sparse end-to-end pattern per 64 KiB bank.
+    ; Thorough POST retains the complementary two-pass test.  Both modes still
+    ; discover installed RAM from guest-visible bus behavior rather than a host
+    ; configuration value.
+    test byte [POST_MEMORY_FLAGS], 0x02
+    J286_NE .quick_bank_test
 
     mov word [es:0x0000], 0x55AA
     mov word [es:0x0002], 0xAA55
@@ -687,7 +743,17 @@ post_memory_pm_entry:
     J286_NE .banks_done
     cmp word [es:0xFFFE], 0xA55A
     J286_NE .banks_done
+    jmp short .bank_ok
 
+.quick_bank_test:
+    mov word [es:0x0000], 0x55AA
+    mov word [es:0xFFFE], 0xAA55
+    cmp word [es:0x0000], 0x55AA
+    J286_NE .banks_done
+    cmp word [es:0xFFFE], 0xAA55
+    J286_NE .banks_done
+
+.bank_ok:
     inc bx
     jmp .bank_loop
 
@@ -701,7 +767,7 @@ post_memory_pm_entry:
     shl ax, 1
     shl ax, 1                       ; KiB = banks * 64
     mov [POST_EXT_KB_RESULT], ax
-    mov byte [POST_MEMORY_FLAGS], 1
+    or byte [POST_MEMORY_FLAGS], 1
 
     ; 02h is the conventional AT 'memory test passed' shutdown code.  The
     ; 80286 cannot clear PE with LMSW, so pulse RESET through the 8042.
@@ -764,6 +830,31 @@ post_gdt_template:
     dw 0xFFFF, 0x0000               ; selector 18h: low RAM data/stack
     db 0x00, 0x92, 0x00, 0x00
 post_gdt_template_end:
+
+; INT 15h AH=87h protected-mode copy.  Selector 20h is the BIOS code
+; descriptor the service writes into the caller's GDT (base F0000h), so this
+; offset is the physical F000:label address.  80286 descriptors only: the
+; reserved limit/granularity words stay zero.
+pm_block_move:
+    mov ax, 0x28                    ; BIOS stack descriptor
+    mov ss, ax
+    mov ax, 0x10                    ; source
+    mov ds, ax
+    mov ax, 0x18                    ; destination
+    mov es, ax
+    xor si, si
+    xor di, di
+    cld
+    rep movsw
+.wait_8042:
+    in al, 0x64
+    test al, 2
+    jnz .wait_8042
+    mov al, 0xFE                    ; pulse 80286 RESET through the 8042
+    out 0x64, al
+.hang:
+    hlt
+    jmp .hang
 
 ; Print AX as unsigned decimal using the initialized VGA BIOS teletype path.
 print_u16_decimal:
@@ -853,6 +944,147 @@ print_keyboard_post_status:
     ret
 
 ; ---------------------------------------------------------------------------
+; Optional 80287 probe.  POST_NPX_PROBE is ordinary low RAM used as a
+; sentinel; there is no host-side population query in this path.
+post_detect_numeric_coprocessor:
+    push ax
+    push ds
+    push es
+    xor ax, ax
+    mov ds, ax
+    mov word [POST_NPX_PROBE], 0x5A5A
+    fninit
+    fnstsw word [POST_NPX_PROBE]
+    mov ax, EBDA_SEG
+    mov es, ax
+    mov byte [es:NPX_PRESENT], 0
+    cmp word [POST_NPX_PROBE], 0
+    jne short .done
+    mov byte [es:NPX_PRESENT], 1
+.done:
+    pop es
+    pop ds
+    pop ax
+    ret
+
+; Synchronize the standard AT equipment-word NPX bit with the actual socket
+; probe.  CMOS remains battery-backed firmware state, but this presence bit is
+; refreshed by every POST exactly as removable hardware requires.
+cmos_sync_numeric_coprocessor:
+    push ax
+    push bx
+    push ds
+    push es
+    mov al, 0x14
+    call cmos_read
+    and al, 0xFD
+    mov bl, al
+    mov ax, EBDA_SEG
+    mov ds, ax
+    cmp byte [NPX_PRESENT], 1
+    jne short .value_ready
+    or bl, 0x02
+.value_ready:
+    mov ah, bl
+    mov al, 0x14
+    call cmos_write
+    call cmos_write_checksum
+
+    mov ax, BDA_SEG
+    mov es, ax
+    and word [es:0x10], 0xFFFD
+    mov ax, EBDA_SEG
+    mov ds, ax
+    cmp byte [NPX_PRESENT], 1
+    jne short .done
+    or word [es:0x10], 0x0002
+.done:
+    pop es
+    pop ds
+    pop bx
+    pop ax
+    ret
+
+; Completed POST tone through the real PIT channel 2 -> port 61h -> speaker
+; path.  Count hardware OUT2 transitions so the tone duration follows emulated
+; motherboard time instead of an arbitrary host delay loop.
+post_beep:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    in al, 0x61
+    and al, 0x0F
+    mov bl, al                      ; preserve AT system-control writable nibble
+    mov al, 0xB6                    ; PIT2, lobyte/hibyte, mode 3 square wave
+    out 0x43, al
+    mov ax, 1193                    ; approximately 1 kHz from 1.193182 MHz PIT
+    out 0x42, al
+    mov al, ah
+    out 0x42, al
+    mov al, bl
+    or al, 0x03                     ; gate PIT2 and connect it to speaker data
+    out 0x61, al
+    in al, 0x61
+    and al, 0x20
+    mov dl, al
+    mov si, 80                      ; 80 half-cycles ~= 40 ms at 1 kHz
+.edge:
+    mov cx, 0xFFFF                  ; bounded safety timeout per transition
+.wait:
+    in al, 0x61
+    and al, 0x20
+    cmp al, dl
+    jne short .changed
+    loop .wait
+    jmp short .finish
+.changed:
+    mov dl, al
+    dec si
+    jnz short .edge
+.finish:
+    mov al, bl
+    out 0x61, al                    ; restore gate/data/error-enable bits exactly
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Honor the CMOS keyboard-error pause policy after Setup has had its final
+; chance to change it.  A missing/failing keyboard may legitimately stop an
+; old-school AT at POST; disabling the option lets headless/no-keyboard tests
+; continue into bootstrap.
+post_keyboard_error_policy:
+    push ax
+    push si
+    push ds
+    push es
+    mov ax, EBDA_SEG
+    mov es, ax
+    cmp byte [es:KBW_POST_RESULT], 1
+    je short .done
+    mov al, CMOS_SETUP_FLAGS
+    call cmos_read
+    test al, SETUP_HALT_KBD_ERR
+    jz short .done
+    push cs
+    pop ds
+    mov si, keyboard_halt_message
+    call print
+    cli
+.halt:
+    hlt
+    jmp short .halt
+.done:
+    pop es
+    pop ds
+    pop si
+    pop ax
+    ret
+
 ; PC/AT CMOS/RTC services (Motorola MC146818A at ports 70h/71h)
 ; ---------------------------------------------------------------------------
 
@@ -935,7 +1167,7 @@ cmos_load_defaults:
     call cmos_write
     mov ax, 0x0012                 ; no fixed disk until ATA detection
     call cmos_write
-    mov ax, 0x6314                 ; 2 floppies, 80-column color, 80287 present
+    mov ax, 0x6114                 ; 2 floppies, 80-column color; NPX set by POST probe
     call cmos_write
     mov ax, 0x8015                 ; 640 KiB base memory (0280h)
     call cmos_write
@@ -947,7 +1179,7 @@ cmos_load_defaults:
     call cmos_write
     mov ax, 0x0019                 ; no extended fixed-disk type yet
     call cmos_write
-    mov ax, 0x0120                 ; OEM setup flags: boot Num Lock on, floppy first
+    mov ax, 0x0920                 ; Num Lock on, thorough POST, halt on keyboard error, floppy first
     call cmos_write
     mov ax, 0x0030                 ; POST fills discovered extended memory
     call cmos_write
@@ -1718,14 +1950,19 @@ int08:
     inc word [0x6E]
 .check_midnight:
     cmp word [0x6E], TICKS_PER_DAY_HIGH
-    jb .eoi
+    jb .user_tick
     ja .midnight
     cmp word [0x6C], TICKS_PER_DAY_LOW
-    jb .eoi
+    jb .user_tick
 .midnight:
     sub word [0x6C], TICKS_PER_DAY_LOW
     sbb word [0x6E], TICKS_PER_DAY_HIGH
     inc byte [0x70]                ; midnight rollover flag/counter
+.user_tick:
+    ; Notify the guest-installed timer hook once per PIT0 tick, including midnight.
+    ; IRQ0 remains in service until the callback returns; it must return via IRET.
+    int 0x1C
+    cli                            ; finish PIC acknowledgement atomically
 .eoi:
     mov al, 0x20
     out 0x20, al
@@ -3136,6 +3373,8 @@ int13:
     J286_E .write
     cmp ah, 0x04
     J286_E .verify
+    cmp ah, 0x05
+    J286_E .format
     cmp ah, 0x08
     J286_E .params
     cmp ah, 0x09
@@ -3152,6 +3391,12 @@ int13:
     J286_E .ready
     cmp ah, 0x15
     J286_E .drive_type
+    cmp ah, 0x16
+    J286_E .disk_change
+    cmp ah, 0x17
+    J286_E .set_floppy_type
+    cmp ah, 0x18
+    J286_E .set_media_type
     mov ah, 0x01                    ; invalid function
     jmp .failure
 
@@ -3250,6 +3495,50 @@ int13:
     J286_NE .drive_not_ready
     call ata_transfer_chs
     J286_C .ata_failure
+    xor ah, ah
+    jmp .success
+
+.format:
+    mov dx, [ss:bp-2]
+    test dl, 0x80
+    J286_NE .format_hard_disk
+    cmp dl, 2
+    J286_AE .drive_not_ready
+    call floppy_format
+    J286_C .controller_failure
+    xor ah, ah
+    jmp .success
+.format_hard_disk:
+    mov ah, 0x01                    ; no low-level ATA format via INT 13h
+    jmp .failure
+
+.disk_change:
+    mov dx, [ss:bp-2]
+    test dl, 0x80
+    J286_NE .drive_not_ready
+    cmp dl, 2
+    J286_AE .drive_not_ready
+    xor ah, ah                      ; change line inactive
+    jmp .success
+
+.set_floppy_type:
+    mov dx, [ss:bp-2]
+    test dl, 0x80
+    J286_NE .drive_not_ready
+    cmp dl, 2
+    J286_AE .drive_not_ready
+    xor ah, ah
+    jmp .success
+
+.set_media_type:
+    mov dx, [ss:bp-2]
+    test dl, 0x80
+    J286_NE .drive_not_ready
+    cmp dl, 2
+    J286_AE .drive_not_ready
+    push cs
+    pop es
+    mov di, floppy_dpt
     xor ah, ah
     jmp .success
 
@@ -3407,20 +3696,36 @@ bios_get_disk_status:
 
 ; CROMWELL KEYBOARD REALITY BRICK 2 INT15 BEGIN
 ; AT system services used during DOS/keyboard initialization.
+; 80286 PC/AT functions only: no 386 E801h/E820h, no 387-specific NPX
+; control, no V86, no APM, no PCI.
 int15:
+    cmp ah, 0x87                   ; block move (enters protected mode)
+    J286_NE .not_move
+    jmp int15_move_block
+.not_move:
     push bp
     mov bp, sp
 
     cmp ah, 0x4F                   ; keyboard scan-code intercept
     J286_E .keyboard_intercept
+    cmp ah, 0x80                   ; device open
+    J286_E .keyboard_success
+    cmp ah, 0x81                   ; device close
+    J286_E .keyboard_success
+    cmp ah, 0x82                   ; program termination
+    J286_E .keyboard_success
     cmp ah, 0x85                   ; SysReq notification
     J286_E .keyboard_success
+    cmp ah, 0x88                   ; extended memory above 1 MiB, in KiB
+    J286_E .extended_memory
     cmp ah, 0x90                   ; device busy
     J286_E .keyboard_success
     cmp ah, 0x91                   ; interrupt complete
     J286_E .keyboard_success
-    cmp ah, 0x88                   ; extended memory above 1 MiB, in KiB
-    J286_E .extended_memory
+    cmp ah, 0xC0                   ; system configuration table
+    J286_E .config
+    cmp ah, 0xC1                   ; extended BIOS data area segment
+    J286_E .ebda
 
     mov ah, 0x86                   ; unsupported function
     or word [ss:bp+6], 1
@@ -3450,6 +3755,128 @@ int15:
     and word [ss:bp+6], 0xFFFE
     pop bp
     iret
+
+.config:
+    push cs
+    pop es
+    mov bx, sys_config_table
+    xor ah, ah
+    and word [ss:bp+6], 0xFFFE
+    pop bp
+    iret
+
+.ebda:
+    mov ax, EBDA_SEG
+    mov es, ax
+    xor ah, ah
+    and word [ss:bp+6], 0xFFFE
+    pop bp
+    iret
+
+; INT 15h AH=87h: copy CX words between physical addresses described by the
+; caller's 80286 GDT at ES:SI.  Returning to real mode uses CMOS shutdown 09h
+; and the existing .block_move_return frame.  386-style descriptor extensions
+; are not programmed here.
+int15_move_block:
+    test cx, cx
+    jnz short .do_move
+    push bp
+    mov bp, sp
+    xor ah, ah
+    and word [ss:bp+6], 0xFFFE
+    pop bp
+    iret
+
+.do_move:
+    call int15_prepare_move_gdt
+    call post_enable_a20
+
+    push bp
+    mov bp, sp
+    and word [ss:bp+6], 0xFFFE      ; CF clear on the IRET after RESET
+    pop bp
+
+    mov al, 0x8F                    ; NMI off, select shutdown register
+    out 0x70, al
+    mov al, 0x09                    ; AT block-move return
+    out 0x71, al
+
+    xor ax, ax                      ; AH=0 success in the saved frame
+    push ax                         ; AX
+    push cx
+    push dx
+    push bx
+    push sp                         ; discarded by shutdown 09h
+    push bp
+    push si
+    push di
+    push es
+    push ds
+
+    xor ax, ax
+    mov ds, ax
+    mov [0x0467], sp
+    mov [0x0469], ss
+
+    lgdt [POST_GDTR_PHYS]
+    cli
+    mov ax, 1
+    lmsw ax
+    jmp 0x0020:pm_block_move
+
+; Fill the BIOS-owned GDT slots and the RAM GDTR.  Source (10h) and dest
+; (18h) remain caller-supplied 80286 descriptors.  CX is preserved.
+int15_prepare_move_gdt:
+    push ax
+    push bx
+    push dx
+    push ds
+
+    mov ax, es
+    mov dx, ax
+    shl ax, 4
+    shr dx, 12
+    add ax, si
+    adc dx, 0                       ; DX:AX = 24-bit physical address of GDT
+
+    mov word [es:si+0x08], 0x002F   ; GDT descriptor, limit 47
+    mov word [es:si+0x0A], ax
+    mov byte [es:si+0x0C], dl
+    mov byte [es:si+0x0D], 0x93
+    mov word [es:si+0x0E], 0
+
+    mov word [es:si+0x20], 0xFFFF   ; BIOS CS, base F0000h
+    mov word [es:si+0x22], 0x0000
+    mov byte [es:si+0x24], 0x0F
+    mov byte [es:si+0x25], 0x9A
+    mov word [es:si+0x26], 0
+
+    push ax
+    push dx
+    mov ax, ss
+    mov dx, ax
+    shl ax, 4
+    shr dx, 12
+    mov word [es:si+0x28], 0xFFFF   ; BIOS SS
+    mov word [es:si+0x2A], ax
+    mov byte [es:si+0x2C], dl
+    mov byte [es:si+0x2D], 0x93
+    mov word [es:si+0x2E], 0
+    pop dx
+    pop ax
+
+    xor bx, bx
+    mov ds, bx
+    mov word [POST_GDTR_PHYS], 0x002F
+    mov word [POST_GDTR_PHYS+2], ax
+    mov byte [POST_GDTR_PHYS+4], dl
+    mov byte [POST_GDTR_PHYS+5], 0
+
+    pop ds
+    pop dx
+    pop bx
+    pop ax
+    ret
 ; CROMWELL KEYBOARD REALITY BRICK 2 INT15 END
 
 ; Read AL sectors from floppy CHS CH/DH/CL into ES:BX via DMA channel 2.
@@ -3717,7 +4144,216 @@ floppy_write:
     pop ax
     ret
 
-; Detect the ATA master and cache geometry/capacity in the EBDA.
+; Format one floppy track.  ES:BX is the IBM CHRN map (4 bytes per sector),
+; CH=cylinder, DH=head, AL=sector count, DL=drive.  DMA uses the EBDA bounce
+; buffer so the 8237 cannot cross a 64 KiB page on a caller-supplied pointer.
+floppy_format:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push di
+    push ds
+    push es
+
+    mov si, ax                      ; AL = sectors on this track
+    mov di, bx                      ; caller map offset
+    mov ax, EBDA_SEG
+    mov ds, ax
+    mov [0x200], ch
+    mov [0x201], dh
+    mov [0x203], dl
+    mov ax, si
+    mov [0x204], al                 ; sector count / fill-map entries
+    test al, al
+    J286_E .success
+
+    ; Copy 4*AL bytes of CHRN into the bounce buffer.
+    xor ah, ah
+    shl ax, 1
+    shl ax, 1
+    mov cx, ax
+    push es
+    push ds
+    push es
+    pop ds                          ; DS = caller ES
+    mov si, di
+    mov ax, EBDA_SEG
+    mov es, ax
+    xor di, di
+    cld
+    rep movsb
+    pop ds
+    pop es
+
+    xor al, al
+    out 0x0C, al
+    mov al, 6
+    out 0x0A, al
+    mov al, 0x4A                    ; memory-to-device, channel 2
+    out 0x0B, al
+    mov ax, 0xFC00
+    out 0x04, al
+    mov al, ah
+    out 0x04, al
+    mov al, 9
+    out 0x81, al
+    xor ah, ah
+    mov al, [0x204]
+    shl ax, 1
+    shl ax, 1
+    dec ax                          ; byte count - 1
+    out 0x05, al
+    mov al, ah
+    out 0x05, al
+    mov al, 2
+    out 0x0A, al
+
+    mov al, [0x203]
+    cmp al, 1
+    J286_NE .motor_a
+    mov al, 0x2D
+    jmp short .motor_ready
+.motor_a:
+    mov al, 0x1C
+.motor_ready:
+    mov dx, 0x3F2
+    out dx, al
+    mov dx, 0x3F5
+    mov al, 0x4D                    ; MFM FORMAT TRACK
+    out dx, al
+    mov al, [0x201]
+    shl al, 2
+    or al, [0x203]
+    out dx, al
+    mov al, 2                       ; 512-byte sectors
+    out dx, al
+    mov al, [0x204]
+    out dx, al                      ; sectors per track
+    mov al, 0x54                    ; GAP3 for 1.44 MB
+    out dx, al
+    mov al, 0xF6                    ; fill byte
+    out dx, al
+
+    in al, dx
+    test al, 0xC0
+    J286_NE .discard_bad
+    mov cx, 6
+.result:
+    in al, dx
+    loop .result
+    jmp short .success
+
+.discard_bad:
+    mov cx, 6
+.discard:
+    in al, dx
+    loop .discard
+    stc
+    jmp short .done
+.success:
+    clc
+.done:
+    pop es
+    pop ds
+    pop di
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; Probe all four standard IDE positions from their reset signatures.  This is
+; physical bus discovery: empty sockets read status 00h, ATA devices expose the
+; 01/01/00/00 signature, and ATAPI devices expose 01/01/14/EB.  The routine
+; intentionally does not issue media commands to an empty socket.
+ide_detect_all:
+    push ax
+    push bx
+    push dx
+    push ds
+    mov ax, EBDA_SEG
+    mov ds, ax
+    mov word [IDE_SLOT_PM_KIND], 0
+    mov word [IDE_SLOT_SM_KIND], 0
+
+    mov bx, 0x1F0
+    mov dx, 0x3F6
+    mov al, 0x02                    ; polling POST: nIEN on primary
+    out dx, al
+    mov al, 0xA0
+    mov si, IDE_SLOT_PM_KIND
+    call ide_probe_signature
+    mov al, 0xB0
+    mov si, IDE_SLOT_PS_KIND
+    call ide_probe_signature
+
+    mov bx, 0x170
+    mov dx, 0x376
+    mov al, 0x02                    ; polling POST: nIEN on secondary
+    out dx, al
+    mov al, 0xA0
+    mov si, IDE_SLOT_SM_KIND
+    call ide_probe_signature
+    mov al, 0xB0
+    mov si, IDE_SLOT_SS_KIND
+    call ide_probe_signature
+
+    pop ds
+    pop dx
+    pop bx
+    pop ax
+    ret
+
+; BX = command block base, AL = A0h master/B0h slave, DS = EBDA, SI = kind byte.
+ide_probe_signature:
+    push ax
+    push cx
+    push dx
+    mov dx, bx
+    add dx, 6
+    out dx, al
+    ; ATA specifies a 400 ns device-select settling interval. Four status reads
+    ; are sufficient on this AT bus and advance emulated motherboard time via
+    ; ordinary guest-visible I/O cycles; no host delay is fabricated.
+    inc dx                            ; command status register, base + 7
+    mov cx, 4
+.select_delay:
+    in al, dx
+    loop .select_delay
+
+    ; AL already contains the final status sample.
+    test al, al
+    jz short .absent
+    cmp al, 0xFF
+    je short .absent
+
+    mov dx, bx
+    add dx, 4
+    in al, dx                       ; LBA mid
+    mov ah, al
+    inc dx
+    in al, dx                       ; LBA high
+    cmp ah, 0x14
+    jne short .ata
+    cmp al, 0xEB
+    jne short .ata
+    mov byte [si], IDE_KIND_ATAPI
+    jmp short .done
+.ata:
+    mov byte [si], IDE_KIND_ATA
+    jmp short .done
+.absent:
+    mov byte [si], IDE_KIND_NONE
+.done:
+    pop dx
+    pop cx
+    pop ax
+    ret
+
+; Detect the ATA primary master in detail and cache geometry/capacity in the EBDA.
 ata_detect:
     push ax
     push bx
@@ -3735,11 +4371,18 @@ ata_detect:
     mov byte [HD_SECTORS_TRACK], 0
     mov word [HD_TOTAL_LOW], 0
     mov word [HD_TOTAL_HIGH], 0
+    call ata_build_fdpt
 
     mov ax, BDA_SEG
     mov es, ax
     mov byte [es:BDA_HDD_COUNT], 0
     mov byte [es:BDA_HDD_STATUS], 0
+
+    ; INT 13h currently exposes the primary-master ATA disk as BIOS drive 80h.
+    ; Other positions are still fully visible to IDE-aware DOS/Windows drivers
+    ; and are reported by POST/Setup, but do not get fabricated INT 13h numbers.
+    cmp byte [IDE_SLOT_PM_KIND], IDE_KIND_ATA
+    jne .done
 
     mov dx, 0x3F6
     mov al, 0x02                    ; disable ATA interrupts; BIOS uses polling
@@ -3819,6 +4462,7 @@ ata_detect:
     mov ax, BDA_SEG
     mov es, ax
     mov byte [es:BDA_HDD_COUNT], 1
+    call ata_build_fdpt
 .done:
     pop es
     pop ds
@@ -3826,6 +4470,54 @@ ata_detect:
     pop dx
     pop cx
     pop bx
+    pop ax
+    ret
+
+; Publish a 16-byte AT fixed-disk parameter table at EBDA:HD_FDPT for INT 41h.
+ata_build_fdpt:
+    push ax
+    push bx
+    xor ax, ax
+    mov [HD_FDPT], ax
+    mov [HD_FDPT+2], ax
+    mov [HD_FDPT+4], ax
+    mov [HD_FDPT+6], ax
+    mov [HD_FDPT+8], ax
+    mov [HD_FDPT+10], ax
+    mov [HD_FDPT+12], ax
+    mov [HD_FDPT+14], ax
+    cmp byte [HD_PRESENT], 1
+    jne short .fdpt_done
+    mov ax, [HD_CYLINDERS]
+    mov [HD_FDPT], ax
+    mov al, [HD_HEADS]
+    mov [HD_FDPT+2], al
+    mov word [HD_FDPT+5], 0xFFFF    ; no write precompensation
+    mov bl, 0
+    cmp byte [HD_HEADS], 8
+    jbe short .control_ready
+    mov bl, 0x08                    ; more than 8 heads
+.control_ready:
+    mov [HD_FDPT+8], bl
+    mov ax, [HD_CYLINDERS]
+    mov [HD_FDPT+12], ax            ; landing zone
+    mov al, [HD_SECTORS_TRACK]
+    mov [HD_FDPT+14], al
+.fdpt_done:
+    pop bx
+    pop ax
+    ret
+
+; Point INT 41h at the EBDA parameter table.  Drive 1 (INT 46h) stays the
+; default IRET because this BIOS does not invent a second INT 13h unit.
+install_fdpt_vector:
+    push ax
+    push ds
+    xor ax, ax
+    mov ds, ax
+    mov word [0x41*4], HD_FDPT
+    mov word [0x41*4+2], EBDA_SEG
+    pop ds
     pop ax
     ret
 
@@ -4868,12 +5560,108 @@ int1a:
     pop bp
     iret
 
+; Compact processor-extension/video population summary for the completed POST
+; roll-up.  The CPU line itself is implicit: if this code is executing, an
+; 80286-compatible processor is physically present in the motherboard socket.
+print_post_population_summary:
+    push ax
+    push si
+    push ds
+    push es
+    push cs
+    pop ds
+    mov si, post_npx_prefix
+    call print
+    mov ax, EBDA_SEG
+    mov es, ax
+    cmp byte [es:NPX_PRESENT], 1
+    jne short .npx_none
+    mov si, post_npx_287
+    jmp short .npx_emit
+.npx_none:
+    mov si, post_npx_none
+.npx_emit:
+    call print
+
+    mov si, post_video_prefix
+    call print
+    mov ax, 0xC000
+    mov es, ax
+    cmp word [es:0], 0xAA55
+    jne short .video_none
+    mov si, post_video_option
+    jmp short .video_emit
+.video_none:
+    mov si, post_video_none
+.video_emit:
+    call print
+    pop es
+    pop ds
+    pop si
+    pop ax
+    ret
+
+; Compact four-position IDE inventory on the completed POST screen.
+print_ide_post_summary:
+    push ax
+    push si
+    push ds
+    mov ax, EBDA_SEG
+    mov ds, ax
+    mov si, post_ide_pm_prefix
+    mov al, [IDE_SLOT_PM_KIND]
+    call print_ide_post_line
+    mov si, post_ide_ps_prefix
+    mov al, [IDE_SLOT_PS_KIND]
+    call print_ide_post_line
+    mov si, post_ide_sm_prefix
+    mov al, [IDE_SLOT_SM_KIND]
+    call print_ide_post_line
+    mov si, post_ide_ss_prefix
+    mov al, [IDE_SLOT_SS_KIND]
+    call print_ide_post_line
+    pop ds
+    pop si
+    pop ax
+    ret
+
+; AL kind, SI prefix offset in CS, caller DS=EBDA.
+print_ide_post_line:
+    push ax
+    push si
+    push ds
+    push cs
+    pop ds
+    call print
+    pop ds
+    pop si
+    pop ax
+    push ds
+    push cs
+    pop ds
+    cmp al, IDE_KIND_ATA
+    je short .ata
+    cmp al, IDE_KIND_ATAPI
+    je short .atapi
+    mov si, post_ide_empty
+    jmp short .emit
+.ata:
+    mov si, post_ide_ata
+    jmp short .emit
+.atapi:
+    mov si, post_ide_atapi
+.emit:
+    call print
+    pop ds
+    ret
+
 ; ---------------------------------------------------------------------------
 ; Cromwell AT CMOS Setup
 ; ---------------------------------------------------------------------------
 ; The setup program lives in the system ROM, as it did on late AT-compatible
 ; motherboards. CMOS byte 20h is OEM configuration RAM covered by the normal
-; 10h-20h checksum: bit 0 is boot Num Lock and bit 1 selects HDD-first boot.
+; 10h-20h checksum: bit 0 is boot Num Lock, bit 1 selects HDD-first boot,
+; bit 2 selects Fast POST memory test, and bit 3 controls keyboard-error halt.
 
 setup_entry_window:
     push ax
@@ -4916,6 +5704,13 @@ setup_entry_window:
     stc
     jmp short .done
 .requested:
+    ; First Delete wins.  Stop the keyboard from producing additional scan
+    ; codes while POST hands control to Setup, consume any already-pending
+    ; bytes while IRQ1 is still masked, and empty the BIOS ring.  Setup sends
+    ; F4 to re-enable scanning only after it has taken ownership.
+    mov al, 0xF5                    ; keyboard Disable Scanning
+    call kbd_runtime_send
+    call kbd_clear_buffer
     clc
 .done:
     pushf
@@ -4926,6 +5721,23 @@ setup_entry_window:
     pop dx
     pop cx
     pop bx
+    pop ax
+    ret
+
+
+; Re-arm the physical keyboard after the POST->Setup ownership transition.
+; kbd_runtime_send is safe with IRQ1 restored: the ISR records ACK/RESEND in
+; the BDA if it wins the port-60 race.  Clearing the ring afterward removes
+; only the Setup trigger/repeat residue, not a fabricated host event.
+setup_keyboard_reenable_after_entry:
+    push ax
+    push ds
+    mov ax, BDA_SEG
+    mov ds, ax
+    mov al, 0xF4                    ; Enable Scanning
+    call kbd_runtime_send
+    call kbd_clear_buffer
+    pop ds
     pop ax
     ret
 
@@ -4941,8 +5753,9 @@ cmos_setup:
     mov es, ax
     mov al, CMOS_SETUP_FLAGS
     call cmos_read
-    and al, SETUP_NUMLOCK_ON | SETUP_HDD_FIRST
+    and al, SETUP_NUMLOCK_ON | SETUP_HDD_FIRST | SETUP_FAST_BOOT | SETUP_HALT_KBD_ERR
     mov [es:SETUP_FLAGS_WORK], al
+    mov byte [es:SETUP_PAGE_WORK], 0   ; Main
     call cmos_wait_update
     mov al, 0x32
     call cmos_read
@@ -4965,68 +5778,41 @@ cmos_setup:
     mov al, 0x00
     call cmos_read
     mov [es:SETUP_RTC_SECOND], al
-.redraw:
+
+    ; setup_entry_window disabled keyboard scanning when Delete was accepted.
+    ; Re-enable it here, after Setup owns the machine, then discard the trigger
+    ; keystroke/protocol residue so a flooded Delete key cannot drive menus.
+    call setup_keyboard_reenable_after_entry
     mov ax, 0x0003
     int 0x10
+    mov cx, 0x2000                  ; hide the hardware cursor in Setup
+    mov ah, 0x01
+    int 0x10
+.redraw:
     push cs
     pop ds
     call setup_draw_chrome
-    mov dx, 0x0303                 ; main pane, row 3 column 3
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
-    mov si, setup_hardware_heading
-    call print
-    mov si, setup_cpu_line
-    call print
-    call print_memory_summary
-    mov si, setup_video_line
-    call print
-    mov si, setup_keyboard_line
-    call print
-    mov si, setup_serial_line
-    call print
-    mov si, setup_parallel_line
-    call print
-    call setup_print_floppies
-    call setup_print_hard_disk
-    mov si, setup_preferences_heading
-    call print
-    mov si, setup_numlock_prefix
-    call print
-    test byte [es:SETUP_FLAGS_WORK], SETUP_NUMLOCK_ON
-    jz short .numlock_off_text
-    mov si, setup_on
-    jmp short .numlock_text_ready
-.numlock_off_text:
-    mov si, setup_off
-.numlock_text_ready:
-    call print
-    mov si, setup_boot_prefix
-    call print
-    test byte [es:SETUP_FLAGS_WORK], SETUP_HDD_FIRST
-    jz short .floppy_first_text
-    mov si, setup_hdd_first_text
-    jmp short .boot_text_ready
-.floppy_first_text:
-    mov si, setup_floppy_first_text
-.boot_text_ready:
-    call print
-    mov si, setup_rtc_prefix
-    call print
-    call setup_print_rtc
+    call setup_draw_current_page
 .key:
     xor ah, ah
     int 0x16
     cmp ah, 0x44                    ; F10
-    je short .save
+    J286_E .save
     cmp ah, 0x01                    ; Escape
-    je short .cancel
+    J286_E .cancel
+    cmp ah, 0x4B                    ; Left arrow
+    je short .page_left
+    cmp ah, 0x4D                    ; Right arrow
+    je short .page_right
     and al, 0xDF
     cmp al, 'N'
     je short .toggle_numlock
     cmp al, 'B'
     je short .toggle_boot
+    cmp al, 'F'
+    je short .toggle_fast
+    cmp al, 'K'
+    je short .toggle_keyboard_halt
     cmp al, 'D'
     je short .defaults
     cmp al, 'A'
@@ -5034,14 +5820,40 @@ cmos_setup:
     cmp al, 'T'
     je short .edit_time
     jmp short .key
+.page_left:
+    mov al, [es:SETUP_PAGE_WORK]
+    test al, al
+    jnz short .page_left_dec
+    mov al, 3
+    jmp short .page_left_store
+.page_left_dec:
+    dec al
+.page_left_store:
+    mov [es:SETUP_PAGE_WORK], al
+    jmp .redraw
+.page_right:
+    mov al, [es:SETUP_PAGE_WORK]
+    inc al
+    cmp al, 4
+    jb short .page_right_store
+    xor al, al
+.page_right_store:
+    mov [es:SETUP_PAGE_WORK], al
+    jmp .redraw
 .toggle_numlock:
     xor byte [es:SETUP_FLAGS_WORK], SETUP_NUMLOCK_ON
     jmp .redraw
 .toggle_boot:
     xor byte [es:SETUP_FLAGS_WORK], SETUP_HDD_FIRST
     jmp .redraw
+.toggle_fast:
+    xor byte [es:SETUP_FLAGS_WORK], SETUP_FAST_BOOT
+    jmp .redraw
+.toggle_keyboard_halt:
+    xor byte [es:SETUP_FLAGS_WORK], SETUP_HALT_KBD_ERR
+    jmp .redraw
 .defaults:
-    mov byte [es:SETUP_FLAGS_WORK], SETUP_NUMLOCK_ON
+    mov byte [es:SETUP_FLAGS_WORK], SETUP_NUMLOCK_ON | SETUP_HALT_KBD_ERR
     jmp .redraw
 .edit_date:
     call setup_edit_date
@@ -5067,72 +5879,479 @@ cmos_setup:
     pop ax
     ret
 
-; Paint the Phalanx Setup shell entirely through VGA text memory semantics.
-; The screen is still ordinary mode 03h: the blue bars, gray work area and
-; help pane are cell attributes, not a host-side graphical overlay.
+; Draw one real Setup page.  The tabs are not decorative: Left/Right changes
+; SETUP_PAGE_WORK and redraws the corresponding page without committing CMOS.
+setup_draw_current_page:
+    mov al, [es:SETUP_PAGE_WORK]
+    cmp al, 1
+    J286_E setup_draw_advanced_page
+    cmp al, 2
+    J286_E setup_draw_boot_page
+    cmp al, 3
+    J286_E setup_draw_exit_page
+
+setup_begin_page:
+    mov dh, 4
+    mov dl, 3
+    mov ch, 3
+    mov bh, 0x70                    ; black on light gray: keep the work pane
+    ret
+
+setup_draw_main_page:
+    call setup_begin_page
+    mov bh, 0x7E                    ; yellow on gray headings
+    mov si, setup_main_heading
+    call setup_puts
+    mov bh, 0x70
+    call setup_print_cpu_npx
+    call setup_print_memory_summary
+    call setup_print_video
+    mov si, setup_rtc_prefix
+    call setup_puts
+    call setup_print_rtc
+    mov si, setup_main_hint
+    call setup_puts
+    ret
+
+setup_draw_advanced_page:
+    call setup_begin_page
+    mov bh, 0x7E
+    mov si, setup_advanced_heading
+    call setup_puts
+    mov bh, 0x70
+    mov si, setup_keyboard_line
+    call setup_puts
+    mov si, setup_serial_line
+    call setup_puts
+    mov si, setup_parallel_line
+    call setup_puts
+    mov bh, 0x7E
+    mov si, setup_preferences_heading
+    call setup_puts
+    mov bh, 0x70
+    call setup_print_numlock_pref
+    call setup_print_fast_pref
+    call setup_print_keyboard_halt_pref
+    mov si, setup_advanced_hint
+    call setup_puts
+    ret
+
+setup_draw_boot_page:
+    call setup_begin_page
+    mov bh, 0x7E
+    mov si, setup_boot_heading
+    call setup_puts
+    mov bh, 0x70
+    call setup_print_floppies
+    call setup_print_ide_devices
+    call setup_print_hard_disk
+    mov bh, 0x7E
+    mov si, setup_preferences_heading
+    call setup_puts
+    mov bh, 0x70
+    call setup_print_boot_pref
+    mov si, setup_boot_hint
+    call setup_puts
+    ret
+
+setup_draw_exit_page:
+    call setup_begin_page
+    mov bh, 0x7E
+    mov si, setup_exit_heading
+    call setup_puts
+    mov bh, 0x70
+    mov si, setup_exit_text
+    call setup_puts
+    ret
+
+setup_print_numlock_pref:
+    mov si, setup_numlock_prefix
+    call setup_puts
+    test byte [es:SETUP_FLAGS_WORK], SETUP_NUMLOCK_ON
+    jz short .off
+    mov si, setup_on
+    jmp short .emit
+.off:
+    mov si, setup_off
+.emit:
+    call setup_puts
+    ret
+
+setup_print_boot_pref:
+    mov si, setup_boot_prefix
+    call setup_puts
+    test byte [es:SETUP_FLAGS_WORK], SETUP_HDD_FIRST
+    jz short .floppy_first
+    mov si, setup_hdd_first_text
+    jmp short .emit
+.floppy_first:
+    mov si, setup_floppy_first_text
+.emit:
+    call setup_puts
+    ret
+
+setup_print_fast_pref:
+    mov si, setup_fast_prefix
+    call setup_puts
+    test byte [es:SETUP_FLAGS_WORK], SETUP_FAST_BOOT
+    jz short .thorough
+    mov si, setup_fast_text
+    jmp short .emit
+.thorough:
+    mov si, setup_thorough_text
+.emit:
+    call setup_puts
+    ret
+
+setup_print_keyboard_halt_pref:
+    mov si, setup_keyboard_halt_prefix
+    call setup_puts
+    test byte [es:SETUP_FLAGS_WORK], SETUP_HALT_KBD_ERR
+    jz short .no
+    mov si, setup_yes
+    jmp short .emit
+.no:
+    mov si, setup_no
+.emit:
+    call setup_puts
+    ret
+
+; Paint the Phalanx Setup shell directly into color text RAM.  INT 10h
+; teletype (AH=0Eh) is owned by the VGA option ROM after POST and writes
+; attribute 07h, which punches black cells through a prepainted blue/gray
+; screen.  Character cells here keep the attribute of the pane they live in.
 setup_draw_chrome:
     push ax
     push bx
     push cx
     push dx
     push di
-    push es
     push si
+    push ds
+    push es
+    push cs
+    pop ds
+    mov ax, VIDEO_SEG
+    mov es, ax
+    cld
 
-    ; Blue outer field and header/footer bars.
-    mov ax, 0x0600
-    mov bh, 0x1F                    ; bright white on blue
-    xor cx, cx
-    mov dx, 0x184F
-    int 0x10
+    xor di, di
+    mov ax, 0x1F20                  ; bright white on blue
+    mov cx, 2000
+    rep stosw
 
-    ; Gray main work surface, rows 3 through 22.
-    mov ax, 0x0600
-    mov bh, 0x70                    ; black on light gray
-    mov cx, 0x0301
-    mov dx, 0x164E
-    int 0x10
+    mov dh, 3
+.gray_row:
+    mov dl, 1
+    call setup_cell_addr
+    mov ax, 0x7020                  ; black on light gray work pane
+    mov cx, 56
+    rep stosw
+    inc dh
+    cmp dh, 21
+    jb .gray_row
 
-    ; Blue help pane at the right, leaving a visible divider.
-    mov ax, 0x0600
-    mov bh, 0x1F
-    mov cx, 0x033B                  ; row 3, column 59
-    mov dx, 0x164E
-    int 0x10
-
-    mov dx, 0x001A
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
+    mov dh, 0
+    mov dl, 27
+    mov ch, 0
+    mov bh, 0x1E                    ; yellow on blue title
     mov si, setup_title
-    call print
+    call setup_puts
 
-    mov dx, 0x0103
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
-    mov si, setup_tabs
-    call print
+    call setup_draw_tabs
 
-    mov dx, 0x043D
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
+    mov bh, 0x1F
+    mov dh, 2
+    mov dl, 0
+    mov al, 0xC9                    ; ╔
+    call setup_plot_char
+    mov dl, 1
+    call setup_cell_addr
+    mov ax, 0x1FCD                  ; ═
+    mov cx, 56
+    rep stosw
+    mov dl, 57
+    mov al, 0xCB                    ; ╦
+    call setup_plot_char
+    mov dl, 58
+    call setup_cell_addr
+    mov ax, 0x1FCD
+    mov cx, 21
+    rep stosw
+    mov dl, 79
+    mov al, 0xBB                    ; ╗
+    call setup_plot_char
+
+    mov dh, 3
+.vert:
+    mov dl, 0
+    mov al, 0xBA                    ; ║
+    call setup_plot_char
+    mov dl, 57
+    mov al, 0xBA
+    call setup_plot_char
+    mov dl, 79
+    mov al, 0xBA
+    call setup_plot_char
+    inc dh
+    cmp dh, 21
+    jb .vert
+
+    mov dh, 21
+    mov dl, 0
+    mov al, 0xC8                    ; ╚
+    call setup_plot_char
+    mov dl, 1
+    call setup_cell_addr
+    mov ax, 0x1FCD
+    mov cx, 56
+    rep stosw
+    mov dl, 57
+    mov al, 0xCA                    ; ╩
+    call setup_plot_char
+    mov dl, 58
+    call setup_cell_addr
+    mov ax, 0x1FCD
+    mov cx, 21
+    rep stosw
+    mov dl, 79
+    mov al, 0xBC                    ; ╝
+    call setup_plot_char
+
+    mov dh, 4
+    mov dl, 59
+    mov ch, 59
+    mov bh, 0x1E
+    mov si, setup_help_title
+    call setup_puts
+    mov bh, 0x1F
     mov si, setup_help_pane
-    call print
+    call setup_puts
 
-    mov dx, 0x1801
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
+    mov dh, 22
+    mov dl, 2
+    mov ch, 2
+    mov bh, 0x1E
+    mov si, setup_footer_1
+    call setup_puts
+    mov dh, 23
+    mov dl, 2
+    mov si, setup_footer_2
+    call setup_puts
+    mov dh, 24
+    mov dl, 2
+    mov bh, 0x1F
     mov si, bios_revision
-    call print
+    call setup_puts
 
-    pop si
     pop es
+    pop ds
+    pop si
     pop di
     pop dx
     pop cx
+    pop bx
+    pop ax
+    ret
+
+; DH=row DL=col -> DI = row*160+col*2.  AX,BX,CX,DX preserved.
+setup_cell_addr:
+    push ax
+    push bx
+    push dx
+    mov al, dh
+    xor ah, ah
+    mov bx, 160
+    mul bx
+    mov di, ax
+    pop dx
+    xor ax, ax
+    mov al, dl
+    shl ax, 1
+    add di, ax
+    pop bx
+    pop ax
+    ret
+
+; AL=character, BH=attribute, DH/DL=position.  ES need not be B800 on entry.
+setup_plot_char:
+    push ax
+    push di
+    push es
+    push ax
+    mov ax, VIDEO_SEG
+    mov es, ax
+    call setup_cell_addr
+    pop ax
+    mov ah, bh
+    mov [es:di], ax
+    pop es
+    pop di
+    pop ax
+    ret
+
+; DS:SI zero-terminated string.  13 returns to margin CH, 10 is a newline.
+; DH/DL is the cursor; BH is the cell attribute.  Updates DH/DL.
+setup_puts:
+    push ax
+    push di
+    push es
+    mov ax, VIDEO_SEG
+    mov es, ax
+.next:
+    lodsb
+    test al, al
+    jz short .done
+    cmp al, 13
+    je short .cr
+    cmp al, 10
+    je short .nl
+    call setup_cell_addr
+    mov ah, bh
+    mov [es:di], ax
+    inc dl
+    jmp short .next
+.cr:
+    mov dl, ch
+    jmp short .next
+.nl:
+    inc dh
+    mov dl, ch
+    jmp short .next
+.done:
+    pop es
+    pop di
+    pop ax
+    ret
+
+setup_draw_tabs:
+    push ax
+    push bx
+    push cx
+    push dx
+    push si
+    push ds
+    mov ax, EBDA_SEG
+    mov ds, ax
+    mov bl, [SETUP_PAGE_WORK]
+    push cs
+    pop ds
+    mov dh, 1
+    mov ch, 2
+    xor bh, bh
+    cmp bl, 0
+    jne short .main_idle
+    mov bh, 0x30                    ; black on cyan: the live page
+    jmp short .main_draw
+.main_idle:
+    mov bh, 0x1F
+.main_draw:
+    mov dl, 2
+    mov si, setup_tab_main
+    call setup_puts
+    xor bh, bh
+    cmp bl, 1
+    jne short .adv_idle
+    mov bh, 0x30
+    jmp short .adv_draw
+.adv_idle:
+    mov bh, 0x1F
+.adv_draw:
+    mov dh, 1
+    mov dl, 12
+    mov si, setup_tab_adv
+    call setup_puts
+    xor bh, bh
+    cmp bl, 2
+    jne short .boot_idle
+    mov bh, 0x30
+    jmp short .boot_draw
+.boot_idle:
+    mov bh, 0x1F
+.boot_draw:
+    mov dh, 1
+    mov dl, 24
+    mov si, setup_tab_boot
+    call setup_puts
+    xor bh, bh
+    cmp bl, 3
+    jne short .exit_idle
+    mov bh, 0x30
+    jmp short .exit_draw
+.exit_idle:
+    mov bh, 0x1F
+.exit_draw:
+    mov dh, 1
+    mov dl, 36
+    mov si, setup_tab_exit
+    call setup_puts
+    pop ds
+    pop si
+    pop dx
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+; AX unsigned decimal at DH/DL with attribute BH.  Updates DL.
+setup_print_u16:
+    push ax
+    push bx
+    push cx
+    push si
+    push di
+    mov di, dx                      ; save row/col
+    mov bl, bh                      ; save attribute
+    xor cx, cx
+    mov si, 10
+.div:
+    xor dx, dx
+    div si
+    push dx
+    inc cx
+    test ax, ax
+    jnz .div
+    mov dx, di
+    mov bh, bl
+.emit:
+    pop ax
+    add al, '0'
+    call setup_plot_char
+    inc dl
+    loop .emit
+    pop di
+    pop si
+    pop cx
+    pop bx
+    pop ax
+    ret
+
+setup_print_memory_summary:
+    push ax
+    push bx
+    push si
+    mov bh, 0x70
+    mov si, setup_memory_prefix
+    call setup_puts
+    mov al, 0x30
+    call cmos_read
+    mov bl, al
+    mov al, 0x31
+    call cmos_read
+    mov ah, al
+    mov al, bl
+    push ax
+    add ax, 1024
+    mov bh, 0x70
+    call setup_print_u16
+    mov si, memory_line_mid
+    call setup_puts
+    pop ax
+    mov bh, 0x70
+    call setup_print_u16
+    mov si, memory_line_suffix
+    call setup_puts
+    pop si
     pop bx
     pop ax
     ret
@@ -5141,16 +6360,17 @@ setup_print_floppies:
     push ax
     push bx
     push si
+    mov bh, 0x70
     mov al, 0x10
     call cmos_read
     mov bl, al
     mov si, setup_floppy_a_prefix
-    call print
+    call setup_puts
     mov al, bl
     shr al, 4
     call setup_print_floppy_type
     mov si, setup_floppy_b_prefix
-    call print
+    call setup_puts
     mov al, bl
     and al, 0x0F
     call setup_print_floppy_type
@@ -5161,6 +6381,7 @@ setup_print_floppies:
 
 setup_print_floppy_type:
     push si
+    mov bh, 0x70
     cmp al, 1
     je short .f360
     cmp al, 2
@@ -5183,17 +6404,143 @@ setup_print_floppy_type:
     jmp short .emit
 .f288: mov si, setup_f288
 .emit:
-    call print
+    call setup_puts
     pop si
+    ret
+
+; Setup system-information lines derived from guest-visible probes.
+setup_print_cpu_npx:
+    push si
+    push ds
+    push es
+    push cs
+    pop ds
+    mov bh, 0x70
+    mov si, setup_cpu_286_line
+    call setup_puts
+    mov ax, EBDA_SEG
+    mov es, ax
+    cmp byte [es:NPX_PRESENT], 1
+    jne short .no_npx
+    mov si, setup_npx_287_line
+    jmp short .npx_ready
+.no_npx:
+    mov si, setup_npx_none_line
+.npx_ready:
+    call setup_puts
+    pop es
+    pop ds
+    pop si
+    ret
+
+setup_print_video:
+    push ax
+    push si
+    push ds
+    push es
+    push cs
+    pop ds
+    mov ax, 0xC000
+    mov es, ax
+    cmp word [es:0], 0xAA55
+    jne short .no_option_rom
+    mov si, setup_video_option_line
+    jmp short .emit
+.no_option_rom:
+    mov si, setup_video_none_line
+.emit:
+    mov bh, 0x70
+    call setup_puts
+    pop es
+    pop ds
+    pop si
+    pop ax
+    ret
+
+setup_print_ide_devices:
+    push ax
+    push si
+    push ds
+    mov ax, EBDA_SEG
+    mov ds, ax
+    mov si, setup_ide_pm_prefix
+    call setup_print_ide_one
+    mov si, setup_ide_ps_prefix
+    call setup_print_ide_one_ps
+    mov si, setup_ide_sm_prefix
+    call setup_print_ide_one_sm
+    mov si, setup_ide_ss_prefix
+    call setup_print_ide_one_ss
+    pop ds
+    pop si
+    pop ax
+    ret
+
+; Each helper switches DS to CS only for strings and restores EBDA for kind.
+setup_print_ide_one:
+    push ax
+    mov al, [IDE_SLOT_PM_KIND]
+    call setup_print_ide_kind_with_prefix
+    pop ax
+    ret
+setup_print_ide_one_ps:
+    push ax
+    mov al, [IDE_SLOT_PS_KIND]
+    call setup_print_ide_kind_with_prefix
+    pop ax
+    ret
+setup_print_ide_one_sm:
+    push ax
+    mov al, [IDE_SLOT_SM_KIND]
+    call setup_print_ide_kind_with_prefix
+    pop ax
+    ret
+setup_print_ide_one_ss:
+    push ax
+    mov al, [IDE_SLOT_SS_KIND]
+    call setup_print_ide_kind_with_prefix
+    pop ax
+    ret
+
+; AL kind, SI prefix (CS string offset), caller DS=EBDA.
+setup_print_ide_kind_with_prefix:
+    push ax
+    push si
+    push ds
+    push cs
+    pop ds
+    mov bh, 0x70
+    call setup_puts
+    pop ds
+    pop si
+    pop ax
+    push ds
+    push cs
+    pop ds
+    cmp al, IDE_KIND_ATA
+    je short .ata
+    cmp al, IDE_KIND_ATAPI
+    je short .atapi
+    mov si, setup_ide_empty
+    jmp short .emit
+.ata:
+    mov si, setup_ide_ata
+    jmp short .emit
+.atapi:
+    mov si, setup_ide_atapi
+.emit:
+    mov bh, 0x70
+    call setup_puts
+    pop ds
     ret
 
 setup_print_hard_disk:
     push ax
     push bx
     push cx
-    push dx
     push si
     push ds
+    mov bh, 0x70
     mov ax, EBDA_SEG
     mov ds, ax
     cmp byte [HD_PRESENT], 1
@@ -5201,48 +6548,50 @@ setup_print_hard_disk:
     push cs
     pop ds
     mov si, setup_hdd_prefix
-    call print
+    call setup_puts
     call setup_print_ata_model
     push cs
     pop ds
     mov si, setup_hdd_geometry_prefix
-    call print
+    call setup_puts
     mov ax, EBDA_SEG
     mov ds, ax
     mov ax, [HD_CYLINDERS]
-    call print_u16_decimal
+    mov bh, 0x70
+    call setup_print_u16
     push cs
     pop ds
     mov si, setup_x
-    call print
+    call setup_puts
     mov ax, EBDA_SEG
     mov ds, ax
     xor ax, ax
     mov al, [HD_HEADS]
-    call print_u16_decimal
+    mov bh, 0x70
+    call setup_print_u16
     push cs
     pop ds
     mov si, setup_x
-    call print
+    call setup_puts
     mov ax, EBDA_SEG
     mov ds, ax
     xor ax, ax
     mov al, [HD_SECTORS_TRACK]
-    call print_u16_decimal
+    mov bh, 0x70
+    call setup_print_u16
     push cs
     pop ds
     mov si, setup_newline
-    call print
+    call setup_puts
     jmp short .done
 .missing:
     push cs
     pop ds
     mov si, setup_hdd_none
-    call print
+    call setup_puts
 .done:
     pop ds
     pop si
-    pop dx
     pop cx
     pop bx
     pop ax
@@ -5253,29 +6602,26 @@ setup_print_ata_model:
     push ax
     push bx
     push cx
-    push dx
     push si
     push ds
     mov ax, EBDA_SEG
     mov ds, ax
     mov si, 54                      ; IDENTIFY word 27
     mov cx, 20
+    mov bh, 0x70
 .word:
     lodsw
     xchg al, ah
     push ax
-    mov ah, 0x0E
-    xor bh, bh
-    int 0x10
+    call setup_plot_char
+    inc dl
     pop ax
     mov al, ah
-    mov ah, 0x0E
-    xor bh, bh
-    int 0x10
+    call setup_plot_char
+    inc dl
     loop .word
     pop ds
     pop si
-    pop dx
     pop cx
     pop bx
     pop ax
@@ -5284,6 +6630,7 @@ setup_print_ata_model:
 setup_print_rtc:
     push ax
     push bx
+    mov bh, 0x70
     mov al, [es:SETUP_RTC_CENTURY]
     call setup_print_bcd
     mov al, [es:SETUP_RTC_YEAR]
@@ -5320,17 +6667,16 @@ setup_edit_date:
     push ax
     push bx
     push si
-    mov ax, 0x0003
-    int 0x10
     push cs
     pop ds
     call setup_draw_chrome
-    mov dx, 0x0503
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
+    mov dh, 18
+    mov dl, 3
+    mov ch, 3
+    mov bh, 0x70
     mov si, setup_date_prompt
-    call print
+    call setup_puts
+    mov bh, 0x7F                    ; bright white on gray for the entry field
 .century:
     call setup_read_two_digits
     jc short .done
@@ -5384,17 +6730,16 @@ setup_edit_time:
     push ax
     push bx
     push si
-    mov ax, 0x0003
-    int 0x10
     push cs
     pop ds
     call setup_draw_chrome
-    mov dx, 0x0503
-    mov ah, 0x02
-    xor bh, bh
-    int 0x10
+    mov dh, 18
+    mov dl, 3
+    mov ch, 3
+    mov bh, 0x70
     mov si, setup_time_prompt
-    call print
+    call setup_puts
+    mov bh, 0x7F
 .hour:
     call setup_read_two_digits
     jc short .done
@@ -5536,13 +6881,25 @@ setup_print_bcd:
     pop ax
     ret
 
+; Plot AL into the Setup pane using BH as the cell attribute.  DH/DL advance.
+; CR/LF follow the same margin rules as setup_puts so date/time entry stays
+; on the gray work surface instead of punching black teletype cells.
 setup_teletype:
     push ax
-    push bx
-    mov ah, 0x0E
-    xor bh, bh
-    int 0x10
-    pop bx
+    cmp al, 13
+    je short .cr
+    cmp al, 10
+    je short .lf
+    call setup_plot_char
+    inc dl
+    jmp short .done
+.cr:
+    mov dl, ch
+    jmp short .done
+.lf:
+    inc dh
+    mov dl, ch
+.done:
     pop ax
     ret
 
@@ -5577,13 +6934,21 @@ int19:
     sti
     jmp 0x0000:0x7C00
 .failed:
-    push cs
-    pop ds
-    mov si, boot_fail
-    call print
+    ; IBM-compatible final bootstrap fallback. INT 18h is the ROM BASIC entry
+    ; service; the supplied 32 KiB BASIC image is assembled at F6000h-FDFFFh.
+    int 0x18
+    jmp short .failed              ; INT 18h should never return
+
+int18_basic:
+    cli
+    call clear_screen
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7000
     sti
-.wait: hlt
-    jmp .wait
+    jmp 0xF600:0x0000
 
 int19_clear_buffer:
     xor ax, ax
@@ -5632,17 +6997,26 @@ floppy_dpt:
     db 0xDF,0x02,0x25,0x02,18,0x1B,0xFF,0x6C,0xF6,15,8
 
 dummy db 0
+; 80286 AT configuration returned by INT 15h AH=C0h.  Feature bits describe
+; this machine's PIC/RTC/keyboard/wait/EBDA/8042 set, not 386/PCI extras.
+sys_config_table:
+    dw 8
+    db 0xFC                         ; model: IBM AT-compatible
+    db 0x01                         ; submodel
+    db 0x00                         ; BIOS revision
+    db 01111110b                    ; 2nd 8259, RTC, INT15/4F, wait, EBDA, 8042
+    db 0, 0, 0, 0
 setup_prompt_top db 'Press DELETE to enter Setup',0
-bios_revision db 'Cromwell Technologies - Phalanx v.5.3.0',0
+bios_revision db 'Cromwell Technologies - Phalanx v.5.4.0',0
 keyboard_post_ok db 'Keyboard: 8042 / enhanced keyboard ........ OK',0
 keyboard_post_error db 'Keyboard error or no keyboard present',0
 logo db 10,'                 CROMWELL TECHNOLOGIES',13,10
      db '                      PHALANX BIOS',13,10,13,10
      db '  +-----------------------------------------------------------------------+',13,10
      db '  | System:     Virtual Computer Modular AT                               |',13,10
-     db '  | Processor:  Harris CS80C286-25 with Intel 80287                       |',13,10
+     db '  | Processor:  80286-compatible CPU / optional 80287 socket                |',13,10
      db '  | Chipset:    Chips & Technologies CS8221 NEAT                          |',13,10
-     db '  | Video:      Diamond Stealth Pro ISA / S3 86C928                       |',13,10
+     db '  | Video:      detected through installed option-ROM / adapter path          |',13,10
      db '  | I/O:        COM1 3F8/4  COM2 2F8/3  LPT1 378/7  LPT2 278/5           |',13,10
      db '  +-----------------------------------------------------------------------+',13,10,13,10,0
 post_text db 'Memory test: ',0
@@ -5651,18 +7025,53 @@ memory_line_mid db ' KB total / ',0
 memory_line_suffix db ' KB extended ... OK',13,10,0
 post_text_after_memory db 'CMOS/RTC, PIC, PIT, DMA and keyboard controller ... OK',13,10
           db 'Detecting boot devices...',13,10,0
-boot_fail db '  No bootable disk was found.',10,10
-          db '  Mount a bootable floppy or hard-disk image,',10
-          db '  then reset the machine.',10,0
+keyboard_halt_message db 13,10,'Keyboard error - POST halted by CMOS policy.',13,10,0
+post_npx_prefix db '  Numeric coprocessor  : ',0
+post_npx_287 db 'Intel 80287',13,10,0
+post_npx_none db 'None',13,10,0
+post_video_prefix db '  Video option ROM     : ',0
+post_video_option db 'C000h adapter ROM detected',13,10,0
+post_video_none db 'None detected',13,10,0
+post_ide_pm_prefix db '  IDE Primary Master   : ',0
+post_ide_ps_prefix db '  IDE Primary Slave    : ',0
+post_ide_sm_prefix db '  IDE Secondary Master : ',0
+post_ide_ss_prefix db '  IDE Secondary Slave  : ',0
+post_ide_empty db 'Empty',13,10,0
+post_ide_ata db 'ATA hard disk',13,10,0
+post_ide_atapi db 'ATAPI CD-ROM',13,10,0
 
 setup_title db 'PHALANX BIOS SETUP UTILITY',0
-setup_tabs db 'Main     Advanced     Boot     Exit',0
-setup_hardware_heading db 'SYSTEM INFORMATION',10,10,0
-setup_cpu_line db '  CPU:       Harris CS80C286-25 with Intel 80287',10,0
-setup_video_line db '  Video:     Diamond Stealth Pro ISA / S3 86C928',10,0
+setup_tab_main db '  Main  ',0
+setup_tab_adv db ' Advanced ',0
+setup_tab_boot db '  Boot  ',0
+setup_tab_exit db '  Exit  ',0
+setup_help_title db 'PHALANX SETUP',10,10,0
+setup_footer_1 db 'F10 Save and exit     ESC Exit without saving',0
+setup_footer_2 db 'A Date  T Time  N NumLock  B Boot  F POST  K Halt  D Defaults',0
+setup_memory_prefix db '  Memory:    ',0
+setup_main_heading db 'MAIN / SYSTEM INFORMATION',10,10,0
+setup_advanced_heading db 'ADVANCED / PERIPHERALS',10,10,0
+setup_boot_heading db 'BOOT / DRIVE INVENTORY',10,10,0
+setup_exit_heading db 'EXIT / SAVE',10,10,0
+setup_main_hint db 10,'  [A] Set date   [T] Set time',10,0
+setup_advanced_hint db 10,'  [N] Num Lock   [F] Fast/Thorough   [K] Keyboard error halt',10,0
+setup_boot_hint db 10,'  [B] Toggle floppy-first / hard-disk-first',10,0
+setup_exit_text db '  F10  Save CMOS changes and exit',10,'  ESC  Exit without saving',10,'  D    Load setup defaults (staged until F10)',10,0
+setup_cpu_286_line db '  CPU:       80286-compatible processor installed',10,0
+setup_npx_287_line db '  Math co:   Intel 80287 detected',10,0
+setup_npx_none_line db '  Math co:   None',10,0
+setup_video_option_line db '  Video:     option-ROM video adapter detected',10,0
+setup_video_none_line db '  Video:     no C000h option ROM detected',10,0
 setup_keyboard_line db '  Keyboard:  101/102-key enhanced AT keyboard',10,0
 setup_serial_line db '  Serial:    COM1 03F8/IRQ4, COM2 02F8/IRQ3 (16550A)',10,0
 setup_parallel_line db '  Parallel:  LPT1 0378/IRQ7, LPT2 0278/IRQ5 (SPP)',10,0
+setup_ide_pm_prefix db '  IDE Pri Master: ',0
+setup_ide_ps_prefix db '  IDE Pri Slave : ',0
+setup_ide_sm_prefix db '  IDE Sec Master: ',0
+setup_ide_ss_prefix db '  IDE Sec Slave : ',0
+setup_ide_empty db 'Empty',10,0
+setup_ide_ata db 'ATA hard disk',10,0
+setup_ide_atapi db 'ATAPI CD-ROM',10,0
 setup_floppy_a_prefix db '  Floppy A:  ',0
 setup_floppy_b_prefix db '  Floppy B:  ',0
 setup_f360 db '360 KB 5.25-inch',10,0
@@ -5671,7 +7080,7 @@ setup_f720 db '720 KB 3.5-inch',10,0
 setup_f144 db '1.44 MB 3.5-inch',10,0
 setup_f288 db '2.88 MB 3.5-inch',10,0
 setup_none db 'Not installed',10,0
-setup_hdd_prefix db '  Primary master: ',0
+setup_hdd_prefix db '  Primary master:',10,'  ',0
 setup_hdd_geometry_prefix db 10,'  BIOS geometry:  ',0
 setup_hdd_none db '  Primary master: Not installed',10,0
 setup_x db ' x ',0
@@ -5683,19 +7092,26 @@ setup_on db 'On',10,0
 setup_off db 'Off',10,0
 setup_hdd_first_text db 'Hard disk, then floppy',10,0
 setup_floppy_first_text db 'Floppy, then hard disk',10,0
+setup_fast_prefix db '  [F] POST memory test: ',0
+setup_fast_text db 'Fast',10,0
+setup_thorough_text db 'Thorough',10,0
+setup_keyboard_halt_prefix db '  [K] Halt on keyboard error: ',0
+setup_yes db 'Yes',10,0
+setup_no db 'No',10,0
 setup_rtc_prefix db '  RTC: ',0
 setup_date_prompt db 'Enter date as YYYY-MM-DD (Esc cancels): ',0
 setup_time_prompt db 'Enter time as HH:MM:SS (Esc cancels): ',0
-setup_help_pane db 'PHALANX SETUP',10
-           db '                                                             System hardware',10
-           db '                                                             detected by POST.',10,10
-           db '                                                             N  Boot Num Lock',10
-           db '                                                             B  Boot order',10
-           db '                                                             A  Set date',10
-           db '                                                             T  Set time',10
-           db '                                                             D  Load defaults',10,10
-           db '                                                             F10 Save and exit',10
-           db '                                                             ESC Exit',0
+setup_help_pane db 'Left/Right: pages',10
+           db 'Hardware from POST',10,10
+           db 'N  Boot Num Lock',10
+           db 'B  Boot order',10
+           db 'F  Fast/Thorough',10
+           db 'K  Keyboard halt',10
+           db 'A  Set date',10
+           db 'T  Set time',10
+           db 'D  Load defaults',10,10
+           db 'F10 Save and exit',10
+           db 'ESC Discard',0
 
 ; Secondary IDE was added after the original BIOS image layout was frozen.
 ; Keep this helper in the previously unused ROM padding so the historical code
@@ -5716,6 +7132,18 @@ int77:
     out 0x20, al
     pop ax
     iret
+
+; IBM Cassette BASIC occupies its historical 32 KiB F6000h-FDFFFh window.
+; The active Phalanx BIOS code/data is deliberately kept below offset 6000h;
+; therefore BASIC does not overlap executable BIOS content and no host-side
+; dynamic mapping shortcut is required.
+times 0x6000-($-$$) db 0xFF
+basic_rom_start:
+incbin "basic110.rom"
+basic_rom_end:
+%if (basic_rom_end-basic_rom_start) != 0x8000
+    %error "basic110.rom must be exactly 32768 bytes"
+%endif
 
 times 0xFFF0-($-$$) db 0xFF
 reset_vector: jmp 0xF000:start

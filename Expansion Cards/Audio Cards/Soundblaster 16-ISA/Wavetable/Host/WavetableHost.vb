@@ -104,7 +104,8 @@ Public NotInheritable Class WavetableHost
 
         _workerInBed = New Thread(AddressOf WorkerLoopInBed) With {
             .IsBackground = True,
-            .Name = "Virtual Machine Bench wavetable host"
+            .Name = "Virtual Machine Bench wavetable host",
+            .Priority = ThreadPriority.AboveNormal
         }
         _workerInBed.Start()
     End Sub

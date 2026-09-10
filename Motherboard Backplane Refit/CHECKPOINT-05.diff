@@ -1,0 +1,552 @@
+diff -ruN /mnt/data/mbrefit/cp4/vmb_work/Motherboards/MotherboardCatalog.vb /mnt/data/mbrefit/cp5/vmb_work/Motherboards/MotherboardCatalog.vb
+--- /mnt/data/mbrefit/cp4/vmb_work/Motherboards/MotherboardCatalog.vb	2026-09-09 08:17:58.655436979 +0000
++++ /mnt/data/mbrefit/cp5/vmb_work/Motherboards/MotherboardCatalog.vb	2026-09-09 08:28:16.188946735 +0000
+@@ -1,4 +1,4 @@
+-Imports System
++﻿Imports System
+ Imports System.Collections.Generic
+ 
+ Public Enum MotherboardExpansionBusKind
+@@ -267,6 +267,76 @@
+         Return False
+     End Function
+ 
++    Public Function SupportsCacheKilobytes(kilobytesInBed As Integer) As Boolean
++        For Each candidateInBed As Integer In _supportedCacheKilobytesInBed
++            If candidateInBed = kilobytesInBed Then Return True
++        Next
++        Return False
++    End Function
++
++    Public Function FindClockOption(idInBed As String) As MotherboardClockOption
++        If String.IsNullOrWhiteSpace(idInBed) Then Return Nothing
++        For Each optionInBed As MotherboardClockOption In _clockOptionsInBed
++            If String.Equals(optionInBed.Id, idInBed, StringComparison.OrdinalIgnoreCase) Then Return optionInBed
++        Next
++        Return Nothing
++    End Function
++
++    Public ReadOnly Property DefaultClockOptionId As String
++        Get
++            If String.Equals(Id, MotherboardCatalog.QdiV4P895P3SmtV5Id, StringComparison.OrdinalIgnoreCase) Then Return "33mhz-base"
++            If String.Equals(Id, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) Then Return "25mhz"
++            If _clockOptionsInBed.Length = 0 Then Return String.Empty
++            Return _clockOptionsInBed(0).Id
++        End Get
++    End Property
++
++    Public ReadOnly Property FirmwareImageRelativePath As String
++        Get
++            If String.Equals(Id, MotherboardCatalog.QdiV4P895P3SmtV5Id, StringComparison.OrdinalIgnoreCase) Then Return "Firmware\qdi-v4p895p3-smt-v5.rom"
++            Return "Firmware\atbios.rom"
++        End Get
++    End Property
++
++    Public ReadOnly Property CmosNvramRelativePath As String
++        Get
++            If String.Equals(Id, MotherboardCatalog.QdiV4P895P3SmtV5Id, StringComparison.OrdinalIgnoreCase) Then Return "Firmware\qdi-v4p895p3-smt-v5.cmos.nvram"
++            Return "Firmware\cmos.nvram"
++        End Get
++    End Property
++
++    Public ReadOnly Property CmosStorageBytes As Integer
++        Get
++            If String.Equals(Id, MotherboardCatalog.QdiV4P895P3SmtV5Id, StringComparison.OrdinalIgnoreCase) Then Return 256
++            Return 128
++        End Get
++    End Property
++
++    Public Function CompatibleIsaSlotCount(minimumConnectorBitsInBed As Integer) As Integer
++        Dim countInBed As Integer = 0
++        For Each slotInBed As MotherboardExpansionSlotProfile In _expansionSlotsInBed
++            Select Case slotInBed.BusKind
++                Case MotherboardExpansionBusKind.Isa16
++                    If minimumConnectorBitsInBed <= 16 Then countInBed += 1
++                Case MotherboardExpansionBusKind.Isa8
++                    If minimumConnectorBitsInBed <= 8 Then countInBed += 1
++            End Select
++        Next
++        Return countInBed
++    End Function
++
++    Public Function ValidateIsa16CardCount(cardCountInBed As Integer, ByRef reasonInBed As String) As Boolean
++        Dim availableInBed As Integer = CompatibleIsaSlotCount(16)
++        If cardCountInBed <= availableInBed Then
++            reasonInBed = String.Empty
++            Return True
++        End If
++        reasonInBed = DisplayName & " provides " & availableInBed.ToString() &
++                      " compatible 16-bit ISA connector(s), but " & cardCountInBed.ToString() &
++                      " installed card(s) currently require 16-bit ISA."
++        Return False
++    End Function
++
+     Private Shared Function ContainsIdInBed(valuesInBed As String(), idInBed As String) As Boolean
+         If valuesInBed Is Nothing OrElse String.IsNullOrWhiteSpace(idInBed) Then Return False
+         For Each candidateInBed As String In valuesInBed
+--- /mnt/data/mbrefit/cp4/vmb_work/MachineConfiguration.vb	2026-09-07 14:21:26.000000000 +0000
++++ MachineConfiguration.vb	2026-09-09 08:28:16.324922854 +0000
+@@ -404,3 +404,87 @@
+         Return fallbackInBed
+     End Function
+ End Class
++
++' Per-motherboard physical settings.  These values follow the board that is on
++' the bench rather than the chassis as a whole.  Keeping separate INI sections
++' means swapping back to a board restores that board's own SIMM/cache/jumper
++' population instead of leaking settings from whichever motherboard was used last.
++Public NotInheritable Class MotherboardContextConfiguration
++    Private Const MachineConfigurationName As String = "VirtualComputer.machine.ini"
++    Private ReadOnly _configurationPathInBed As String
++
++    Public Sub New(baseDirectoryInBed As String, motherboardIdInBed As String)
++        If String.IsNullOrWhiteSpace(baseDirectoryInBed) Then Throw New ArgumentNullException(NameOf(baseDirectoryInBed))
++        _configurationPathInBed = Path.Combine(Path.GetFullPath(baseDirectoryInBed), MachineConfigurationName)
++        MotherboardId = MotherboardCatalog.NormalizeId(motherboardIdInBed)
++        ResetToProfileDefaults()
++    End Sub
++
++    Public ReadOnly Property MotherboardId As String
++    Public Property MemoryMegabytes As Integer
++    Public Property CacheKilobytes As Integer
++    Public Property ClockOptionId As String
++
++    Private ReadOnly Property SectionName As String
++        Get
++            Return "Motherboard." & MotherboardId
++        End Get
++    End Property
++
++    Public Sub ResetToProfileDefaults()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
++        MemoryMegabytes = profileInBed.DefaultMemoryMegabytes
++        CacheKilobytes = profileInBed.DefaultCacheKilobytes
++        ClockOptionId = profileInBed.DefaultClockOptionId
++    End Sub
++
++    Public Sub LoadConfiguration()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
++        Dim missingInBed As String = "__missing__"
++        Dim memoryRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "MemoryMB", missingInBed)
++
++        ' One-time compatibility migration: the original single-board build kept
++        ' NEAT RAM in [Machine] MemoryMB.  Do not apply that chassis-wide value to
++        ' any other motherboard.
++        If memoryRawInBed = missingInBed AndAlso
++           String.Equals(MotherboardId, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) Then
++            memoryRawInBed = MachineConfigurationStore.ReadValue(_configurationPathInBed, "Machine", "MemoryMB", profileInBed.DefaultMemoryMegabytes.ToString())
++        End If
++
++        Dim memoryInBed As Integer
++        If Integer.TryParse(memoryRawInBed, memoryInBed) AndAlso profileInBed.SupportsMemoryMegabytes(memoryInBed) Then
++            MemoryMegabytes = memoryInBed
++        Else
++            MemoryMegabytes = profileInBed.DefaultMemoryMegabytes
++        End If
++
++        Dim cacheRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "CacheKB", profileInBed.DefaultCacheKilobytes.ToString())
++        Dim cacheInBed As Integer
++        If Integer.TryParse(cacheRawInBed, cacheInBed) AndAlso profileInBed.SupportsCacheKilobytes(cacheInBed) Then
++            CacheKilobytes = cacheInBed
++        Else
++            CacheKilobytes = profileInBed.DefaultCacheKilobytes
++        End If
++
++        Dim clockInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "ClockOption", profileInBed.DefaultClockOptionId)
++        If profileInBed.FindClockOption(clockInBed) Is Nothing Then clockInBed = profileInBed.DefaultClockOptionId
++        ClockOptionId = clockInBed
++    End Sub
++
++    Public Sub SaveConfiguration()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
++        If Not profileInBed.SupportsMemoryMegabytes(MemoryMegabytes) Then Throw New InvalidOperationException("Memory population is not legal for " & profileInBed.DisplayName & ".")
++        If Not profileInBed.SupportsCacheKilobytes(CacheKilobytes) Then Throw New InvalidOperationException("Cache population is not legal for " & profileInBed.DisplayName & ".")
++        If profileInBed.FindClockOption(ClockOptionId) Is Nothing Then Throw New InvalidOperationException("Clock jumper selection is not legal for " & profileInBed.DisplayName & ".")
++
++        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "MemoryMB", MemoryMegabytes.ToString())
++        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "CacheKB", CacheKilobytes.ToString())
++        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "ClockOption", ClockOptionId)
++
++        ' Continue writing the legacy NEAT RAM key while old checkpoints/tools may
++        ' still inspect it.  It is never used as a fallback for the QDI board.
++        If String.Equals(MotherboardId, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) Then
++            MachineConfigurationStore.WriteValue(_configurationPathInBed, "Machine", "MemoryMB", MemoryMegabytes.ToString())
++        End If
++    End Sub
++End Class
+--- /mnt/data/mbrefit/cp4/vmb_work/MotherboardDevices.vb	2026-09-07 14:21:26.000000000 +0000
++++ MotherboardDevices.vb	2026-09-09 08:28:16.791472265 +0000
+@@ -1,4 +1,4 @@
+-Imports System
++﻿Imports System
+ Imports System.IO
+ Imports System.Text
+ 
+@@ -1793,7 +1793,8 @@
+     Private Const PreviousPersistenceMagic As String = "VCCMOS2"
+     Private Const LegacyPersistenceMagic As String = "VCCMOS1"
+ 
+-    Private ReadOnly _cmos(127) As Byte
++    Private ReadOnly _cmos As Byte()
++    Private ReadOnly _upperBankSelectedInBed As Func(Of Boolean)
+     Private ReadOnly _pic As Pic8259
+     Private ReadOnly _persistencePath As String
+     Private _index As Byte
+@@ -1808,14 +1809,32 @@
+ 
+     Public Event NmiMaskChanged(disabled As Boolean)
+ 
+-    Public Sub New(pic As Pic8259, Optional persistencePath As String = Nothing)
++    Public Sub New(pic As Pic8259,
++                   Optional persistencePath As String = Nothing,
++                   Optional storageBytesInBed As Integer = 128,
++                   Optional upperBankSelectedInBed As Func(Of Boolean) = Nothing)
+         If pic Is Nothing Then Throw New ArgumentNullException(NameOf(pic))
++        If storageBytesInBed <> 128 AndAlso storageBytesInBed <> 256 Then Throw New ArgumentOutOfRangeException(NameOf(storageBytesInBed))
+         _pic = pic
+         _persistencePath = persistencePath
++        _cmos = New Byte(storageBytesInBed - 1) {}
++        _upperBankSelectedInBed = upperBankSelectedInBed
+         SeedDefaults()
+         LoadPersistentState()
+     End Sub
+ 
++    Private ReadOnly Property UpperBankSelectedInBed As Boolean
++        Get
++            Return _cmos.Length > 128 AndAlso _upperBankSelectedInBed IsNot Nothing AndAlso _upperBankSelectedInBed()
++        End Get
++    End Property
++
++    Private ReadOnly Property EffectiveIndexInBed As Integer
++        Get
++            Return CInt(_index) + If(UpperBankSelectedInBed, 128, 0)
++        End Get
++    End Property
++
+     Public Sub ResetDevice() Implements IResettableDevice.ResetDevice
+         ' PSRSTB resets interrupt-enable/flag state but does not erase battery RAM
+         ' or the timekeeper.  Register-B's PIE/AIE/UIE bits clear; 24/12, binary,
+@@ -1835,6 +1854,8 @@
+     Public Function ReadPort(port As UInt16) As Byte Implements IPortDevice.ReadPort
+         If port = &H70US Then Return CByte(_index Or If(_nmiDisabled, &H80, 0))
+ 
++        If UpperBankSelectedInBed Then Return _cmos(EffectiveIndexInBed)
++
+         ' During the actual ~2 ms update cycle, locations 00h-09h are unavailable
+         ' to the CPU on the 82C206.  The AT data bus therefore floats high here.
+         If _index <= 9 AndAlso _updateCycleRemaining > 0 Then Return &HFF
+@@ -1874,6 +1895,13 @@
+             Return
+         End If
+ 
++        If UpperBankSelectedInBed Then
++            _cmos(EffectiveIndexInBed) = value
++            _dirty = True
++            SavePersistentState()
++            Return
++        End If
++
+         If _index <= 9 AndAlso _updateCycleRemaining > 0 Then Return
+ 
+         Select Case _index
+@@ -2013,9 +2041,20 @@
+     ' Host diagnostic observation only.  Unlike a port-71h read this does not
+     ' alter the selected CMOS address, NMI mask, RTC flags, or guest-visible bus.
+     Public Function PeekCmosByteForDiagnostics(indexInBed As Byte) As Byte
+-        Return _cmos(indexInBed And &H7F)
++        Return PeekCmosByteForDiagnostics(CInt(indexInBed And &H7F))
++    End Function
++
++    Public Function PeekCmosByteForDiagnostics(indexInBed As Integer) As Byte
++        If indexInBed < 0 OrElse indexInBed >= _cmos.Length Then Return &HFF
++        Return _cmos(indexInBed)
+     End Function
+ 
++    Public ReadOnly Property StorageBytes As Integer
++        Get
++            Return _cmos.Length
++        End Get
++    End Property
++
+     Public Sub Save()
+         SavePersistentState(force:=True)
+     End Sub
+--- /mnt/data/mbrefit/cp4/vmb_work/SystemConfigurationDrawer.vb	2026-09-09 08:17:59.773972778 +0000
++++ SystemConfigurationDrawer.vb	2026-09-09 08:28:17.430873152 +0000
+@@ -22,6 +22,12 @@
+     Public Property MemoryTopology As String
+     Public Property CacheTopology As String
+     Public Property ExpansionTopology As String
++    Public Property ExpansionCompatibility As String
++    Public Property MotherboardClockOptionId As String
++    Public Property MotherboardClockSetting As String
++    Public Property MotherboardCacheKilobytes As Integer
++    Public Property MotherboardCmos As String
++    Public Property MotherboardFirmwareImage As String
+     Public Property Chipset As String
+     Public Property ChipsetCpuBus As String
+     Public Property ChipsetMemory As String
+@@ -339,6 +345,8 @@
+             SetValueInBed("psu", snapshotInBed.PowerSupply)
+ 
+             SelectChoiceInBed("motherboard", snapshotInBed.MotherboardHardwareId)
++            SelectChoiceInBed("motherboard-clock", snapshotInBed.MotherboardClockOptionId)
++            SelectChoiceInBed("motherboard-cache", snapshotInBed.MotherboardCacheKilobytes.ToString())
+             SelectChoiceInBed("cpu", snapshotInBed.CpuHardwareId)
+             SelectChoiceInBed("npx-selector", snapshotInBed.NumericCoprocessorHardwareId)
+             SelectChoiceInBed("video", snapshotInBed.VideoHardwareId)
+@@ -574,9 +582,14 @@
+                     AddValueInBed("Runtime status", "motherboard-runtime", snapshotInBed.MotherboardRuntimeStatus)
+                     AddValueInBed("CPU socket", "motherboard-socket", snapshotInBed.CpuSocket)
+                     AddValueInBed("Clock generator", "motherboard-clockgen", snapshotInBed.ClockGenerator)
++                    AddSelectorInBed("Clock / jumper setting", "motherboard-clock", _ownerInBed.GetMotherboardClockChoicesInBed(), AddressOf MotherboardClockSelectionChangedInBed)
+                     AddValueInBed("Memory topology", "motherboard-memory-topology", snapshotInBed.MemoryTopology, 84)
+                     AddValueInBed("Cache topology", "motherboard-cache-topology", snapshotInBed.CacheTopology, 70)
++                    AddSelectorInBed("Installed L2 cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
++                    AddValueInBed("CMOS / NVRAM", "motherboard-cmos", snapshotInBed.MotherboardCmos, 56)
++                    AddValueInBed("Firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 56)
+                     AddValueInBed("Expansion connectors", "motherboard-expansion", snapshotInBed.ExpansionTopology, 110)
++                    AddValueInBed("Installed-card fit", "motherboard-expansion-fit", snapshotInBed.ExpansionCompatibility, 56)
+                     AddValueInBed("Chassis", "chassis", snapshotInBed.Chassis)
+                     AddValueInBed("Power supply", "psu", snapshotInBed.PowerSupply)
+                     AddNoteInBed("Device swaps are designed as physical replacements. Future profiles will validate slots, connectors, power, jumpers and resource conflicts before they can be committed.")
+@@ -605,7 +618,8 @@
+                     _pageTitleInBed.Text = "MEMORY"
+                     AddSelectorInBed("Installed RAM", "memory", _ownerInBed.GetMemoryChoicesInBed(), AddressOf MemorySelectionChangedInBed)
+                     AddValueInBed("Physical topology", "memory-topology", snapshotInBed.MemoryTopology, 84)
+-                    AddValueInBed("Secondary cache", "cache-topology", snapshotInBed.CacheTopology, 70)
++                    AddSelectorInBed("Secondary cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
++                    AddValueInBed("Cache topology", "cache-topology", snapshotInBed.CacheTopology, 70)
+                     AddNoteInBed("RAM changes are staged. The running machine is not altered until a power cycle, matching a physical SIMM-bank change rather than a warm reset.")
+ 
+                 Case "firmware"
+@@ -1133,6 +1147,28 @@
+         RefreshFromMachine()
+     End Sub
+ 
++    Private Sub MotherboardClockSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
++        If _updatingControlsInBed Then Return
++        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
++        If comboInBed Is Nothing Then Return
++        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
++        If choiceInBed Is Nothing Then Return
++        _ownerInBed.StageMotherboardClockSelectionInBed(choiceInBed.Id)
++        RefreshFromMachine()
++    End Sub
++
++    Private Sub MotherboardCacheSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
++        If _updatingControlsInBed Then Return
++        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
++        If comboInBed Is Nothing Then Return
++        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
++        If choiceInBed Is Nothing Then Return
++        Dim cacheKbInBed As Integer
++        If Not Integer.TryParse(choiceInBed.Id, cacheKbInBed) Then Return
++        _ownerInBed.StageMotherboardCacheSelectionInBed(cacheKbInBed)
++        RefreshFromMachine()
++    End Sub
++
+     Private Sub CpuSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+         If _updatingControlsInBed Then Return
+         Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+--- /mnt/data/mbrefit/cp4/vmb_work/Form1.vb	2026-09-09 08:19:58.496600433 +0000
++++ Form1.vb	2026-09-09 08:28:18.061024164 +0000
+@@ -83,6 +83,8 @@
+     ' CROMWELL SYSTEM CONFIGURATION DRAWER BRICK 01
+     Private _systemConfigurationDrawer As SystemConfigurationDrawer
+     Private _pendingMemoryMb As Integer?
++    Private _pendingMotherboardClockOptionId As String
++    Private _pendingMotherboardCacheKb As Integer?
+     Private _ideHardwareConfiguration As IdeHardwareConfiguration
+     Private _pendingIdeHardwareConfiguration As IdeHardwareConfiguration
+     Private _isaCardConfiguration As IsaExpansionCardConfiguration
+@@ -1291,7 +1293,7 @@
+         Dim selectedRuntimeInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(motherboardProfileInBed.Id)
+         snapshotInBed.MotherboardRuntimeStatus = If(selectedRuntimeInBed.FixedFabricAvailable,
+                                                     selectedRuntimeInBed.RuntimeDisplayName,
+-                                                    "Physical profile complete — runtime backplane pending; no substitute chipset will be fabricated")
++                                                    selectedRuntimeInBed.RuntimeDisplayName & " — activation gated; no substitute chipset will be fabricated")
+         snapshotInBed.CpuSocket = motherboardProfileInBed.CpuSocketDisplayName
+         snapshotInBed.ClockGenerator = motherboardProfileInBed.ClockGeneratorDisplayName
+         snapshotInBed.MemoryTopology = motherboardProfileInBed.MemoryTopologyDisplayName
+@@ -1301,6 +1303,23 @@
+             expansionTextInBed.Add(slotInBed.DisplayName & If(slotInBed.BusMasterCapable, " — bus-master capable", String.Empty))
+         Next
+         snapshotInBed.ExpansionTopology = String.Join(Environment.NewLine, expansionTextInBed)
++        Dim boardContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(motherboardProfileInBed.Id)
++        Dim effectiveClockIdInBed As String = If(String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId), boardContextInBed.ClockOptionId, _pendingMotherboardClockOptionId)
++        Dim effectiveClockInBed As MotherboardClockOption = motherboardProfileInBed.FindClockOption(effectiveClockIdInBed)
++        If effectiveClockInBed Is Nothing Then effectiveClockInBed = motherboardProfileInBed.FindClockOption(motherboardProfileInBed.DefaultClockOptionId)
++        snapshotInBed.MotherboardClockOptionId = If(effectiveClockInBed Is Nothing, String.Empty, effectiveClockInBed.Id)
++        snapshotInBed.MotherboardClockSetting = If(effectiveClockInBed Is Nothing, "No clock option defined", effectiveClockInBed.DisplayName)
++        snapshotInBed.MotherboardCacheKilobytes = If(_pendingMotherboardCacheKb.HasValue, _pendingMotherboardCacheKb.Value, boardContextInBed.CacheKilobytes)
++        snapshotInBed.MotherboardCmos = motherboardProfileInBed.CmosStorageBytes.ToString() & " bytes battery-backed CMOS — " & motherboardProfileInBed.CmosNvramRelativePath
++        Dim firmwareFullPathInBed As String = Path.Combine(AppContext.BaseDirectory, motherboardProfileInBed.FirmwareImageRelativePath.Replace("\"c, Path.DirectorySeparatorChar))
++        snapshotInBed.MotherboardFirmwareImage = motherboardProfileInBed.FirmwareImageRelativePath & If(File.Exists(firmwareFullPathInBed), " — present", " — image required / not present in this checkpoint")
++        Dim installedIsa16CountInBed As Integer = CountInstalledIsa16CardsInBed(effectivePopulationInBed)
++        Dim isaFitReasonInBed As String = String.Empty
++        If motherboardProfileInBed.ValidateIsa16CardCount(installedIsa16CountInBed, isaFitReasonInBed) Then
++            snapshotInBed.ExpansionCompatibility = installedIsa16CountInBed.ToString() & " installed 16-bit ISA card(s); " & motherboardProfileInBed.CompatibleIsaSlotCount(16).ToString() & " compatible 16-bit connector(s)"
++        Else
++            snapshotInBed.ExpansionCompatibility = "CONFLICT — " & isaFitReasonInBed
++        End If
+         Dim currentMotherboardProfileInBed As MotherboardProfile = MotherboardCatalog.Require(currentPopulationInBed.MotherboardId)
+         Dim liveRuntimeInBed As IMotherboardRuntimeBackplane = _motherboardRuntimeInBed.Current
+         Dim liveChipsetSuffixInBed As String = If(String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase),
+@@ -1544,6 +1563,8 @@
+ 
+     Friend Sub RevertPendingSystemConfigurationInBed()
+         _pendingMemoryMb = Nothing
++        _pendingMotherboardClockOptionId = Nothing
++        _pendingMotherboardCacheKb = Nothing
+         _pendingIdeHardwareConfiguration = Nothing
+         _pendingHardwarePopulationConfiguration = Nothing
+         _pendingSoundBlaster16Jumpers = Nothing
+@@ -1651,6 +1672,8 @@
+     Private Function GetPendingHardwareSummaryInBed() As String
+         Dim pendingInBed As New List(Of String)()
+         If _pendingMemoryMb.HasValue Then pendingInBed.Add("memory " & _pendingMemoryMb.Value.ToString() & " MB")
++        If Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) Then pendingInBed.Add("board clock " & _pendingMotherboardClockOptionId)
++        If _pendingMotherboardCacheKb.HasValue Then pendingInBed.Add("L2 cache " & _pendingMotherboardCacheKb.Value.ToString() & " KB")
+         If _pendingIdeHardwareConfiguration IsNot Nothing Then pendingInBed.Add("IDE " & _pendingIdeHardwareConfiguration.Summary())
+         If _pendingHardwarePopulationConfiguration IsNot Nothing Then pendingInBed.Add("population " & _pendingHardwarePopulationConfiguration.Summary())
+         If _pendingSoundBlaster16Jumpers IsNot Nothing Then pendingInBed.Add("SB16 " & _pendingSoundBlaster16Jumpers.Summary())
+@@ -1659,6 +1682,13 @@
+     End Function
+ 
+     Friend Sub ApplyPendingSystemConfigurationAndPowerCycleInBed()
++        Dim effectivePopulationForFitInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
++        Dim fitProfileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationForFitInBed.MotherboardId)
++        Dim fitReasonInBed As String = String.Empty
++        If Not fitProfileInBed.ValidateIsa16CardCount(CountInstalledIsa16CardsInBed(effectivePopulationForFitInBed), fitReasonInBed) Then
++            MessageBox.Show(Me, fitReasonInBed & " The running machine has not been altered.", "Motherboard slot conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
++            Return
++        End If
+         If _pendingHardwarePopulationConfiguration IsNot Nothing Then
+             Dim runtimeReasonInBed As String = String.Empty
+             If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId, runtimeReasonInBed) Then
+@@ -1674,7 +1704,8 @@
+             _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
+         Dim ideChangesInBed As Boolean = _pendingIdeHardwareConfiguration IsNot Nothing
+         Dim populationChangesInBed As Boolean = _pendingHardwarePopulationConfiguration IsNot Nothing
+-        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed AndAlso Not populationChangesInBed Then Return
++        Dim motherboardSettingChangesInBed As Boolean = Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) OrElse _pendingMotherboardCacheKb.HasValue
++        If Not _pendingMemoryMb.HasValue AndAlso Not motherboardSettingChangesInBed AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed AndAlso Not populationChangesInBed Then Return
+ 
+         Dim wasPoweredInBed As Boolean = _machinePoweredInBed
+         If wasPoweredInBed Then SetMachinePowerInBed(False)
+@@ -1682,10 +1713,32 @@
+         If _pendingMemoryMb.HasValue Then
+             Dim memoryMbInBed As Integer = _pendingMemoryMb.Value
+             _pendingMemoryMb = Nothing
+-            If _ramBanks IsNot Nothing AndAlso RamBankConfiguration.IsSupported(memoryMbInBed) Then
+-                _ramBanks.InstalledMemoryMb = memoryMbInBed
+-                _ramBanks.SaveConfiguration()
++            Dim boardForMemoryInBed As String = EffectiveHardwarePopulationInBed().MotherboardId
++            Dim memoryProfileInBed As MotherboardProfile = MotherboardCatalog.Require(boardForMemoryInBed)
++            If memoryProfileInBed.SupportsMemoryMegabytes(memoryMbInBed) Then
++                Dim boardContextForMemoryInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(boardForMemoryInBed)
++                boardContextForMemoryInBed.MemoryMegabytes = memoryMbInBed
++                boardContextForMemoryInBed.SaveConfiguration()
++                If String.Equals(boardForMemoryInBed, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) AndAlso _ramBanks IsNot Nothing AndAlso RamBankConfiguration.IsSupported(memoryMbInBed) Then
++                    _ramBanks.InstalledMemoryMb = memoryMbInBed
++                    _ramBanks.SaveConfiguration()
++                End If
++            End If
++        End If
++
++        If motherboardSettingChangesInBed Then
++            Dim boardForSettingsInBed As String = EffectiveHardwarePopulationInBed().MotherboardId
++            Dim settingsProfileInBed As MotherboardProfile = MotherboardCatalog.Require(boardForSettingsInBed)
++            Dim boardContextForSettingsInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(boardForSettingsInBed)
++            If Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) AndAlso settingsProfileInBed.FindClockOption(_pendingMotherboardClockOptionId) IsNot Nothing Then
++                boardContextForSettingsInBed.ClockOptionId = _pendingMotherboardClockOptionId
++            End If
++            If _pendingMotherboardCacheKb.HasValue AndAlso settingsProfileInBed.SupportsCacheKilobytes(_pendingMotherboardCacheKb.Value) Then
++                boardContextForSettingsInBed.CacheKilobytes = _pendingMotherboardCacheKb.Value
+             End If
++            boardContextForSettingsInBed.SaveConfiguration()
++            _pendingMotherboardClockOptionId = Nothing
++            _pendingMotherboardCacheKb = Nothing
+         End If
+ 
+         If ideChangesInBed Then
+@@ -1810,9 +1863,18 @@
+                 Dim selectedBoardInBed As MotherboardProfile = MotherboardCatalog.Require(nextInBed.MotherboardId)
+                 If Not selectedBoardInBed.SupportsCpu(nextInBed.CpuId) Then nextInBed.CpuId = selectedBoardInBed.DefaultCpuId
+                 If Not selectedBoardInBed.SupportsNumericCoprocessor(nextInBed.NumericCoprocessorId) Then nextInBed.NumericCoprocessorId = selectedBoardInBed.DefaultNumericCoprocessorId
+-                If _ramBanks IsNot Nothing Then
+-                    Dim effectiveMemoryInBed As Integer = If(_pendingMemoryMb.HasValue, _pendingMemoryMb.Value, _ramBanks.InstalledMemoryMb)
+-                    If Not selectedBoardInBed.SupportsMemoryMegabytes(effectiveMemoryInBed) Then _pendingMemoryMb = selectedBoardInBed.DefaultMemoryMegabytes
++                Dim selectedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(selectedBoardInBed.Id)
++                Dim currentBoardIdInBed As String = _hardwarePopulationConfiguration.MotherboardId
++                If Not String.Equals(selectedBoardInBed.Id, currentBoardIdInBed, StringComparison.OrdinalIgnoreCase) Then
++                    _pendingMemoryMb = selectedContextInBed.MemoryMegabytes
++                    _pendingMotherboardClockOptionId = selectedContextInBed.ClockOptionId
++                    _pendingMotherboardCacheKb = selectedContextInBed.CacheKilobytes
++                Else
++                    _pendingMotherboardClockOptionId = Nothing
++                    _pendingMotherboardCacheKb = Nothing
++                    If _ramBanks IsNot Nothing AndAlso selectedBoardInBed.SupportsMemoryMegabytes(_ramBanks.InstalledMemoryMb) Then
++                        _pendingMemoryMb = Nothing
++                    End If
+                 End If
+             Case "cpu"
+                 nextInBed.CpuId = MotherboardCatalog.NormalizeCpuIdForBoard(nextInBed.MotherboardId, idInBed)
+@@ -1873,6 +1935,56 @@
+         StageHardwarePopulationInBed("network", idInBed)
+     End Sub
+ 
++    Friend Sub StageMotherboardClockSelectionInBed(idInBed As String)
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
++        Dim optionInBed As MotherboardClockOption = profileInBed.FindClockOption(idInBed)
++        If optionInBed Is Nothing Then Return
++        Dim savedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(profileInBed.Id)
++        _pendingMotherboardClockOptionId = If(String.Equals(optionInBed.Id, savedContextInBed.ClockOptionId, StringComparison.OrdinalIgnoreCase), Nothing, optionInBed.Id)
++        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
++    End Sub
++
++    Friend Sub StageMotherboardCacheSelectionInBed(kilobytesInBed As Integer)
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
++        If Not profileInBed.SupportsCacheKilobytes(kilobytesInBed) Then Return
++        Dim savedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(profileInBed.Id)
++        _pendingMotherboardCacheKb = If(kilobytesInBed = savedContextInBed.CacheKilobytes, CType(Nothing, Integer?), CType(kilobytesInBed, Integer?))
++        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
++    End Sub
++
++    Friend Function GetMotherboardClockChoicesInBed() As List(Of HardwareProfileChoice)
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
++        Dim choicesInBed As New List(Of HardwareProfileChoice)()
++        For Each optionInBed As MotherboardClockOption In profileInBed.ClockOptions()
++            choicesInBed.Add(New HardwareProfileChoice(optionInBed.Id, optionInBed.DisplayName))
++        Next
++        Return choicesInBed
++    End Function
++
++    Friend Function GetMotherboardCacheChoicesInBed() As List(Of HardwareProfileChoice)
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
++        Dim choicesInBed As New List(Of HardwareProfileChoice)()
++        For Each cacheKbInBed As Integer In profileInBed.SupportedCacheKilobytes()
++            choicesInBed.Add(New HardwareProfileChoice(cacheKbInBed.ToString(), If(cacheKbInBed = 0, "None / board has no separately populated L2 cache", cacheKbInBed.ToString() & " KB L2 cache")))
++        Next
++        Return choicesInBed
++    End Function
++
++    Private Function LoadMotherboardContextInBed(motherboardIdInBed As String) As MotherboardContextConfiguration
++        Dim contextInBed As New MotherboardContextConfiguration(AppContext.BaseDirectory, motherboardIdInBed)
++        contextInBed.LoadConfiguration()
++        Return contextInBed
++    End Function
++
++    Private Shared Function CountInstalledIsa16CardsInBed(populationInBed As MachineHardwarePopulationConfiguration) As Integer
++        If populationInBed Is Nothing Then Return 0
++        Dim countInBed As Integer = 0
++        If Not String.Equals(populationInBed.VideoCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
++        If Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
++        If Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
++        Return countInBed
++    End Function
++
+     Friend Function GetMotherboardChoicesInBed() As List(Of HardwareProfileChoice)
+         Dim choicesInBed As New List(Of HardwareProfileChoice)()
+         For Each profileInBed As MotherboardProfile In MotherboardCatalog.Profiles()

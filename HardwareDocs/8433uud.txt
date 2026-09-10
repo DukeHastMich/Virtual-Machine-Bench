@@ -1,0 +1,39 @@
+
+
+
+This is the chassis card for Biostar MB-8433UUD / MB-8433UUD-A (family also silk-screened 8425UUD / 8440UUD). 
+
+web.archive.org
+
+IdentityMaker: Biostar (BMA in the US, Bioteq in Europe)
+Form: Baby AT, 220 × 220 mm
+Socket: Socket 3 ZIF
+Chipset: UMC UM8881 north (memory / CPU) + UM8886 south (ISA/PCI/IDE/KBC)
+Super I/O: UM8663BF (FDC + SPP/EPP/ECP parallel), UM8667 (dual 16550)
+BIOS: Award 4.50/4.51 PG. Period IDs look like UUD960520. Later community images exist (UUD2014, etc.)
+Clock: UM9515-01 PLL from 14.3 MHz crystal
+
+What you populateCPU module: Intel DX/DX2/DX4 (P24C/P24D), P24T OverDrive, AMD 486 / Am5x86-133/150/160, Cyrix 486 / 5x86. Your 4×33 133 is the Am5x86/X5 setting on a 33 MHz bus.
+Official FSB: 25 / 33 / 40 / 50. Real jumper field goes 20–83. PCI clocks 25 / 26.67 / 33 with 1:1, 2/3, 1/2 divisors.
+ISA I/O clock held at 8 MHz on purpose.
+RAM: 4 × 72-pin SIMM, 1–32 MB sticks, 128 MB official. FPM page-mode, 70 ns on the box; EDO is a later BIOS / “sometimes” story.
+L2: 128 / 256 / 512 KB SRAM + tag. Write-back or write-through. Cacheable range is the thing Win95 will feel.
+Slots: 4× 16-bit ISA + 3× 32-bit PCI. No VESA. Onboard video: none.
+Storage: dual EIDE in the 8886, PIO 1–4, four devices, CD-ROM. Not an RZ1000. Floppy on the 8663.
+Ports: AT keyboard, PS/2 mouse header (JP47 into 8886), 2× 16550, multimode parallel, front-panel block on JP1.
+
+Emulator-useful quirksGreen / turbo headers exist. CMOS lives in a Dallas-style RTC; dead cell = amnesia. That is a real guest-visible failure mode.
+PS/2 mouse through 8886 is fussy under Win95 if the mouse moves during disk. Serial mouse was the workaround. You already have that path.
+EDO enable is a BIOS option, not free silicon magic.
+PCI is the Win95 / Quake pipe. ISA keeps SB16 and the old NIC.
+
+Sources worth keeping next to the codePeriod spec: Biostar 8433UUD, 1997
+Jumpers: Stason 8425/8433/8440 UUD
+The manual people actually use: Feipoa / dosdays PDF
+Inventory: The Retro Web, Rev 3.1
+
+Dropdown line
+Biostar MB-8433UUD-A — Socket 3, UMC 8881/8886, 4 ISA + 3 PCIDefault save you miss: 33 MHz bus, 4× core, 256 KB L2, PCI video, ISA sound, Quake already unpacked. The 286 NEAT board stays the other chassis. This one does not grow VLB. It grows PCI.
+
+https://stason.org/TULARC/pc/motherboards/B/BIOSTAR-MICROTECH-INTERNATIONAL-CORPORATION-486-MB-101.html
+

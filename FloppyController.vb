@@ -233,6 +233,7 @@ Public Class FloppyController765
             Case &H7 : Return 2
             Case &H8 : Return 1
             Case &HA : Return 2
+            Case &HD : Return 6
             Case &HF : Return 3
             Case &H10 : Return 1
             Case Else : Return 1
@@ -274,6 +275,8 @@ Public Class FloppyController765
                 Else
                     QueueTransferResult(drive, 0, _drives(drive).CurrentCylinder, CByte((_command(1) >> 2) And 1), 1, 2, 0, 0)
                 End If
+            Case &HD ' FORMAT TRACK
+                FormatTrack()
             Case &HF ' SEEK
                 Dim drive As Integer = _command(1) And 3
                 _drives(drive).CurrentCylinder = _command(2)
@@ -283,6 +286,59 @@ Public Class FloppyController765
             Case Else
                 _result.Enqueue(&H80)
         End Select
+    End Sub
+
+    Private Sub FormatTrack()
+        Dim drive As Integer = _command(1) And 3
+        Dim head As Integer = (_command(1) >> 2) And 1
+        Dim sizeCode As Integer = _command(2)
+        Dim sectorCount As Integer = _command(3)
+        Dim fill As Byte = _command(5)
+        RaiseEvent Activity()
+        RaiseEvent DriveActivity(drive)
+        If Not _drives(drive).MediaPresent Then
+            QueueTransferResult(drive, head, 0, head, 1, sizeCode, &H48, &H4)
+            Return
+        End If
+        If _drives(drive).IsWriteProtected Then
+            QueueTransferResult(drive, head, 0, head, 1, sizeCode, &H40, &H2)
+            Return
+        End If
+        Dim geometryInBed As FloppyMediaGeometry = Nothing
+        If Not _drives(drive).TryGetGeometry(geometryInBed) Then
+            QueueTransferResult(drive, head, 0, head, 1, sizeCode, &H48, &H4)
+            Return
+        End If
+        If sizeCode <> 2 OrElse sectorCount <= 0 Then
+            QueueTransferResult(drive, head, 0, head, 1, sizeCode, &H40, &H20)
+            Return
+        End If
+
+        _dma.SetDreq(2, True)
+        Try
+            Dim lastCylinder As Integer = 0
+            Dim lastSector As Integer = 1
+            Dim data(511) As Byte
+            Dim chrn(3) As Byte
+            For i As Integer = 0 To 511
+                data(i) = fill
+            Next
+            For i As Integer = 1 To sectorCount
+                If _dma.TransferFromMemory(2, chrn, 0, 4) <> 4 Then Exit For
+                lastCylinder = chrn(0)
+                Dim recordHead As Integer = chrn(1)
+                lastSector = chrn(2)
+                Dim lba As Long = geometryInBed.ChsToLba(lastCylinder, recordHead, lastSector)
+                _drives(drive).WriteSector(lba, data)
+            Next
+            _drives(drive).Flush()
+            _drives(drive).CurrentCylinder = CByte(lastCylinder And &HFF)
+            QueueTransferResult(drive, head, lastCylinder, head, lastSector, sizeCode, 0, 0)
+        Catch ex As Exception
+            QueueTransferResult(drive, head, 0, head, 1, sizeCode, &H40, &H4)
+        Finally
+            _dma.SetDreq(2, False)
+        End Try
     End Sub
 
     Private Sub CompleteSeek(drive As Integer, cylinder As Byte)

@@ -22,7 +22,7 @@ Public Class On_Screen_Keyboard
     Private ReadOnly _normalKeyCapSizes As New Dictionary(Of AtPhysicalKey, Size)()
     Private ReadOnly _mouseHeld As New HashSet(Of AtPhysicalKey)()
     Private ReadOnly _bufferedKeys As New Queue(Of BufferedStroke)()
-    Private ReadOnly _bufferTimer As New System.Windows.Forms.Timer() With {.Interval = 45}
+    Private ReadOnly _bufferTimer As New System.Windows.Forms.Timer() With {.Interval = 10}
     Private _bufferCurrent As BufferedStroke
     Private _bufferKeyDown As Boolean
     Private _dropText As TextBox

@@ -404,3 +404,87 @@ Public NotInheritable Class IdeHardwareConfiguration
         Return fallbackInBed
     End Function
 End Class
+
+' Per-motherboard physical settings.  These values follow the board that is on
+' the bench rather than the chassis as a whole.  Keeping separate INI sections
+' means swapping back to a board restores that board's own SIMM/cache/jumper
+' population instead of leaking settings from whichever motherboard was used last.
+Public NotInheritable Class MotherboardContextConfiguration
+    Private Const MachineConfigurationName As String = "VirtualComputer.machine.ini"
+    Private ReadOnly _configurationPathInBed As String
+
+    Public Sub New(baseDirectoryInBed As String, motherboardIdInBed As String)
+        If String.IsNullOrWhiteSpace(baseDirectoryInBed) Then Throw New ArgumentNullException(NameOf(baseDirectoryInBed))
+        _configurationPathInBed = Path.Combine(Path.GetFullPath(baseDirectoryInBed), MachineConfigurationName)
+        MotherboardId = MotherboardCatalog.NormalizeId(motherboardIdInBed)
+        ResetToProfileDefaults()
+    End Sub
+
+    Public ReadOnly Property MotherboardId As String
+    Public Property MemoryMegabytes As Integer
+    Public Property CacheKilobytes As Integer
+    Public Property ClockOptionId As String
+
+    Private ReadOnly Property SectionName As String
+        Get
+            Return "Motherboard." & MotherboardId
+        End Get
+    End Property
+
+    Public Sub ResetToProfileDefaults()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
+        MemoryMegabytes = profileInBed.DefaultMemoryMegabytes
+        CacheKilobytes = profileInBed.DefaultCacheKilobytes
+        ClockOptionId = profileInBed.DefaultClockOptionId
+    End Sub
+
+    Public Sub LoadConfiguration()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
+        Dim missingInBed As String = "__missing__"
+        Dim memoryRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "MemoryMB", missingInBed)
+
+        ' One-time compatibility migration: the original single-board build kept
+        ' NEAT RAM in [Machine] MemoryMB.  Do not apply that chassis-wide value to
+        ' any other motherboard.
+        If memoryRawInBed = missingInBed AndAlso
+           String.Equals(MotherboardId, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) Then
+            memoryRawInBed = MachineConfigurationStore.ReadValue(_configurationPathInBed, "Machine", "MemoryMB", profileInBed.DefaultMemoryMegabytes.ToString())
+        End If
+
+        Dim memoryInBed As Integer
+        If Integer.TryParse(memoryRawInBed, memoryInBed) AndAlso profileInBed.SupportsMemoryMegabytes(memoryInBed) Then
+            MemoryMegabytes = memoryInBed
+        Else
+            MemoryMegabytes = profileInBed.DefaultMemoryMegabytes
+        End If
+
+        Dim cacheRawInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "CacheKB", profileInBed.DefaultCacheKilobytes.ToString())
+        Dim cacheInBed As Integer
+        If Integer.TryParse(cacheRawInBed, cacheInBed) AndAlso profileInBed.SupportsCacheKilobytes(cacheInBed) Then
+            CacheKilobytes = cacheInBed
+        Else
+            CacheKilobytes = profileInBed.DefaultCacheKilobytes
+        End If
+
+        Dim clockInBed As String = MachineConfigurationStore.ReadValue(_configurationPathInBed, SectionName, "ClockOption", profileInBed.DefaultClockOptionId)
+        If profileInBed.FindClockOption(clockInBed) Is Nothing Then clockInBed = profileInBed.DefaultClockOptionId
+        ClockOptionId = clockInBed
+    End Sub
+
+    Public Sub SaveConfiguration()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(MotherboardId)
+        If Not profileInBed.SupportsMemoryMegabytes(MemoryMegabytes) Then Throw New InvalidOperationException("Memory population is not legal for " & profileInBed.DisplayName & ".")
+        If Not profileInBed.SupportsCacheKilobytes(CacheKilobytes) Then Throw New InvalidOperationException("Cache population is not legal for " & profileInBed.DisplayName & ".")
+        If profileInBed.FindClockOption(ClockOptionId) Is Nothing Then Throw New InvalidOperationException("Clock jumper selection is not legal for " & profileInBed.DisplayName & ".")
+
+        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "MemoryMB", MemoryMegabytes.ToString())
+        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "CacheKB", CacheKilobytes.ToString())
+        MachineConfigurationStore.WriteValue(_configurationPathInBed, SectionName, "ClockOption", ClockOptionId)
+
+        ' Continue writing the legacy NEAT RAM key while old checkpoints/tools may
+        ' still inspect it.  It is never used as a fallback for the QDI board.
+        If String.Equals(MotherboardId, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) Then
+            MachineConfigurationStore.WriteValue(_configurationPathInBed, "Machine", "MemoryMB", MemoryMegabytes.ToString())
+        End If
+    End Sub
+End Class

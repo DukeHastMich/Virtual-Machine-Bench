@@ -1,4 +1,4 @@
-Imports System
+﻿Imports System
 Imports System.IO
 Imports System.Text
 
@@ -1793,7 +1793,8 @@ Public Class CmosRtc
     Private Const PreviousPersistenceMagic As String = "VCCMOS2"
     Private Const LegacyPersistenceMagic As String = "VCCMOS1"
 
-    Private ReadOnly _cmos(127) As Byte
+    Private ReadOnly _cmos As Byte()
+    Private ReadOnly _upperBankSelectedInBed As Func(Of Boolean)
     Private ReadOnly _pic As Pic8259
     Private ReadOnly _persistencePath As String
     Private _index As Byte
@@ -1808,13 +1809,31 @@ Public Class CmosRtc
 
     Public Event NmiMaskChanged(disabled As Boolean)
 
-    Public Sub New(pic As Pic8259, Optional persistencePath As String = Nothing)
+    Public Sub New(pic As Pic8259,
+                   Optional persistencePath As String = Nothing,
+                   Optional storageBytesInBed As Integer = 128,
+                   Optional upperBankSelectedInBed As Func(Of Boolean) = Nothing)
         If pic Is Nothing Then Throw New ArgumentNullException(NameOf(pic))
+        If storageBytesInBed <> 128 AndAlso storageBytesInBed <> 256 Then Throw New ArgumentOutOfRangeException(NameOf(storageBytesInBed))
         _pic = pic
         _persistencePath = persistencePath
+        _cmos = New Byte(storageBytesInBed - 1) {}
+        _upperBankSelectedInBed = upperBankSelectedInBed
         SeedDefaults()
         LoadPersistentState()
     End Sub
+
+    Private ReadOnly Property UpperBankSelectedInBed As Boolean
+        Get
+            Return _cmos.Length > 128 AndAlso _upperBankSelectedInBed IsNot Nothing AndAlso _upperBankSelectedInBed()
+        End Get
+    End Property
+
+    Private ReadOnly Property EffectiveIndexInBed As Integer
+        Get
+            Return CInt(_index) + If(UpperBankSelectedInBed, 128, 0)
+        End Get
+    End Property
 
     Public Sub ResetDevice() Implements IResettableDevice.ResetDevice
         ' PSRSTB resets interrupt-enable/flag state but does not erase battery RAM
@@ -1834,6 +1853,8 @@ Public Class CmosRtc
 
     Public Function ReadPort(port As UInt16) As Byte Implements IPortDevice.ReadPort
         If port = &H70US Then Return CByte(_index Or If(_nmiDisabled, &H80, 0))
+
+        If UpperBankSelectedInBed Then Return _cmos(EffectiveIndexInBed)
 
         ' During the actual ~2 ms update cycle, locations 00h-09h are unavailable
         ' to the CPU on the 82C206.  The AT data bus therefore floats high here.
@@ -1871,6 +1892,13 @@ Public Class CmosRtc
                 _nmiDisabled = disabled
                 RaiseEvent NmiMaskChanged(disabled)
             End If
+            Return
+        End If
+
+        If UpperBankSelectedInBed Then
+            _cmos(EffectiveIndexInBed) = value
+            _dirty = True
+            SavePersistentState()
             Return
         End If
 
@@ -2013,8 +2041,19 @@ Public Class CmosRtc
     ' Host diagnostic observation only.  Unlike a port-71h read this does not
     ' alter the selected CMOS address, NMI mask, RTC flags, or guest-visible bus.
     Public Function PeekCmosByteForDiagnostics(indexInBed As Byte) As Byte
-        Return _cmos(indexInBed And &H7F)
+        Return PeekCmosByteForDiagnostics(CInt(indexInBed And &H7F))
     End Function
+
+    Public Function PeekCmosByteForDiagnostics(indexInBed As Integer) As Byte
+        If indexInBed < 0 OrElse indexInBed >= _cmos.Length Then Return &HFF
+        Return _cmos(indexInBed)
+    End Function
+
+    Public ReadOnly Property StorageBytes As Integer
+        Get
+            Return _cmos.Length
+        End Get
+    End Property
 
     Public Sub Save()
         SavePersistentState(force:=True)

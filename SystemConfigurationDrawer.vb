@@ -1,4 +1,4 @@
-Imports System
+﻿Imports System
 Imports System.Collections.Generic
 Imports System.Diagnostics
 Imports System.Drawing
@@ -15,6 +15,19 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property Chassis As String
     Public Property PowerSupply As String
     Public Property Motherboard As String
+    Public Property MotherboardHardwareId As String
+    Public Property MotherboardRuntimeStatus As String
+    Public Property CpuSocket As String
+    Public Property ClockGenerator As String
+    Public Property MemoryTopology As String
+    Public Property CacheTopology As String
+    Public Property ExpansionTopology As String
+    Public Property ExpansionCompatibility As String
+    Public Property MotherboardClockOptionId As String
+    Public Property MotherboardClockSetting As String
+    Public Property MotherboardCacheKilobytes As Integer
+    Public Property MotherboardCmos As String
+    Public Property MotherboardFirmwareImage As String
     Public Property Chipset As String
     Public Property ChipsetCpuBus As String
     Public Property ChipsetMemory As String
@@ -331,7 +344,9 @@ Public NotInheritable Class SystemConfigurationDrawer
             SetValueInBed("chassis", snapshotInBed.Chassis)
             SetValueInBed("psu", snapshotInBed.PowerSupply)
 
-            SelectChoiceInBed("motherboard", snapshotInBed.Motherboard)
+            SelectChoiceInBed("motherboard", snapshotInBed.MotherboardHardwareId)
+            SelectChoiceInBed("motherboard-clock", snapshotInBed.MotherboardClockOptionId)
+            SelectChoiceInBed("motherboard-cache", snapshotInBed.MotherboardCacheKilobytes.ToString())
             SelectChoiceInBed("cpu", snapshotInBed.CpuHardwareId)
             SelectChoiceInBed("npx-selector", snapshotInBed.NumericCoprocessorHardwareId)
             SelectChoiceInBed("video", snapshotInBed.VideoHardwareId)
@@ -562,8 +577,19 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                 Case "motherboard"
                     _pageTitleInBed.Text = "MOTHERBOARD"
-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
+                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
+                    AddValueInBed("Runtime status", "motherboard-runtime", snapshotInBed.MotherboardRuntimeStatus)
+                    AddValueInBed("CPU socket", "motherboard-socket", snapshotInBed.CpuSocket)
+                    AddValueInBed("Clock generator", "motherboard-clockgen", snapshotInBed.ClockGenerator)
+                    AddSelectorInBed("Clock / jumper setting", "motherboard-clock", _ownerInBed.GetMotherboardClockChoicesInBed(), AddressOf MotherboardClockSelectionChangedInBed)
+                    AddValueInBed("Memory topology", "motherboard-memory-topology", snapshotInBed.MemoryTopology, 84)
+                    AddValueInBed("Cache topology", "motherboard-cache-topology", snapshotInBed.CacheTopology, 70)
+                    AddSelectorInBed("Installed L2 cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
+                    AddValueInBed("CMOS / NVRAM", "motherboard-cmos", snapshotInBed.MotherboardCmos, 56)
+                    AddValueInBed("Firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 56)
+                    AddValueInBed("Expansion connectors", "motherboard-expansion", snapshotInBed.ExpansionTopology, 110)
+                    AddValueInBed("Installed-card fit", "motherboard-expansion-fit", snapshotInBed.ExpansionCompatibility, 56)
                     AddValueInBed("Chassis", "chassis", snapshotInBed.Chassis)
                     AddValueInBed("Power supply", "psu", snapshotInBed.PowerSupply)
                     AddNoteInBed("Device swaps are designed as physical replacements. Future profiles will validate slots, connectors, power, jumpers and resource conflicts before they can be committed.")
@@ -577,7 +603,7 @@ Public NotInheritable Class SystemConfigurationDrawer
                     AddValueInBed("Data / address buffer", "chipset-buffer", snapshotInBed.ChipsetBuffer)
                     AddValueInBed("Configuration interface", "chipset-ports", snapshotInBed.ChipsetConfigurationPorts)
                     AddValueInBed("Live timing state", "chipset-timing", snapshotInBed.ChipsetTiming, 118)
-                    AddNoteInBed("This identifies the chipset pieces the motherboard is actually asserting. The 82C215 buffer role is represented by the board's physical decode and routing rather than invented guest-visible registers.")
+                    AddNoteInBed("This page is motherboard-profile driven. Fixed chipset pieces are informational rather than swappable drop-down parts; guest-visible registers exist only where the selected physical silicon actually decodes them.")
 
                 Case "processor"
                     _pageTitleInBed.Text = "PROCESSOR"
@@ -590,16 +616,17 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                 Case "memory"
                     _pageTitleInBed.Text = "MEMORY"
-                    Dim choicesInBed As New List(Of HardwareProfileChoice)()
-                    For Each mbInBed As Integer In RamBankConfiguration.SupportedMemoryMegabytes
-                        choicesInBed.Add(New HardwareProfileChoice(mbInBed.ToString(), mbInBed.ToString() & " MB installed"))
-                    Next
-                    AddSelectorInBed("Installed RAM", "memory", choicesInBed, AddressOf MemorySelectionChangedInBed)
+                    AddSelectorInBed("Installed RAM", "memory", _ownerInBed.GetMemoryChoicesInBed(), AddressOf MemorySelectionChangedInBed)
+                    AddValueInBed("Physical topology", "memory-topology", snapshotInBed.MemoryTopology, 84)
+                    AddSelectorInBed("Secondary cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
+                    AddValueInBed("Cache topology", "cache-topology", snapshotInBed.CacheTopology, 70)
                     AddNoteInBed("RAM changes are staged. The running machine is not altered until a power cycle, matching a physical SIMM-bank change rather than a warm reset.")
 
                 Case "firmware"
                     _pageTitleInBed.Text = "FIRMWARE"
                     AddSelectorInBed("System BIOS", "bios-selector", {New HardwareProfileChoice(snapshotInBed.Bios, snapshotInBed.Bios)}, Nothing)
+                    AddValueInBed("Board firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 60)
+                    AddValueInBed("Battery-backed state", "motherboard-cmos", snapshotInBed.MotherboardCmos, 60)
                     AddValueInBed("Video option ROM", "video-rom", snapshotInBed.VideoRom)
                     AddNoteInBed("Firmware selectors describe ROM devices physically installed in the build; guest firmware execution still occurs through the emulated bus and ROM windows.")
 
@@ -700,14 +727,10 @@ Public NotInheritable Class SystemConfigurationDrawer
                 Case Else
                     _currentPageInBed = "overview"
                     _pageTitleInBed.Text = "SYSTEM OVERVIEW"
-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
+                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
                     AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
-                    Dim memoryChoicesInBed As New List(Of HardwareProfileChoice)()
-                    For Each mbInBed As Integer In RamBankConfiguration.SupportedMemoryMegabytes
-                        memoryChoicesInBed.Add(New HardwareProfileChoice(mbInBed.ToString(), mbInBed.ToString() & " MB"))
-                    Next
-                    AddSelectorInBed("Memory", "memory", memoryChoicesInBed, AddressOf MemorySelectionChangedInBed)
+                    AddSelectorInBed("Memory", "memory", _ownerInBed.GetMemoryChoicesInBed(), AddressOf MemorySelectionChangedInBed)
                     AddSelectorInBed("Video", "video", _ownerInBed.GetVideoCardChoicesInBed(), AddressOf VideoSelectionChangedInBed)
                     AddSelectorInBed("Audio card", "audio", _ownerInBed.GetAudioCardChoicesInBed(), AddressOf AudioSelectionChangedInBed, AddressOf AudioJumperButtonClickedInBed)
                     AddSelectorInBed("Network", "network", _ownerInBed.GetNetworkCardChoicesInBed(), AddressOf NetworkSelectionChangedInBed, AddressOf NetworkJumperButtonClickedInBed)
@@ -1112,6 +1135,39 @@ Public NotInheritable Class SystemConfigurationDrawer
         Dim slotInBed As String = CStr(comboInBed.Tag)
         _ownerInBed.StageIdeDriveModelInBed(slotInBed, choiceInBed.Id)
         BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageMotherboardSelectionInBed(choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardClockSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageMotherboardClockSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardCacheSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        Dim cacheKbInBed As Integer
+        If Not Integer.TryParse(choiceInBed.Id, cacheKbInBed) Then Return
+        _ownerInBed.StageMotherboardCacheSelectionInBed(cacheKbInBed)
         RefreshFromMachine()
     End Sub
 

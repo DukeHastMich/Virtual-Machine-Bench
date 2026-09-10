@@ -1,0 +1,369 @@
+--- /tmp/mbcpbase/vmb_work/HardwarePopulation.vb	2026-09-09 05:12:16.000000000 +0000
++++ HardwarePopulation.vb	2026-09-09 07:58:53.393864743 +0000
+@@ -1,4 +1,4 @@
+-Imports System
++﻿Imports System
+ Imports System.IO
+ 
+ ' Host/chassis population state. These values answer the physical question
+@@ -20,6 +20,7 @@
+         _configurationPathInBed = Path.Combine(Path.GetFullPath(baseDirectoryInBed), MachineConfigurationName)
+     End Sub
+ 
++    Public Property MotherboardId As String = MotherboardCatalog.CtCs8221NeatAt286Id
+     Public Property CpuId As String = HarrisCs80C28625Id
+     Public Property NumericCoprocessorId As String = Intel80287Id
+     Public Property VideoCardId As String = DiamondStealthPro928Id
+@@ -28,6 +29,7 @@
+ 
+     Public Function CloneConfiguration() As MachineHardwarePopulationConfiguration
+         Return New MachineHardwarePopulationConfiguration(Path.GetDirectoryName(_configurationPathInBed)) With {
++            .MotherboardId = MotherboardId,
+             .CpuId = CpuId,
+             .NumericCoprocessorId = NumericCoprocessorId,
+             .VideoCardId = VideoCardId,
+@@ -37,6 +39,7 @@
+     End Function
+ 
+     Public Sub LoadConfiguration()
++        MotherboardId = MotherboardCatalog.NormalizeId(MachineConfigurationStore.ReadValue(_configurationPathInBed, "HardwarePopulation", "Motherboard", MotherboardCatalog.CtCs8221NeatAt286Id))
+         CpuId = NormalizeCpuId(MachineConfigurationStore.ReadValue(_configurationPathInBed, "HardwarePopulation", "CPU", HarrisCs80C28625Id))
+         NumericCoprocessorId = NormalizeNumericCoprocessorId(MachineConfigurationStore.ReadValue(_configurationPathInBed, "HardwarePopulation", "NumericCoprocessor", Intel80287Id))
+         VideoCardId = NormalizeVideoCardId(MachineConfigurationStore.ReadValue(_configurationPathInBed, "HardwarePopulation", "Video", DiamondStealthPro928Id))
+@@ -45,6 +48,7 @@
+     End Sub
+ 
+     Public Sub SaveConfiguration()
++        MachineConfigurationStore.WriteValue(_configurationPathInBed, "HardwarePopulation", "Motherboard", MotherboardCatalog.NormalizeId(MotherboardId))
+         MachineConfigurationStore.WriteValue(_configurationPathInBed, "HardwarePopulation", "CPU", NormalizeCpuId(CpuId))
+         MachineConfigurationStore.WriteValue(_configurationPathInBed, "HardwarePopulation", "NumericCoprocessor", NormalizeNumericCoprocessorId(NumericCoprocessorId))
+         MachineConfigurationStore.WriteValue(_configurationPathInBed, "HardwarePopulation", "Video", NormalizeVideoCardId(VideoCardId))
+@@ -53,7 +57,7 @@
+     End Sub
+ 
+     Public Function Summary() As String
+-        Return "CPU=" & CpuId & ", NPX=" & NumericCoprocessorId & ", video=" & VideoCardId & ", audio=" & AudioCardId & ", network=" & NetworkCardId
++        Return "motherboard=" & MotherboardId & ", CPU=" & CpuId & ", NPX=" & NumericCoprocessorId & ", video=" & VideoCardId & ", audio=" & AudioCardId & ", network=" & NetworkCardId
+     End Function
+ 
+     Public Shared Function NormalizeCpuId(valueInBed As String) As String
+--- /tmp/mbcpbase/vmb_work/Form1.vb	2026-09-09 05:30:21.000000000 +0000
++++ Form1.vb	2026-09-09 07:59:28.172783214 +0000
+@@ -1,4 +1,4 @@
+-Imports System.IO 'for loading the ROM files
++﻿Imports System.IO 'for loading the ROM files
+ Imports System.Collections.Generic
+ Imports System.Math 'For advanced Math Functions
+ Imports System.ComponentModel
+@@ -1282,17 +1282,19 @@
+             If(_hardwarePopulationConfiguration, New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory))
+         Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+ 
++        Dim motherboardProfileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationInBed.MotherboardId)
+         snapshotInBed.Chassis = "AT chassis profile not yet modeled"
+         snapshotInBed.PowerSupply = "Power-supply profile not yet modeled"
+-        snapshotInBed.Motherboard = "C&T CS8221 NEAT-class AT motherboard"
+-        snapshotInBed.Chipset = "Chips & Technologies CS8221 NEAT chipset (" & Chipset.GetType().Name & ")"
+-        snapshotInBed.ChipsetCpuBus = "82C211 CPU / AT-bus controller"
+-        snapshotInBed.ChipsetMemory = "82C212 memory / shadow / EMS controller"
+-        snapshotInBed.ChipsetPeripheral = "82C206 integrated peripheral controller — DMA, PIC, PIT, RTC/CMOS support"
+-        snapshotInBed.ChipsetBuffer = "82C215 data / address buffer role — represented by motherboard decode and routing"
+-        snapshotInBed.ChipsetConfigurationPorts = "NEAT indexed configuration interface — 22h index / 23h data"
++        snapshotInBed.MotherboardHardwareId = motherboardProfileInBed.Id
++        snapshotInBed.Motherboard = motherboardProfileInBed.DisplayName
++        snapshotInBed.Chipset = motherboardProfileInBed.ChipsetDisplayName & " (" & Chipset.GetType().Name & ")"
++        snapshotInBed.ChipsetCpuBus = motherboardProfileInBed.ChipsetCpuBus
++        snapshotInBed.ChipsetMemory = motherboardProfileInBed.ChipsetMemory
++        snapshotInBed.ChipsetPeripheral = motherboardProfileInBed.ChipsetPeripheral
++        snapshotInBed.ChipsetBuffer = motherboardProfileInBed.ChipsetBuffer
++        snapshotInBed.ChipsetConfigurationPorts = motherboardProfileInBed.ChipsetConfigurationPorts
+         snapshotInBed.ChipsetTiming = Chipset.TimingDiagnosticText()
+-        snapshotInBed.Bios = "Cromwell AT BIOS — Firmware\atbios.rom"
++        snapshotInBed.Bios = motherboardProfileInBed.BiosDisplayName
+ 
+         snapshotInBed.CpuHardwareId = effectivePopulationInBed.CpuId
+         snapshotInBed.NumericCoprocessorHardwareId = effectivePopulationInBed.NumericCoprocessorId
+@@ -1757,7 +1759,8 @@
+     Private Shared Function SameHardwarePopulationInBed(aInBed As MachineHardwarePopulationConfiguration,
+                                                          bInBed As MachineHardwarePopulationConfiguration) As Boolean
+         If aInBed Is Nothing OrElse bInBed Is Nothing Then Return False
+-        Return String.Equals(aInBed.CpuId, bInBed.CpuId, StringComparison.OrdinalIgnoreCase) AndAlso
++        Return String.Equals(aInBed.MotherboardId, bInBed.MotherboardId, StringComparison.OrdinalIgnoreCase) AndAlso
++               String.Equals(aInBed.CpuId, bInBed.CpuId, StringComparison.OrdinalIgnoreCase) AndAlso
+                String.Equals(aInBed.NumericCoprocessorId, bInBed.NumericCoprocessorId, StringComparison.OrdinalIgnoreCase) AndAlso
+                String.Equals(aInBed.VideoCardId, bInBed.VideoCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+                String.Equals(aInBed.AudioCardId, bInBed.AudioCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+@@ -1768,6 +1771,8 @@
+         If _hardwarePopulationConfiguration Is Nothing Then Return
+         Dim nextInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+         Select Case kindInBed
++            Case "motherboard"
++                nextInBed.MotherboardId = MotherboardCatalog.NormalizeId(idInBed)
+             Case "cpu"
+                 nextInBed.CpuId = MachineHardwarePopulationConfiguration.NormalizeCpuId(idInBed)
+             Case "npx"
+@@ -1803,6 +1808,10 @@
+         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+     End Sub
+ 
++    Friend Sub StageMotherboardSelectionInBed(idInBed As String)
++        StageHardwarePopulationInBed("motherboard", idInBed)
++    End Sub
++
+     Friend Sub StageCpuSelectionInBed(idInBed As String)
+         StageHardwarePopulationInBed("cpu", idInBed)
+     End Sub
+@@ -1823,18 +1832,32 @@
+         StageHardwarePopulationInBed("network", idInBed)
+     End Sub
+ 
++    Friend Function GetMotherboardChoicesInBed() As List(Of HardwareProfileChoice)
++        Dim choicesInBed As New List(Of HardwareProfileChoice)()
++        For Each profileInBed As MotherboardProfile In MotherboardCatalog.Profiles()
++            choicesInBed.Add(New HardwareProfileChoice(profileInBed.Id, profileInBed.DisplayName))
++        Next
++        Return choicesInBed
++    End Function
++
+     Friend Function GetProcessorChoicesInBed() As List(Of HardwareProfileChoice)
+-        Return New List(Of HardwareProfileChoice) From {
+-            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, ProcessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+-            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.HarrisCs80C28625Id, ProcessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.HarrisCs80C28625Id))
+-        }
++        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(populationInBed.MotherboardId)
++        Dim choicesInBed As New List(Of HardwareProfileChoice)()
++        For Each cpuIdInBed As String In profileInBed.SupportedCpuIds()
++            choicesInBed.Add(New HardwareProfileChoice(cpuIdInBed, ProcessorCatalog286.DisplayName(cpuIdInBed)))
++        Next
++        Return choicesInBed
+     End Function
+ 
+     Friend Function GetNumericCoprocessorChoicesInBed() As List(Of HardwareProfileChoice)
+-        Return New List(Of HardwareProfileChoice) From {
+-            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, NumericCoprocessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+-            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.Intel80287Id, NumericCoprocessorCatalog286.DisplayName(MachineHardwarePopulationConfiguration.Intel80287Id))
+-        }
++        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(populationInBed.MotherboardId)
++        Dim choicesInBed As New List(Of HardwareProfileChoice)()
++        For Each npxIdInBed As String In profileInBed.SupportedNumericCoprocessorIds()
++            choicesInBed.Add(New HardwareProfileChoice(npxIdInBed, NumericCoprocessorCatalog286.DisplayName(npxIdInBed)))
++        Next
++        Return choicesInBed
+     End Function
+ 
+     Friend Function GetVideoCardChoicesInBed() As List(Of HardwareProfileChoice)
+--- /tmp/mbcpbase/vmb_work/SystemConfigurationDrawer.vb	2026-09-09 05:28:07.000000000 +0000
++++ SystemConfigurationDrawer.vb	2026-09-09 07:58:53.395122488 +0000
+@@ -1,4 +1,4 @@
+-Imports System
++﻿Imports System
+ Imports System.Collections.Generic
+ Imports System.Diagnostics
+ Imports System.Drawing
+@@ -15,6 +15,7 @@
+     Public Property Chassis As String
+     Public Property PowerSupply As String
+     Public Property Motherboard As String
++    Public Property MotherboardHardwareId As String
+     Public Property Chipset As String
+     Public Property ChipsetCpuBus As String
+     Public Property ChipsetMemory As String
+@@ -331,7 +332,7 @@
+             SetValueInBed("chassis", snapshotInBed.Chassis)
+             SetValueInBed("psu", snapshotInBed.PowerSupply)
+ 
+-            SelectChoiceInBed("motherboard", snapshotInBed.Motherboard)
++            SelectChoiceInBed("motherboard", snapshotInBed.MotherboardHardwareId)
+             SelectChoiceInBed("cpu", snapshotInBed.CpuHardwareId)
+             SelectChoiceInBed("npx-selector", snapshotInBed.NumericCoprocessorHardwareId)
+             SelectChoiceInBed("video", snapshotInBed.VideoHardwareId)
+@@ -562,7 +563,7 @@
+ 
+                 Case "motherboard"
+                     _pageTitleInBed.Text = "MOTHERBOARD"
+-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
++                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
+                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
+                     AddValueInBed("Chassis", "chassis", snapshotInBed.Chassis)
+                     AddValueInBed("Power supply", "psu", snapshotInBed.PowerSupply)
+@@ -700,7 +701,7 @@
+                 Case Else
+                     _currentPageInBed = "overview"
+                     _pageTitleInBed.Text = "SYSTEM OVERVIEW"
+-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
++                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
+                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
+                     AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
+                     Dim memoryChoicesInBed As New List(Of HardwareProfileChoice)()
+@@ -1114,6 +1115,17 @@
+         BuildPageInBed(_currentPageInBed)
+         RefreshFromMachine()
+     End Sub
++
++    Private Sub MotherboardSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
++        If _updatingControlsInBed Then Return
++        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
++        If comboInBed Is Nothing Then Return
++        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
++        If choiceInBed Is Nothing Then Return
++        _ownerInBed.StageMotherboardSelectionInBed(choiceInBed.Id)
++        BuildPageInBed(_currentPageInBed)
++        RefreshFromMachine()
++    End Sub
+ 
+     Private Sub CpuSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+         If _updatingControlsInBed Then Return
+--- /tmp/mbcpbase/vmb_work/VirtualComputer.Modern.vbproj	2026-09-09 05:23:02.000000000 +0000
++++ VirtualComputer.Modern.vbproj	2026-09-09 07:58:53.395366416 +0000
+@@ -106,6 +106,7 @@
+   </ItemGroup>
+   <ItemGroup>
+     <Compile Include="MachineConfiguration.vb" />
++    <Compile Include="Motherboards\MotherboardCatalog.vb" />
+     <Compile Include="HardwarePopulation.vb" />
+     <Compile Include="IsaCardJumperPanels.vb" />
+     <Compile Include="IsaBackplane.vb" />
+--- /dev/null	2026-09-09 07:40:59.557848879 +0000
++++ Motherboards/MotherboardCatalog.vb	2026-09-09 07:58:52.886243806 +0000
+@@ -0,0 +1,139 @@
++Imports System
++Imports System.Collections.Generic
++
++' Host-side definition of a physical motherboard model.  This describes what
++' can be plugged into the board and which fixed motherboard silicon is present;
++' it does not instantiate guest hardware.  Runtime construction is intentionally
++' kept separate so the configurator can reason about compatibility while the
++' chassis is still powered off.
++Public NotInheritable Class MotherboardProfile
++    Private ReadOnly _supportedCpuIdsInBed As String()
++    Private ReadOnly _supportedNumericCoprocessorIdsInBed As String()
++
++    Public Sub New(idInBed As String,
++                   displayNameInBed As String,
++                   backplaneImplementationIdInBed As String,
++                   chipsetDisplayNameInBed As String,
++                   chipsetCpuBusInBed As String,
++                   chipsetMemoryInBed As String,
++                   chipsetPeripheralInBed As String,
++                   chipsetBufferInBed As String,
++                   chipsetConfigurationPortsInBed As String,
++                   biosDisplayNameInBed As String,
++                   supportedCpuIdsInBed As IEnumerable(Of String),
++                   supportedNumericCoprocessorIdsInBed As IEnumerable(Of String))
++        If String.IsNullOrWhiteSpace(idInBed) Then Throw New ArgumentNullException(NameOf(idInBed))
++        If String.IsNullOrWhiteSpace(displayNameInBed) Then Throw New ArgumentNullException(NameOf(displayNameInBed))
++        If String.IsNullOrWhiteSpace(backplaneImplementationIdInBed) Then Throw New ArgumentNullException(NameOf(backplaneImplementationIdInBed))
++        If supportedCpuIdsInBed Is Nothing Then Throw New ArgumentNullException(NameOf(supportedCpuIdsInBed))
++        If supportedNumericCoprocessorIdsInBed Is Nothing Then Throw New ArgumentNullException(NameOf(supportedNumericCoprocessorIdsInBed))
++
++        Id = idInBed.Trim()
++        DisplayName = displayNameInBed.Trim()
++        BackplaneImplementationId = backplaneImplementationIdInBed.Trim()
++        ChipsetDisplayName = If(chipsetDisplayNameInBed, String.Empty).Trim()
++        ChipsetCpuBus = If(chipsetCpuBusInBed, String.Empty).Trim()
++        ChipsetMemory = If(chipsetMemoryInBed, String.Empty).Trim()
++        ChipsetPeripheral = If(chipsetPeripheralInBed, String.Empty).Trim()
++        ChipsetBuffer = If(chipsetBufferInBed, String.Empty).Trim()
++        ChipsetConfigurationPorts = If(chipsetConfigurationPortsInBed, String.Empty).Trim()
++        BiosDisplayName = If(biosDisplayNameInBed, String.Empty).Trim()
++        _supportedCpuIdsInBed = New List(Of String)(supportedCpuIdsInBed).ToArray()
++        _supportedNumericCoprocessorIdsInBed = New List(Of String)(supportedNumericCoprocessorIdsInBed).ToArray()
++
++        If _supportedCpuIdsInBed.Length = 0 Then Throw New ArgumentException("A motherboard profile must expose at least one CPU socket population choice.", NameOf(supportedCpuIdsInBed))
++        If _supportedNumericCoprocessorIdsInBed.Length = 0 Then Throw New ArgumentException("A motherboard profile must expose at least one numeric-coprocessor population choice.", NameOf(supportedNumericCoprocessorIdsInBed))
++    End Sub
++
++    Public ReadOnly Property Id As String
++    Public ReadOnly Property DisplayName As String
++    Public ReadOnly Property BackplaneImplementationId As String
++    Public ReadOnly Property ChipsetDisplayName As String
++    Public ReadOnly Property ChipsetCpuBus As String
++    Public ReadOnly Property ChipsetMemory As String
++    Public ReadOnly Property ChipsetPeripheral As String
++    Public ReadOnly Property ChipsetBuffer As String
++    Public ReadOnly Property ChipsetConfigurationPorts As String
++    Public ReadOnly Property BiosDisplayName As String
++
++    Public Function SupportedCpuIds() As String()
++        Return DirectCast(_supportedCpuIdsInBed.Clone(), String())
++    End Function
++
++    Public Function SupportedNumericCoprocessorIds() As String()
++        Return DirectCast(_supportedNumericCoprocessorIdsInBed.Clone(), String())
++    End Function
++
++    Public Function SupportsCpu(idInBed As String) As Boolean
++        Return ContainsIdInBed(_supportedCpuIdsInBed, idInBed)
++    End Function
++
++    Public Function SupportsNumericCoprocessor(idInBed As String) As Boolean
++        Return ContainsIdInBed(_supportedNumericCoprocessorIdsInBed, idInBed)
++    End Function
++
++    Private Shared Function ContainsIdInBed(valuesInBed As String(), idInBed As String) As Boolean
++        If valuesInBed Is Nothing OrElse String.IsNullOrWhiteSpace(idInBed) Then Return False
++        For Each candidateInBed As String In valuesInBed
++            If String.Equals(candidateInBed, idInBed, StringComparison.OrdinalIgnoreCase) Then Return True
++        Next
++        Return False
++    End Function
++End Class
++
++' Catalog of motherboard models understood by the current executable.  Checkpoint
++' 01 deliberately contains only the already-running NEAT board.  The second/QDI
++' board will be added only after this abstraction is validated so no new board
++' can accidentally alter the proven 286 machine while the foundation is tested.
++Public NotInheritable Class MotherboardCatalog
++    Public Const CtCs8221NeatAt286Id As String = "ct-cs8221-neat-at-286"
++    Public Const CtCs8221NeatBackplaneImplementationId As String = "neat-at-286"
++
++    Private Shared ReadOnly _profilesInBed As MotherboardProfile() = {
++        New MotherboardProfile(
++            CtCs8221NeatAt286Id,
++            "C&T CS8221 NEAT-class AT motherboard",
++            CtCs8221NeatBackplaneImplementationId,
++            "Chips & Technologies CS8221 NEAT chipset",
++            "82C211 CPU / AT-bus controller",
++            "82C212 memory / shadow / EMS controller",
++            "82C206 integrated peripheral controller — DMA, PIC, PIT, RTC/CMOS support",
++            "82C215 data / address buffer role — represented by motherboard decode and routing",
++            "NEAT indexed configuration interface — 22h index / 23h data",
++            "Cromwell AT BIOS — Firmware\atbios.rom",
++            {MachineHardwarePopulationConfiguration.NoneId, MachineHardwarePopulationConfiguration.HarrisCs80C28625Id},
++            {MachineHardwarePopulationConfiguration.NoneId, MachineHardwarePopulationConfiguration.Intel80287Id})
++    }
++
++    Private Sub New()
++    End Sub
++
++    Public Shared Function DefaultProfile() As MotherboardProfile
++        Return _profilesInBed(0)
++    End Function
++
++    Public Shared Function Find(idInBed As String) As MotherboardProfile
++        If Not String.IsNullOrWhiteSpace(idInBed) Then
++            For Each profileInBed As MotherboardProfile In _profilesInBed
++                If String.Equals(profileInBed.Id, idInBed, StringComparison.OrdinalIgnoreCase) Then Return profileInBed
++            Next
++        End If
++        Return Nothing
++    End Function
++
++    Public Shared Function Require(idInBed As String) As MotherboardProfile
++        Dim profileInBed As MotherboardProfile = Find(idInBed)
++        If profileInBed Is Nothing Then Throw New InvalidOperationException("Unknown motherboard profile '" & If(idInBed, String.Empty) & "'.")
++        Return profileInBed
++    End Function
++
++    Public Shared Function NormalizeId(idInBed As String) As String
++        Dim profileInBed As MotherboardProfile = Find(idInBed)
++        If profileInBed Is Nothing Then Return DefaultProfile().Id
++        Return profileInBed.Id
++    End Function
++
++    Public Shared Function Profiles() As MotherboardProfile()
++        Return DirectCast(_profilesInBed.Clone(), MotherboardProfile())
++    End Function
++End Class

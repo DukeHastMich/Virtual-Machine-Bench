@@ -1,0 +1,363 @@
+diff -ruN /mnt/data/mbrefit/cp5/vmb_work/Form1.vb /mnt/data/mbrefit/cp6/vmb_work/Form1.vb
+--- /mnt/data/mbrefit/cp5/vmb_work/Form1.vb	2026-09-09 08:28:18.061024164 +0000
++++ /mnt/data/mbrefit/cp6/vmb_work/Form1.vb	2026-09-09 08:30:55.293675569 +0000
+@@ -1332,7 +1332,7 @@
+         snapshotInBed.ChipsetBuffer = motherboardProfileInBed.ChipsetBuffer
+         snapshotInBed.ChipsetConfigurationPorts = motherboardProfileInBed.ChipsetConfigurationPorts
+         snapshotInBed.ChipsetTiming = If(String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase),
+-                                            Chipset.TimingDiagnosticText(),
++                                            If(liveRuntimeInBed Is Nothing, Chipset.TimingDiagnosticText(), liveRuntimeInBed.DiagnosticText()),
+                                             "Pending motherboard selection — live board remains asserted until the cold replacement is committed" & Environment.NewLine & _motherboardRuntimeInBed.DiagnosticText())
+         snapshotInBed.Bios = motherboardProfileInBed.BiosDisplayName
+ 
+@@ -1551,9 +1551,18 @@
+ 
+     Friend Sub StageMemoryConfigurationInBed(megabytesInBed As Integer)
+         If _ramBanks Is Nothing Then Return
+-        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
++        Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationInBed.MotherboardId)
+         If Not profileInBed.SupportsMemoryMegabytes(megabytesInBed) Then Return
+-        If megabytesInBed = _ramBanks.InstalledMemoryMb Then
++
++        Dim currentBoardIdInBed As String = If(_hardwarePopulationConfiguration Is Nothing,
++                                                MotherboardCatalog.CtCs8221NeatAt286Id,
++                                                _hardwarePopulationConfiguration.MotherboardId)
++        If Not String.Equals(effectivePopulationInBed.MotherboardId, currentBoardIdInBed, StringComparison.OrdinalIgnoreCase) Then
++            ' A motherboard on the service bench owns its own SIMMs even if the
++            ' selected capacity happens to equal the live board's capacity.
++            _pendingMemoryMb = megabytesInBed
++        ElseIf megabytesInBed = _ramBanks.InstalledMemoryMb Then
+             _pendingMemoryMb = Nothing
+         Else
+             _pendingMemoryMb = megabytesInBed
+@@ -1691,7 +1700,9 @@
+         End If
+         If _pendingHardwarePopulationConfiguration IsNot Nothing Then
+             Dim runtimeReasonInBed As String = String.Empty
+-            If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId, runtimeReasonInBed) Then
++            If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId,
++                                                       _pendingHardwarePopulationConfiguration.CpuId,
++                                                       runtimeReasonInBed) Then
+                 MessageBox.Show(Me,
+                                 runtimeReasonInBed & " The running machine has not been altered.",
+                                 "Motherboard runtime pending",
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"	2026-09-09 08:30:57.180772429 +0000
+@@ -0,0 +1,13 @@
++1ef05f46b9498f564623703667906a6f83987a9a5d06312875217bb02c24956c  Motherboards/MotherboardCatalog.vb
++70ac21985910f996f6c8eb73918a8f44e575d17c5de74d5363a8af97a1c2d918  Motherboards/MotherboardRuntime.vb
++fd733781851d91f985b9b555b5e79c781e6e77371adf7b26d2509432f9453398  Motherboards/QDI V4P895P3/Opti895Chipset486.vb
++0ef7e2789fea1c7d2ecbb098212b59fd008019d6084ba11d882383d74f18f6ec  MachineConfiguration.vb
++57cd64e98a1ea6459d37cb56d0d6cebf5c26b25d29b4aad760d75acdb9835a5a  HardwarePopulation.vb
++df2cd322ad5983561cf8deb37a028b3ee2a75e85ca8c5b05a48be6d8738a240f  MotherboardDevices.vb
++c10fb0051350e52dab0eabb360eefd205029eb8e6ea0f1d4112cde0ffac2a54c  SystemConfigurationDrawer.vb
++c504ce27ce8cae73f9407ae7c55ad4ee77c66c29f79b3477c57362d0c561d716  Form1.vb
++d5710178ca819bb4a596f3105398901d7c5914713955cc2a428884dfac00d13e  Declares.vb
++8057133a496a4388a7eeacfc0287693670add987df7a00576db43719797e5f4a  HardwareBus.vb
++628a3fcf12db2a7ac019eecf9c8ffe60e5b6450abff7a863c5e77beb438a484a  MachineTiming.vb
++a8f843c6e71e3aec8c9387c2c132b72697b78b18d0bf64d0d8db89a610ad6b35  IsaBackplane.vb
++e9425d6a8dfa690d76f55a71a43bdcb73b65e0413bed4391be0766d5b824e12e  VirtualComputer.Modern.vbproj
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.diff" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.diff"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.diff"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.diff"	2026-09-09 08:30:57.968530193 +0000
+@@ -0,0 +1,61 @@
++diff -ruN /mnt/data/mbrefit/cp5/vmb_work/Form1.vb /mnt/data/mbrefit/cp6/vmb_work/Form1.vb
++--- /mnt/data/mbrefit/cp5/vmb_work/Form1.vb	2026-09-09 08:28:18.061024164 +0000
+++++ /mnt/data/mbrefit/cp6/vmb_work/Form1.vb	2026-09-09 08:30:55.293675569 +0000
++@@ -1332,7 +1332,7 @@
++         snapshotInBed.ChipsetBuffer = motherboardProfileInBed.ChipsetBuffer
++         snapshotInBed.ChipsetConfigurationPorts = motherboardProfileInBed.ChipsetConfigurationPorts
++         snapshotInBed.ChipsetTiming = If(String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase),
++-                                            Chipset.TimingDiagnosticText(),
+++                                            If(liveRuntimeInBed Is Nothing, Chipset.TimingDiagnosticText(), liveRuntimeInBed.DiagnosticText()),
++                                             "Pending motherboard selection — live board remains asserted until the cold replacement is committed" & Environment.NewLine & _motherboardRuntimeInBed.DiagnosticText())
++         snapshotInBed.Bios = motherboardProfileInBed.BiosDisplayName
++ 
++@@ -1551,9 +1551,18 @@
++ 
++     Friend Sub StageMemoryConfigurationInBed(megabytesInBed As Integer)
++         If _ramBanks Is Nothing Then Return
++-        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
+++        Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+++        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationInBed.MotherboardId)
++         If Not profileInBed.SupportsMemoryMegabytes(megabytesInBed) Then Return
++-        If megabytesInBed = _ramBanks.InstalledMemoryMb Then
+++
+++        Dim currentBoardIdInBed As String = If(_hardwarePopulationConfiguration Is Nothing,
+++                                                MotherboardCatalog.CtCs8221NeatAt286Id,
+++                                                _hardwarePopulationConfiguration.MotherboardId)
+++        If Not String.Equals(effectivePopulationInBed.MotherboardId, currentBoardIdInBed, StringComparison.OrdinalIgnoreCase) Then
+++            ' A motherboard on the service bench owns its own SIMMs even if the
+++            ' selected capacity happens to equal the live board's capacity.
+++            _pendingMemoryMb = megabytesInBed
+++        ElseIf megabytesInBed = _ramBanks.InstalledMemoryMb Then
++             _pendingMemoryMb = Nothing
++         Else
++             _pendingMemoryMb = megabytesInBed
++@@ -1691,7 +1700,9 @@
++         End If
++         If _pendingHardwarePopulationConfiguration IsNot Nothing Then
++             Dim runtimeReasonInBed As String = String.Empty
++-            If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId, runtimeReasonInBed) Then
+++            If Not _motherboardRuntimeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId,
+++                                                       _pendingHardwarePopulationConfiguration.CpuId,
+++                                                       runtimeReasonInBed) Then
++                 MessageBox.Show(Me,
++                                 runtimeReasonInBed & " The running machine has not been altered.",
++                                 "Motherboard runtime pending",
++diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"
++--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"	1970-01-01 00:00:00.000000000 +0000
+++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06-SHA256.txt"	2026-09-09 08:30:57.180772429 +0000
++@@ -0,0 +1,13 @@
+++1ef05f46b9498f564623703667906a6f83987a9a5d06312875217bb02c24956c  Motherboards/MotherboardCatalog.vb
+++70ac21985910f996f6c8eb73918a8f44e575d17c5de74d5363a8af97a1c2d918  Motherboards/MotherboardRuntime.vb
+++fd733781851d91f985b9b555b5e79c781e6e77371adf7b26d2509432f9453398  Motherboards/QDI V4P895P3/Opti895Chipset486.vb
+++0ef7e2789fea1c7d2ecbb098212b59fd008019d6084ba11d882383d74f18f6ec  MachineConfiguration.vb
+++57cd64e98a1ea6459d37cb56d0d6cebf5c26b25d29b4aad760d75acdb9835a5a  HardwarePopulation.vb
+++df2cd322ad5983561cf8deb37a028b3ee2a75e85ca8c5b05a48be6d8738a240f  MotherboardDevices.vb
+++c10fb0051350e52dab0eabb360eefd205029eb8e6ea0f1d4112cde0ffac2a54c  SystemConfigurationDrawer.vb
+++c504ce27ce8cae73f9407ae7c55ad4ee77c66c29f79b3477c57362d0c561d716  Form1.vb
+++d5710178ca819bb4a596f3105398901d7c5914713955cc2a428884dfac00d13e  Declares.vb
+++8057133a496a4388a7eeacfc0287693670add987df7a00576db43719797e5f4a  HardwareBus.vb
+++628a3fcf12db2a7ac019eecf9c8ffe60e5b6450abff7a863c5e77beb438a484a  MachineTiming.vb
+++a8f843c6e71e3aec8c9387c2c132b72697b78b18d0bf64d0d8db89a610ad6b35  IsaBackplane.vb
+++e9425d6a8dfa690d76f55a71a43bdcb73b65e0413bed4391be0766d5b824e12e  VirtualComputer.Modern.vbproj
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.md" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.md"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.md"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/CHECKPOINT-06.md"	2026-09-09 08:30:56.712591155 +0000
+@@ -0,0 +1,26 @@
++# Motherboard Backplane Refit — Checkpoint 06 / closure
++
++Date: 2026-09-09
++Status: configurator/profile refit complete; second-board execution boundary explicitly gated pending a real 80486 machine fabric.
++
++Final cleanup beyond CP05:
++
++- fixed cross-board RAM staging so a QDI RAM choice remains attached to the pending QDI board even when its capacity happens to equal the live NEAT board;
++- motherboard activation validation now checks both fixed-fabric availability and the selected processor package;
++- live chipset diagnostics are obtained through the motherboard runtime boundary where possible instead of teaching the configurator that `Chipset` always means NEAT;
++- chipset help text is board-neutral;
++- Firmware page reports the selected board's firmware-image contract and battery-backed state;
++- added QDI board implementation notes;
++- added `MOTHERBOARD-RUNTIME-BOUNDARY.md` documenting the exact non-fake seam required for a future 80486 core;
++- added a Windows/PowerShell validation script that performs required-source checks and invokes `dotnet build` when available.
++
++Definition of done for this refit:
++
++- two physical motherboard profiles exist in the configurator;
++- CPU/NPX/RAM/cache/clock/firmware/CMOS/slot context changes with motherboard selection;
++- board-specific settings persist independently;
++- the QDI OPTi 82C895/82C602 register model exists as real source;
++- the proven 286 board remains the only executable board in this branch;
++- the QDI board cannot be falsely powered using the NEAT memory bridge or 80286 core.
++
++External validation still required because this assistant container has no .NET/VB build toolchain. Run `Motherboard Backplane Refit\VALIDATE-MOTHERBOARD-BACKPLANE.ps1` on the Windows source tree, then perform the NEAT boot/configurator smoke described by the script.
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/MOTHERBOARD-RUNTIME-BOUNDARY.md" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/MOTHERBOARD-RUNTIME-BOUNDARY.md"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/MOTHERBOARD-RUNTIME-BOUNDARY.md"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/MOTHERBOARD-RUNTIME-BOUNDARY.md"	2026-09-09 08:30:56.710987809 +0000
+@@ -0,0 +1,69 @@
++# Virtual Machine Bench — Motherboard Runtime Boundary after CP06
++
++## What the refit now owns
++
++The configurator no longer treats “the motherboard” as a fixed decoration. A `MotherboardProfile` owns physical compatibility metadata and a matching `IMotherboardRuntimeBackplane` owns the live fixed-fabric implementation boundary.
++
++A motherboard selection now controls:
++
++- CPU socket and legal processor packages;
++- legal numeric-coprocessor population;
++- memory capacities/topology;
++- L2-cache capacities;
++- clock/jumper choices;
++- fixed chipset identities and configuration ports;
++- firmware image contract;
++- CMOS/NVRAM capacity and persistence filename;
++- expansion connector inventory and ISA width compatibility.
++
++Per-board RAM/cache/clock state is stored independently under `Motherboard.<profile-id>` sections. Returning to a previously configured board restores that board's own physical context.
++
++## Board 1 — current executable machine
++
++`ct-cs8221-neat-at-286`
++
++- C&T CS8221 NEAT-class AT board
++- Harris CS80C286-25 execution core available
++- Intel 80287 removable population supported
++- proven NEAT memory/local-bus bridge remains authoritative
++- current BIOS/CMOS and runtime behavior remain on the established paths
++
++## Board 2 — QDI physical/silicon model
++
++`qdi-v4p895p3-smt-v5`
++
++- board profile and compatibility rules complete for this refit milestone;
++- OPTi 82C895 + 82C602 indexed silicon model implemented;
++- dedicated 256-byte CMOS contract and NVRAM path defined;
++- board-specific firmware path defined as `Firmware\qdi-v4p895p3-smt-v5.rom`;
++- QDI context has its own RAM/cache/clock settings;
++- activation intentionally blocked rather than borrowing NEAT hardware.
++
++## Why QDI power-on is still blocked
++
++The remaining boundary is not a configurator problem. The active machine execution tree is genuinely 80286/NEAT-specific:
++
++1. `Declares.MotherboardMemory` is `NeatMemoryController286`.
++2. `Declares.MotherboardBridge` is `NeatMotherboardBridge286`.
++3. `Declares.CpuBus` is `CpuLocalBus286`.
++4. `CPU0` and `MachineRuntime286` are typed around `Processor286`.
++5. DMA memory callbacks currently terminate in the NEAT bridge.
++6. system-ROM loading currently targets the NEAT memory controller.
++7. several reset/HOLD/READY/A20 paths are electrically specific to the 82C211/82C212 arrangement.
++
++Replacing those with a fake generic shim would make the QDI selection cosmetically swappable while still running a NEAT motherboard underneath. CP06 explicitly refuses to do that.
++
++## Exact next architecture seam for a future 486 core
++
++Introduce a processor-family-neutral machine-fabric contract that owns:
++
++- physical DRAM/ROM access;
++- CPU local-bus cycles;
++- DMA/master memory cycles;
++- A20/reset/HOLD/READY-equivalent signals appropriate to that processor family;
++- system-ROM mapping;
++- power/reset lifecycle.
++
++Then implement one adapter over the existing NEAT classes and one native OPTi/486 implementation. `MachineRuntime286` can remain the 286 execution runtime; a separate 486 runtime should be selected by the motherboard/runtime factory rather than widening `Processor286` until it becomes a fake universal CPU.
++
++That future work is the correct point to make `QdiOpti895RuntimeBackplane.FixedFabricAvailable=True`.
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/VALIDATE-MOTHERBOARD-BACKPLANE.ps1" "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/VALIDATE-MOTHERBOARD-BACKPLANE.ps1"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboard Backplane Refit/VALIDATE-MOTHERBOARD-BACKPLANE.ps1"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboard Backplane Refit/VALIDATE-MOTHERBOARD-BACKPLANE.ps1"	2026-09-09 08:30:56.711801375 +0000
+@@ -0,0 +1,53 @@
++param(
++    [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot)
++)
++
++Set-StrictMode -Version Latest
++$ErrorActionPreference = 'Stop'
++$ProjectRoot = [System.IO.Path]::GetFullPath($ProjectRoot)
++$project = Join-Path $ProjectRoot 'VirtualComputer.Modern.vbproj'
++if (-not (Test-Path -LiteralPath $project -PathType Leaf)) {
++    throw "VirtualComputer.Modern.vbproj not found at $ProjectRoot"
++}
++
++$required = @(
++    'Motherboards\MotherboardCatalog.vb',
++    'Motherboards\MotherboardRuntime.vb',
++    'Motherboards\QDI V4P895P3\Opti895Chipset486.vb',
++    'MachineConfiguration.vb',
++    'HardwarePopulation.vb',
++    'SystemConfigurationDrawer.vb'
++)
++foreach ($relative in $required) {
++    $path = Join-Path $ProjectRoot $relative
++    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing required source: $relative" }
++    Write-Host "[OK] $relative"
++}
++
++$projectText = Get-Content -LiteralPath $project -Raw
++if ($projectText -notmatch [regex]::Escape('Motherboards\QDI V4P895P3\Opti895Chipset486.vb')) {
++    throw 'QDI OPTi chipset source is not in the VB project Compile list.'
++}
++
++$qdiRom = Join-Path $ProjectRoot 'Firmware\qdi-v4p895p3-smt-v5.rom'
++if (Test-Path -LiteralPath $qdiRom -PathType Leaf) {
++    $length = (Get-Item -LiteralPath $qdiRom).Length
++    Write-Host "[INFO] QDI firmware image present: $length bytes"
++} else {
++    Write-Host '[INFO] QDI firmware image not present. This is allowed while QDI runtime activation remains gated.' -ForegroundColor Yellow
++}
++
++$dotnet = Get-Command dotnet -ErrorAction SilentlyContinue
++if ($null -eq $dotnet) {
++    Write-Host '[SKIP] dotnet not found; source checks complete but build not run.' -ForegroundColor Yellow
++    exit 2
++}
++
++Write-Host ''
++Write-Host '[BUILD] dotnet build' -ForegroundColor Cyan
++& dotnet build $project
++if ($LASTEXITCODE -ne 0) { throw "dotnet build failed with exit code $LASTEXITCODE" }
++
++Write-Host ''
++Write-Host 'Motherboard backplane validation build passed.' -ForegroundColor Green
++Write-Host 'Runtime smoke: boot the NEAT board, open System Configuration, stage QDI, inspect CPU/RAM/cache/clock/slots, then Revert without applying the gated board.'
+diff -ruN /mnt/data/mbrefit/cp5/vmb_work/Motherboards/MotherboardRuntime.vb /mnt/data/mbrefit/cp6/vmb_work/Motherboards/MotherboardRuntime.vb
+--- /mnt/data/mbrefit/cp5/vmb_work/Motherboards/MotherboardRuntime.vb	2026-09-09 08:24:38.178648539 +0000
++++ /mnt/data/mbrefit/cp6/vmb_work/Motherboards/MotherboardRuntime.vb	2026-09-09 08:30:55.889304075 +0000
+@@ -197,9 +197,20 @@
+     End Sub
+ 
+     Public Function CanActivate(profileIdInBed As String, ByRef reasonInBed As String) As Boolean
++        Return CanActivate(profileIdInBed, ProcessorPackageCatalog.NoneId, reasonInBed)
++    End Function
++
++    Public Function CanActivate(profileIdInBed As String,
++                                cpuIdInBed As String,
++                                ByRef reasonInBed As String) As Boolean
+         Dim candidateInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(profileIdInBed)
+         If Not candidateInBed.FixedFabricAvailable Then
+-            reasonInBed = candidateInBed.RuntimeDisplayName & " has no fixed-fabric implementation yet."
++            reasonInBed = candidateInBed.RuntimeDisplayName & " is not yet attachable as the live machine fabric."
++            Return False
++        End If
++        If Not candidateInBed.SupportsProcessorPackage(cpuIdInBed) Then
++            reasonInBed = candidateInBed.RuntimeDisplayName & " cannot execute processor package '" &
++                          ProcessorPackageCatalog.DisplayName(cpuIdInBed) & "' in this build."
+             Return False
+         End If
+         reasonInBed = String.Empty
+diff -ruN "/mnt/data/mbrefit/cp5/vmb_work/Motherboards/QDI V4P895P3/README.md" "/mnt/data/mbrefit/cp6/vmb_work/Motherboards/QDI V4P895P3/README.md"
+--- "/mnt/data/mbrefit/cp5/vmb_work/Motherboards/QDI V4P895P3/README.md"	1970-01-01 00:00:00.000000000 +0000
++++ "/mnt/data/mbrefit/cp6/vmb_work/Motherboards/QDI V4P895P3/README.md"	2026-09-09 08:30:56.710136686 +0000
+@@ -0,0 +1,27 @@
++# QDI V4P895P3/SMT V5.x — board model notes
++
++This directory is the second motherboard profile/backplane target for Virtual Machine Bench.
++
++Physical identity used by the profile:
++
++- QDI V4P895P3/SMT V5.x / VL-ISA-PB486P3 family
++- Socket 3 486-class CPU population
++- OPTi 82C895 System/Power Management Controller
++- OPTi 82C602 buffer / internal RTC companion
++- IMI SC468 clock generator
++- 1–64 MB documented board memory configurations
++- 64/128/256/512 KB socketed L2 cache
++- three VESA Local Bus connectors, six 16-bit ISA connectors and one 8-bit ISA connector
++- AMI WinBIOS family firmware; exact board ROM is an external required artifact and is **not fabricated** by this source tree
++
++Register model implemented in `Opti895Chipset486.vb`:
++
++- 22h shared index latch
++- 23h integrated IPC data path (index 01h, reset C0h)
++- 24h main 82C895 data path
++- main control indexes 20h–2Fh with 2Ch intentionally not decoded
++- power management indexes E0h–EFh
++- 82C602 F7h–FAh write-only companion state
++- 82C602 F9h bit 5 as the upper 128-byte CMOS bank selector
++
++The motherboard profile intentionally does not claim 80486 execution.  A real 80486-family processor core plus a non-NEAT local-memory/bus bridge are required before this board can be powered as the live machine.
+diff -ruN /mnt/data/mbrefit/cp5/vmb_work/SystemConfigurationDrawer.vb /mnt/data/mbrefit/cp6/vmb_work/SystemConfigurationDrawer.vb
+--- /mnt/data/mbrefit/cp5/vmb_work/SystemConfigurationDrawer.vb	2026-09-09 08:28:17.430873152 +0000
++++ /mnt/data/mbrefit/cp6/vmb_work/SystemConfigurationDrawer.vb	2026-09-09 08:30:56.566768589 +0000
+@@ -603,7 +603,7 @@
+                     AddValueInBed("Data / address buffer", "chipset-buffer", snapshotInBed.ChipsetBuffer)
+                     AddValueInBed("Configuration interface", "chipset-ports", snapshotInBed.ChipsetConfigurationPorts)
+                     AddValueInBed("Live timing state", "chipset-timing", snapshotInBed.ChipsetTiming, 118)
+-                    AddNoteInBed("This identifies the chipset pieces the motherboard is actually asserting. The 82C215 buffer role is represented by the board's physical decode and routing rather than invented guest-visible registers.")
++                    AddNoteInBed("This page is motherboard-profile driven. Fixed chipset pieces are informational rather than swappable drop-down parts; guest-visible registers exist only where the selected physical silicon actually decodes them.")
+ 
+                 Case "processor"
+                     _pageTitleInBed.Text = "PROCESSOR"
+@@ -625,6 +625,8 @@
+                 Case "firmware"
+                     _pageTitleInBed.Text = "FIRMWARE"
+                     AddSelectorInBed("System BIOS", "bios-selector", {New HardwareProfileChoice(snapshotInBed.Bios, snapshotInBed.Bios)}, Nothing)
++                    AddValueInBed("Board firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 60)
++                    AddValueInBed("Battery-backed state", "motherboard-cmos", snapshotInBed.MotherboardCmos, 60)
+                     AddValueInBed("Video option ROM", "video-rom", snapshotInBed.VideoRom)
+                     AddNoteInBed("Firmware selectors describe ROM devices physically installed in the build; guest firmware execution still occurs through the emulated bus and ROM windows.")
+ 
