@@ -1,0 +1,4340 @@
+{
+  "format": "VMBS-SOLVER-ENDPOINT-IR-1",
+  "board_id": "ISA8_Ethernet.bs.v2",
+  "mode": "REFERENCE",
+  "paths": [
+    {
+      "id": "NETPATH:1",
+      "net_id": 1,
+      "net": "/A0",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "31",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "62",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "12",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A0",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "5",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA0",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A0",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:2",
+      "net_id": 2,
+      "net": "/A1",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "29",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "61",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "11",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A1",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "7",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA1",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A1",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:3",
+      "net_id": 3,
+      "net": "/A10",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "26",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "52",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "23",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A10",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "18",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA10",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A10",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:4",
+      "net_id": 4,
+      "net": "/A11",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "22",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "51",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "25",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A11",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "19",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA11",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A11",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:5",
+      "net_id": 5,
+      "net": "/A12",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "15",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "50",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "4",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A12",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "20",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA12",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A12",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:6",
+      "net_id": 6,
+      "net": "/A13",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "16",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "49",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "28",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A13",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "21",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA13",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A13",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:7",
+      "net_id": 7,
+      "net": "/A14",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "48",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "22",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA14",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A14",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:8",
+      "net_id": 8,
+      "net": "/A15",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "47",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "23",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA15",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A15",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:9",
+      "net_id": 9,
+      "net": "/A16",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "46",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "24",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA16",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A16",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:10",
+      "net_id": 10,
+      "net": "/A17",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "45",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "25",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA17",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A17",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:11",
+      "net_id": 11,
+      "net": "/A18",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "44",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "26",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA18",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A18",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:12",
+      "net_id": 12,
+      "net": "/A19",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "43",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "27",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA19",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A19",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:13",
+      "net_id": 13,
+      "net": "/A2",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "27",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "60",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "10",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A2",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "8",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA2",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A2",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:14",
+      "net_id": 14,
+      "net": "/A3",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "25",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "59",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "9",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A3",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "9",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA3",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A3",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:15",
+      "net_id": 15,
+      "net": "/A4",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "23",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "58",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "8",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A4",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "10",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA4",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A4",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:16",
+      "net_id": 16,
+      "net": "/A5",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "21",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "57",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "7",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A5",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "11",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA5",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A5",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:17",
+      "net_id": 17,
+      "net": "/A6",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "19",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "56",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "6",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A6",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "12",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA6",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A6",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:18",
+      "net_id": 18,
+      "net": "/A7",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "17",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "55",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "5",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A7",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "13",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA7",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A7",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:19",
+      "net_id": 19,
+      "net": "/A8",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "18",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "54",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "27",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A8",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "15",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA8",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A8",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:20",
+      "net_id": 20,
+      "net": "/A9",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "20",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "53",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "26",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A9",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "16",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SA9",
+          "direction": "input",
+          "role": "bus_address",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "A9",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:21",
+      "net_id": 21,
+      "net": "/AEN",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "42",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "34",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "AEN",
+          "direction": "input",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "AEN",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:22",
+      "net_id": 22,
+      "net": "/D0",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "40",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "36",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD0",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D0",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "36"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:23",
+      "net_id": 23,
+      "net": "/D1",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "39",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "37",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD1",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D1",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "37"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:24",
+      "net_id": 24,
+      "net": "/D2",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "38",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "38",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD2",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D2",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "38"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:25",
+      "net_id": 25,
+      "net": "/D3",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "37",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "39",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD3",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D3",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "39"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:26",
+      "net_id": 26,
+      "net": "/D4",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "36",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "40",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD4",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D4",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "40"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:27",
+      "net_id": 27,
+      "net": "/D5",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "35",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "41",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD5",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D5",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "41"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:28",
+      "net_id": 28,
+      "net": "/D6",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "34",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "42",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD6",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D6",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "42"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:29",
+      "net_id": 29,
+      "net": "/D7",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "33",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "43",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SD7",
+          "direction": "bidirectional",
+          "role": "bus_data",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "D7",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "43"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:30",
+      "net_id": 30,
+      "net": "/~IOR",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "14",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "29",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IORB",
+          "direction": "input",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IOR#",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:31",
+      "net_id": 31,
+      "net": "/~IOW",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "13",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "30",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOWB",
+          "direction": "input",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IOW#",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:32",
+      "net_id": 32,
+      "net": "GND",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "40",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J2",
+          "pad": "39",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "10",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "31",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "16",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "VSS",
+          "direction": "power",
+          "role": "ground",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U3",
+          "pad": "5",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "VSS",
+          "direction": "power",
+          "role": "ground",
+          "sampling": null,
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "C1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C3",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C4",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C5",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C6",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C7",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C8",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "R6",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "14",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "28",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "44",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "52",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "83",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "86",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "R8",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN4",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C9",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C10",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:33",
+      "net_id": 33,
+      "net": "VCC",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "29",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW4",
+          "pad": "10",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW4",
+          "pad": "9",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW4",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW4",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW4",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW3",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW3",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW3",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW3",
+          "pad": "5",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW2",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW2",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW1",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "SW1",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "32",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "VDD",
+          "direction": "power",
+          "role": "supply",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U3",
+          "pad": "6",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "ORG",
+          "direction": "input",
+          "role": "organization_select",
+          "sampling": "static",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U3",
+          "pad": "8",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "VCC",
+          "direction": "power",
+          "role": "supply",
+          "sampling": null,
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "C5",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C6",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C7",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C8",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "17",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "47",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "57",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "70",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "89",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "L1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "L4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C9",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C10",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:34",
+      "net_id": 34,
+      "net": "/RSTDRV",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "33",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "RSTDRV",
+          "direction": "input",
+          "role": "reset",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "RESETDRV",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:35",
+      "net_id": 35,
+      "net": "/IRQ9",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "4",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "INT0",
+          "direction": "output",
+          "role": "isa_irq_output",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IRQ9",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:41",
+      "net_id": 41,
+      "net": "/~SMEMW",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "10",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "11",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "31",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "WE#",
+          "direction": "input",
+          "role": "memory_control",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "32",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SMEMWB",
+          "direction": "input",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "SMEMW#",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:42",
+      "net_id": 42,
+      "net": "/~SMEMR",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "24",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "BUS1",
+          "pad": "12",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "24",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "OE#",
+          "direction": "input",
+          "role": "memory_control",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "31",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "SMEMRB",
+          "direction": "input",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "SMEMR#",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:51",
+      "net_id": 51,
+      "net": "/IRQ5",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "23",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "1",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "INT3",
+          "direction": "output",
+          "role": "isa_irq_output",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IRQ5",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:52",
+      "net_id": 52,
+      "net": "/IRQ4",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "24",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "2",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "INT2",
+          "direction": "output",
+          "role": "isa_irq_output",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IRQ4",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:53",
+      "net_id": 53,
+      "net": "/IRQ3",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "25",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "3",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "INT1",
+          "direction": "output",
+          "role": "isa_irq_output",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IRQ3",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:59",
+      "net_id": 59,
+      "net": "/IOCHRDY",
+      "endpoints": [
+        {
+          "ref": "BUS1",
+          "pad": "41",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "35",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOCHRDY",
+          "direction": "output",
+          "role": "bus_control",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "ISA8",
+              "signal": "IOCHRDY",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:60",
+      "net_id": 60,
+      "net": "/~IOCS16",
+      "endpoints": [
+        {
+          "ref": "R6",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "96",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:61",
+      "net_id": 61,
+      "net": "Net-(C1-Pad2)",
+      "endpoints": [
+        {
+          "ref": "Y1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "R7",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "50",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:62",
+      "net_id": 62,
+      "net": "Net-(C2-Pad2)",
+      "endpoints": [
+        {
+          "ref": "Y1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "C2",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "R7",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "51",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:63",
+      "net_id": 63,
+      "net": "Net-(C3-Pad1)",
+      "endpoints": [
+        {
+          "ref": "C3",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "R4",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:64",
+      "net_id": 64,
+      "net": "Net-(C4-Pad1)",
+      "endpoints": [
+        {
+          "ref": "C4",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "R5",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:65",
+      "net_id": 65,
+      "net": "/TP_RX-",
+      "endpoints": [
+        {
+          "ref": "R1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "58",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "RX-",
+          "direction": "input",
+          "role": "ethernet_signal",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "10BASE-T",
+              "signal": "RX-",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "J1",
+          "pad": "R6",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:66",
+      "net_id": 66,
+      "net": "/TP_RX+",
+      "endpoints": [
+        {
+          "ref": "R1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "59",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "RX+",
+          "direction": "input",
+          "role": "ethernet_signal",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "10BASE-T",
+              "signal": "RX+",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "J1",
+          "pad": "R3",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:67",
+      "net_id": 67,
+      "net": "/TP_TX-",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pad": "46",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "TX-",
+          "direction": "output",
+          "role": "ethernet_signal",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "10BASE-T",
+              "signal": "TX-",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "J1",
+          "pad": "R2",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:68",
+      "net_id": 68,
+      "net": "/TP_TX+",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pad": "45",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "TX+",
+          "direction": "output",
+          "role": "ethernet_signal",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "10BASE-T",
+              "signal": "TX+",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "J1",
+          "pad": "R1",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:69",
+      "net_id": 69,
+      "net": "/LED_LINK",
+      "endpoints": [
+        {
+          "ref": "R2",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "61",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:70",
+      "net_id": 70,
+      "net": "/JP",
+      "endpoints": [
+        {
+          "ref": "RN1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "65",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "JP",
+          "direction": "input",
+          "role": "configuration_mode",
+          "sampling": "reset_latched",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:71",
+      "net_id": 71,
+      "net": "/BA18",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "9",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "1",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A18",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN3",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "69",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BS2",
+          "direction": "input",
+          "role": "boot_rom_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A18",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:72",
+      "net_id": 72,
+      "net": "/BA17",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "12",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "30",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A17",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN3",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "71",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BS3",
+          "direction": "input",
+          "role": "boot_rom_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A17",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:73",
+      "net_id": 73,
+      "net": "/BA16",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "11",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "2",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A16",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "72",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BS4",
+          "direction": "input",
+          "role": "boot_rom_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A16",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN4",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:74",
+      "net_id": 74,
+      "net": "/BD6",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "32",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "20",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D6",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U3",
+          "pad": "3",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "DI",
+          "direction": "input",
+          "role": "serial_data_in",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN1",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "78",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IRQS0",
+          "direction": "input",
+          "role": "irq_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D6",
+              "direction": "bidirectional"
+            },
+            {
+              "interface": "MICROWIRE_3WIRE",
+              "signal": "DI",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "20"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:75",
+      "net_id": 75,
+      "net": "/BD5",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "34",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "19",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D5",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U3",
+          "pad": "2",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "CLK",
+          "direction": "input",
+          "role": "serial_clock",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN1",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "79",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IRQS1",
+          "direction": "input",
+          "role": "irq_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D5",
+              "direction": "bidirectional"
+            },
+            {
+              "interface": "MICROWIRE_3WIRE",
+              "signal": "CLK",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "19"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:76",
+      "net_id": 76,
+      "net": "/BD4",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "36",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "18",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D4",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "80",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IRQS2",
+          "direction": "input",
+          "role": "irq_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D4",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "18"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:77",
+      "net_id": 77,
+      "net": "/BD3",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "38",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "17",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D3",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "81",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOS0",
+          "direction": "input",
+          "role": "io_base_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D3",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "17"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:78",
+      "net_id": 78,
+      "net": "/BD2",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "37",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "15",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D2",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN2",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "82",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOS1",
+          "direction": "input",
+          "role": "io_base_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D2",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "15"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:79",
+      "net_id": 79,
+      "net": "/BD1",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "35",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "14",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D1",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN2",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "84",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOS2",
+          "direction": "input",
+          "role": "io_base_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D1",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "14"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:80",
+      "net_id": 80,
+      "net": "/BD0",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "33",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "13",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D0",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "RN2",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "85",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "IOS3",
+          "direction": "input",
+          "role": "io_base_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D0",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U2",
+            "pad": "13"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:88",
+      "net_id": 88,
+      "net": "/BA15",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "13",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "3",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A15",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "73",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "MUX73",
+          "direction": "bidirectional",
+          "role": "multiplexed_runtime",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A15",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "73"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:89",
+      "net_id": 89,
+      "net": "/BA14",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "14",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "29",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "A14",
+          "direction": "input",
+          "role": "memory_address",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "74",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "MUX74",
+          "direction": "bidirectional",
+          "role": "multiplexed_runtime",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A14",
+              "direction": "bidirectional"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "participants": [
+          {
+            "ref": "U1",
+            "pad": "74"
+          }
+        ]
+      },
+      "status": "BIDIRECTIONAL_BUS",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:90",
+      "net_id": 90,
+      "net": "/~BCS",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "28",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "22",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "CE#",
+          "direction": "input",
+          "role": "memory_control",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "75",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BCSB",
+          "direction": "output",
+          "role": "boot_rom_chip_select",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "CE#",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "drivers": [
+          {
+            "ref": "U1",
+            "pad": "75"
+          }
+        ],
+        "receivers": [
+          {
+            "ref": "U2",
+            "pad": "22"
+          }
+        ]
+      },
+      "status": "DRIVER_RECEIVER_RESOLVED",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:91",
+      "net_id": 91,
+      "net": "/EECS",
+      "endpoints": [
+        {
+          "ref": "U3",
+          "pad": "1",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "CS",
+          "direction": "input",
+          "role": "chip_select",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "76",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "EECS",
+          "direction": "output",
+          "role": "eeprom_chip_select",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "MICROWIRE_3WIRE",
+              "signal": "CS",
+              "direction": "output"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {
+        "drivers": [
+          {
+            "ref": "U1",
+            "pad": "76"
+          }
+        ],
+        "receivers": [
+          {
+            "ref": "U3",
+            "pad": "1"
+          }
+        ]
+      },
+      "status": "DRIVER_RECEIVER_RESOLVED",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:92",
+      "net_id": 92,
+      "net": "/BD7",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "30",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U2",
+          "pad": "21",
+          "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+          "pin_name": "D7",
+          "direction": "bidirectional",
+          "role": "memory_data",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U3",
+          "pad": "4",
+          "part_id": "BBF5502243066D8F17C8F57329479768",
+          "pin_name": "DO",
+          "direction": "output",
+          "role": "serial_data_out",
+          "sampling": "live",
+          "interface_facets": [],
+          "typing_source": "component_store_pin"
+        },
+        {
+          "ref": "U1",
+          "pad": "77",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "MUX77",
+          "direction": "bidirectional",
+          "role": "multiplexed_runtime",
+          "sampling": "live",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "D7",
+              "direction": "bidirectional"
+            },
+            {
+              "interface": "MICROWIRE_3WIRE",
+              "signal": "DO",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:94",
+      "net_id": 94,
+      "net": "/BA19",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "68",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BS1",
+          "direction": "input",
+          "role": "boot_rom_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A19",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:95",
+      "net_id": 95,
+      "net": "/BA20",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "67",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "BS0",
+          "direction": "input",
+          "role": "boot_rom_select",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A20",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:96",
+      "net_id": 96,
+      "net": "/BA21",
+      "endpoints": [
+        {
+          "ref": "J2",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "66",
+          "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+          "pin_name": "PNP",
+          "direction": "input",
+          "role": "pnp_force",
+          "sampling": "reset_latched",
+          "interface_facets": [
+            {
+              "interface": "BOOT_ROM",
+              "signal": "A21",
+              "direction": "input"
+            }
+          ],
+          "typing_source": "component_store_pin"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:97",
+      "net_id": 97,
+      "net": "/LED_CRS",
+      "endpoints": [
+        {
+          "ref": "R3",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "U1",
+          "pad": "62",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:111",
+      "net_id": 111,
+      "net": "Net-(RN1-Pad7)",
+      "endpoints": [
+        {
+          "ref": "SW1",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN1",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:112",
+      "net_id": 112,
+      "net": "Net-(RN1-Pad8)",
+      "endpoints": [
+        {
+          "ref": "SW1",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN1",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:113",
+      "net_id": 113,
+      "net": "Net-(RN1-Pad6)",
+      "endpoints": [
+        {
+          "ref": "SW2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN1",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:114",
+      "net_id": 114,
+      "net": "Net-(RN1-Pad5)",
+      "endpoints": [
+        {
+          "ref": "SW2",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN1",
+          "pad": "5",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:115",
+      "net_id": 115,
+      "net": "Net-(RN2-Pad5)",
+      "endpoints": [
+        {
+          "ref": "SW3",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN2",
+          "pad": "5",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:116",
+      "net_id": 116,
+      "net": "Net-(RN2-Pad6)",
+      "endpoints": [
+        {
+          "ref": "SW3",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN2",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:117",
+      "net_id": 117,
+      "net": "Net-(RN2-Pad8)",
+      "endpoints": [
+        {
+          "ref": "SW3",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN2",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:118",
+      "net_id": 118,
+      "net": "Net-(RN2-Pad7)",
+      "endpoints": [
+        {
+          "ref": "SW3",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN2",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:119",
+      "net_id": 119,
+      "net": "Net-(RN3-Pad7)",
+      "endpoints": [
+        {
+          "ref": "SW4",
+          "pad": "2",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:120",
+      "net_id": 120,
+      "net": "Net-(RN3-Pad8)",
+      "endpoints": [
+        {
+          "ref": "SW4",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "8",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:121",
+      "net_id": 121,
+      "net": "Net-(RN3-Pad6)",
+      "endpoints": [
+        {
+          "ref": "SW4",
+          "pad": "3",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "6",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:122",
+      "net_id": 122,
+      "net": "Net-(RN3-Pad5)",
+      "endpoints": [
+        {
+          "ref": "SW4",
+          "pad": "4",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN3",
+          "pad": "5",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:124",
+      "net_id": 124,
+      "net": "Net-(J1-PadL2)",
+      "endpoints": [
+        {
+          "ref": "R3",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "L2",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:125",
+      "net_id": 125,
+      "net": "Net-(J1-PadL3)",
+      "endpoints": [
+        {
+          "ref": "R2",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "J1",
+          "pad": "L3",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:130",
+      "net_id": 130,
+      "net": "/AUI",
+      "endpoints": [
+        {
+          "ref": "U1",
+          "pad": "64",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN4",
+          "pad": "1",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    },
+    {
+      "id": "NETPATH:134",
+      "net_id": 134,
+      "net": "Net-(RN4-Pad7)",
+      "endpoints": [
+        {
+          "ref": "SW4",
+          "pad": "5",
+          "direction": null,
+          "typing_source": "unresolved"
+        },
+        {
+          "ref": "RN4",
+          "pad": "7",
+          "direction": null,
+          "typing_source": "unresolved"
+        }
+      ],
+      "role_resolution": {},
+      "status": "AMBIGUOUS_DIRECTION",
+      "timing_budget": null,
+      "timing_status": "NOT_DERIVED"
+    }
+  ],
+  "gaps": [
+    {
+      "code": "PROGRAMMED_PAYLOAD_UNRESOLVED",
+      "subject": "U2",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "Programmed device exists but payload_id is unresolved."
+    },
+    {
+      "code": "PROGRAMMED_PAYLOAD_UNRESOLVED",
+      "subject": "U3",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "Programmed device exists but payload_id is unresolved."
+    },
+    {
+      "code": "UNTYPED_ENDPOINTS_REMAIN",
+      "subject": "ISA8_Ethernet.bs.v2",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "216 net endpoints lack Component Store pin direction metadata; no direction was inferred."
+    }
+  ],
+  "summary": {
+    "paths": 87,
+    "driver_receiver": 2,
+    "bidirectional": 17,
+    "passive_or_power": 0,
+    "ambiguous": 68,
+    "untyped_endpoints": 216,
+    "timed_paths": 0,
+    "device_timing_requirements": 23
+  },
+  "timing_requirements": [
+    {
+      "path_id": "NETPATH:1",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "12",
+        "pin_name": "A0"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:2",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "11",
+        "pin_name": "A1"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:3",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "23",
+        "pin_name": "A10"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:4",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "25",
+        "pin_name": "A11"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:5",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "4",
+        "pin_name": "A12"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:6",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "28",
+        "pin_name": "A13"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:13",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "10",
+        "pin_name": "A2"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:14",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "9",
+        "pin_name": "A3"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:15",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "8",
+        "pin_name": "A4"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:16",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "7",
+        "pin_name": "A5"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:17",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "6",
+        "pin_name": "A6"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:18",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "5",
+        "pin_name": "A7"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:19",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "27",
+        "pin_name": "A8"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:20",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "26",
+        "pin_name": "A9"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:41",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "31",
+        "pin_name": "WE#"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:42",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "24",
+        "pin_name": "OE#"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:71",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "1",
+        "pin_name": "A18"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:72",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "30",
+        "pin_name": "A17"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:73",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "2",
+        "pin_name": "A16"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:75",
+      "endpoint": {
+        "ref": "U3",
+        "pad": "2",
+        "pin_name": "CLK"
+      },
+      "kind": "receiver_clock_limit",
+      "value": {
+        "clock_max_hz": 3000000,
+        "min_period_ns": 333.3333333333333
+      },
+      "status": "ENFORCE_WHEN_SOURCE_CLOCK_KNOWN",
+      "route_budget": null
+    },
+    {
+      "path_id": "NETPATH:88",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "3",
+        "pin_name": "A15"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:89",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "29",
+        "pin_name": "A14"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    },
+    {
+      "path_id": "NETPATH:90",
+      "endpoint": {
+        "ref": "U2",
+        "pad": "22",
+        "pin_name": "CE#"
+      },
+      "kind": "device_read_access_evidence",
+      "value": {
+        "read_access_ns_options": [
+          55,
+          70
+        ]
+      },
+      "status": "DEVICE_REQUIREMENT_ONLY",
+      "route_budget": null,
+      "reason": "No source-cycle/board-delay allocation is established."
+    }
+  ]
+}

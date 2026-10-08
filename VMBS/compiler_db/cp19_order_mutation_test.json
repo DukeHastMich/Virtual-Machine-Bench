@@ -1,0 +1,12 @@
+{
+  "test": "module allocation moved after config binding",
+  "validator_exit": 1,
+  "errors": [
+    {
+      "index": 7,
+      "code": "CONFIG_BEFORE_MODULE",
+      "module": "U1"
+    }
+  ],
+  "pass": true
+}

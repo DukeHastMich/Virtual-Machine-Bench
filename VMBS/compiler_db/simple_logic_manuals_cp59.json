@@ -1,0 +1,66 @@
+{
+  "checkpoint": "CP59",
+  "documents": [
+    {
+      "parts": [
+        "SN74LS01"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "quad 2-input NAND with open-collector outputs",
+      "url": "https://www.ti.com/product/SN74LS01",
+      "facts": [
+        "four independent 2-input NAND gates",
+        "open-collector outputs require pull-up resistors"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS132"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "quad 2-input NAND with Schmitt-trigger inputs",
+      "url": "https://www.ti.com/product/SN74LS132",
+      "facts": [
+        "four 2-input NAND gates",
+        "Schmitt-trigger inputs with distinct positive/negative-going thresholds"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS133"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "single 13-input NAND",
+      "url": "https://www.ti.com/product/SN74LS133",
+      "facts": [
+        "single 13-input positive-NAND gate"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS136"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "quad 2-input XOR with open-collector outputs",
+      "url": "https://www.ti.com/product/SN74LS136",
+      "facts": [
+        "four 2-input exclusive-OR gates",
+        "open-collector outputs"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS251"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "8-to-1 data selector with complementary three-state outputs",
+      "url": "https://www.ti.com/product/SN74LS251",
+      "facts": [
+        "8-line to 1-line data selector",
+        "complementary outputs",
+        "strobe high places both outputs in high impedance"
+      ]
+    }
+  ],
+  "modeling_note": "Schmitt analog hysteresis is not fabricated at binary resolution. Open-collector and 3-state disabled outputs are high impedance."
+}

@@ -1,0 +1,15 @@
+{
+  "test": "remove physical IRQ5 path while decode still permits IRQ5",
+  "diagnostic": [
+    {
+      "severity": "error",
+      "code": "DECODED_IRQ_HAS_NO_PHYSICAL_PATH",
+      "ref": "U1",
+      "irq": [
+        5
+      ]
+    }
+  ],
+  "hardware_tits": 1,
+  "pass": true
+}

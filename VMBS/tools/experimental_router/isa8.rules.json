@@ -1,0 +1,5 @@
+{
+  "edge_clearance_mm": 0.5,
+  "hole_clearance_mm": 0.25,
+  "provenance": "ISA8 reference only: limits observed in KiCad 10.0.6 DRC. Review for each project; not generic manufacturing defaults."
+}

@@ -1,0 +1,10 @@
+# Negative conformance specimen.  This MUST fail: VMB does not invent parts.
+board impossible-demo {
+    title "Negative Board Script test";
+    units mm;
+    outline 100 100;
+
+    component U1 : acme-magic-quantum-286-chipset {
+        place 50 50 rot 0 side top;
+    }
+}

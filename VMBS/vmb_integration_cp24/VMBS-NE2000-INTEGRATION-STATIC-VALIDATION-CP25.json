@@ -1,0 +1,45 @@
+{
+  "checks": {
+    "runtime_interface_exactly_implemented": true,
+    "new_project_sources_exist": true,
+    "generated_implementation_balance": true,
+    "adapter_balance": true,
+    "materializer_generated_call_once": true,
+    "legacy_direct_ne2000_factory_removed": true,
+    "physical_irq_domain_enforced": true,
+    "physical_io_domain_enforced": true,
+    "default_execution_gate": true
+  },
+  "interface_methods": [
+    "AllocateModule",
+    "AttachPlatform",
+    "CreateControl",
+    "BindConfigPin",
+    "DefineProperty",
+    "Link",
+    "CreateDeviceSlot",
+    "FinalizeBoard"
+  ],
+  "adapter_implements": [
+    "AllocateModule",
+    "AttachPlatform",
+    "CreateControl",
+    "BindConfigPin",
+    "DefineProperty",
+    "Link",
+    "CreateDeviceSlot",
+    "FinalizeBoard"
+  ],
+  "generated_balance": {
+    "class": true,
+    "sub": true,
+    "function": true
+  },
+  "adapter_balance": {
+    "class": true,
+    "sub": true,
+    "function": true
+  },
+  "preexisting_project_note": "My Project/Resources.Designer.vb and Settings.Designer.vb are absent from preserved CP01 archive; not introduced by VMBS integration.",
+  "pass": true
+}

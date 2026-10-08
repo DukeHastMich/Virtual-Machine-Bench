@@ -1,0 +1,4620 @@
+{
+  "format": "VMBS-EXACT-COPPER-TOPOLOGY-CP438",
+  "net_count": 134,
+  "connected_net_count": 85,
+  "unresolved_net_count": 49,
+  "pads_touching_copper": 311,
+  "pad_count": 364,
+  "evidence_gap_count": 6,
+  "single_terminal_isolated_count": 47,
+  "multi_terminal_connected_count": 85,
+  "multi_terminal_unresolved_count": 2,
+  "extraction_gap_count": 0,
+  "nets": [
+    {
+      "net": "/A0",
+      "node_count": 27,
+      "edge_count": 28,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "31",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "62",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "12",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "21a44f818ad5576f22bf44e8cf43252c4d41615752abc4c4acb60d29ad7b03e1"
+    },
+    {
+      "net": "/A1",
+      "node_count": 25,
+      "edge_count": 26,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "29",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "61",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "11",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "7",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "6baad97ec739544f08b831a928512f5a46865d359241ce239abd2988669fb4f9"
+    },
+    {
+      "net": "/A10",
+      "node_count": 25,
+      "edge_count": 26,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "26",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "52",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "23",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "18",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "504147b22073e116280c5bfba6efed9e57631ab9c55d73b52ed3b460bed7cc0b"
+    },
+    {
+      "net": "/A11",
+      "node_count": 24,
+      "edge_count": 24,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "22",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "51",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "25",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "19",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "6aee692dad22cb35d2e76386718d1b2a91969f95428a8e7ceb324d009552db3d"
+    },
+    {
+      "net": "/A12",
+      "node_count": 27,
+      "edge_count": 27,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "15",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "50",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "4",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "20",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "dc77282dac3905be8c5f33e3c0f0dc66318c32365e39f00caa79ebc8c8090b4c"
+    },
+    {
+      "net": "/A13",
+      "node_count": 24,
+      "edge_count": 25,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "16",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "49",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "28",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "21",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "66d1ed0dff5970b9018ac65daae0841b935434572fb116417a912cc12c1acad5"
+    },
+    {
+      "net": "/A14",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "48",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "22",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "2efad34402e4f1860eabc5212b8c0fa2d18c1267f3a08cc756e7975d2982130e"
+    },
+    {
+      "net": "/A15",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "47",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "23",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "bc83678bd4d27e6a574f72569d91565b4c7fb8aef12681180810ef26da5dbfa2"
+    },
+    {
+      "net": "/A16",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "46",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "24",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "038fc8812a11f62c0a0e717f69f30b41ed26c100a767c347c89b42244018cea7"
+    },
+    {
+      "net": "/A17",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "45",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "25",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "0cd5244e30a1d49aaa49ebc2b584ccfc9adece2a340a6b25142a052eed0b4b10"
+    },
+    {
+      "net": "/A18",
+      "node_count": 5,
+      "edge_count": 4,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "44",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "26",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "67a347dc3f106fd637920bc9f494b19031087b3eecbe33294cb962e0efda68fb"
+    },
+    {
+      "net": "/A19",
+      "node_count": 6,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "43",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "27",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9e67bf9e553859ee1dfb3f24a3956650ae63c95a88a626cbb7c63a87c5ecb7a5"
+    },
+    {
+      "net": "/A2",
+      "node_count": 25,
+      "edge_count": 26,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "27",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "60",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "10",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "8",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "87614b7f5b268d9da07e823b0d119bb8c8ff1a86be8caa8a6c774ca47cc00567"
+    },
+    {
+      "net": "/A3",
+      "node_count": 24,
+      "edge_count": 26,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "25",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "59",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "9",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "9",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "8a22a6838000fafc9f835006efd594294b929111fb374787ce44d1fe25bd4e73"
+    },
+    {
+      "net": "/A4",
+      "node_count": 23,
+      "edge_count": 24,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "23",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "58",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "8",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "10",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9ff603e8edd1f6d61100a8fa20424752b963197bb25d496310f4b4c1398266dd"
+    },
+    {
+      "net": "/A5",
+      "node_count": 22,
+      "edge_count": 25,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "21",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "57",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "7",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "11",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "eef3c8c040e16fb9bb644db647b876388630f5b3e846cc33ea01196fe1bd9646"
+    },
+    {
+      "net": "/A6",
+      "node_count": 21,
+      "edge_count": 21,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "19",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "56",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "6",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "12",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "11716a6ef5faa9ce746732118707b705afbb9d2234ed8231f399bf11ad3f0ecd"
+    },
+    {
+      "net": "/A7",
+      "node_count": 21,
+      "edge_count": 23,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "17",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "55",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "5",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "13",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "32ce5252d1d6e4ec9c410f4db0908ce970967dcab9829134074c60cd9bd67762"
+    },
+    {
+      "net": "/A8",
+      "node_count": 24,
+      "edge_count": 24,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "18",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "54",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "27",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "15",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "f75d1b4178cf115488d92866511cc33c22dbbb7db5e0a9e51957ed52cb18e373"
+    },
+    {
+      "net": "/A9",
+      "node_count": 24,
+      "edge_count": 25,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "20",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "53",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "26",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "16",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "385c3bd214be1551a7f27e5defdebcc34916ba4652c78a961317167c6a83875e"
+    },
+    {
+      "net": "/AEN",
+      "node_count": 13,
+      "edge_count": 12,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "42",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "34",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "139b994caeab1e0e8dd2853c17186b66f26cdec41fe73045cb362435a69b1a81"
+    },
+    {
+      "net": "/AUI",
+      "node_count": 7,
+      "edge_count": 7,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "64",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "cbdc511d9ca144a85ac59701755cc924ee8bb9bc7739dd838deb61a246354493"
+    },
+    {
+      "net": "/BA14",
+      "node_count": 13,
+      "edge_count": 13,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "14",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "29",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "74",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "ace00fc986e81ceee2773d1719295fe2e7317c0f50e0ee3a5e0265ae30f0aabc"
+    },
+    {
+      "net": "/BA15",
+      "node_count": 14,
+      "edge_count": 14,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "13",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "3",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "73",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "6d84e30af29dac340ef6ea4ee33e33e8598d01732b462bec63fbcdff59c897b3"
+    },
+    {
+      "net": "/BA16",
+      "node_count": 24,
+      "edge_count": 28,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "11",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "72",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "ecea923ee5fe44cc88a49863d18b8a0899673256d852a9a114f79c993896b40b"
+    },
+    {
+      "net": "/BA17",
+      "node_count": 28,
+      "edge_count": 31,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "12",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "30",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "71",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9244c1210cd65548eb276573c73657d6e5a03e8da961d0d84c194b1f3ccb7839"
+    },
+    {
+      "net": "/BA18",
+      "node_count": 26,
+      "edge_count": 28,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "9",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "69",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "b7b67b1731e93d2a08cda3392943011f362d5a41f510b4ebd7935847f0a8e716"
+    },
+    {
+      "net": "/BA19",
+      "node_count": 20,
+      "edge_count": 21,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "8",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "68",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "7ac3290eec41f5f5f1de757a3f25f06d773260ce4ee0c9646638549d94d8b121"
+    },
+    {
+      "net": "/BA20",
+      "node_count": 18,
+      "edge_count": 19,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "67",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "bbfbcb7129ab0d4cbe3c31ff72227811ef9bf67e55efdba525b227fceb3825c9"
+    },
+    {
+      "net": "/BA21",
+      "node_count": 13,
+      "edge_count": 14,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "66",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "712d11fa47e6fda04dd8b03d5550c39689d8ddaea0f38b60a48ca43895925af9"
+    },
+    {
+      "net": "/BD0",
+      "node_count": 27,
+      "edge_count": 31,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "33",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "13",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "85",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "1eb0c2499f87e24848b428726283fba74d5f6d89114c6dc35bcb21fbe07790fc"
+    },
+    {
+      "net": "/BD1",
+      "node_count": 28,
+      "edge_count": 32,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "35",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "14",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "84",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "bce9810c682a3bab1a720e2af8600246eebb5a536ca0c53f17f66348b7ebefb3"
+    },
+    {
+      "net": "/BD2",
+      "node_count": 26,
+      "edge_count": 28,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "37",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "15",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "82",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9a2200d4185460836797a2cfd0f653fd6d4db97baa90b87a7898d331b5641534"
+    },
+    {
+      "net": "/BD3",
+      "node_count": 29,
+      "edge_count": 34,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "38",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "17",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "81",
+          "component": 0,
+          "degree": 4,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "f3f4c41ed96dd85ce8865feb1845970d9ea8d9f2a35a27dd44d36043d8754918"
+    },
+    {
+      "net": "/BD4",
+      "node_count": 15,
+      "edge_count": 16,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "36",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "18",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "80",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "26f4e569b301850f3aea92b55ec8a63692528e7fc403cde2aefefa8e20ab10f6"
+    },
+    {
+      "net": "/BD5",
+      "node_count": 35,
+      "edge_count": 40,
+      "component_count": 1,
+      "pad_count": 5,
+      "pads_touching_copper": 5,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "34",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "19",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "79",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "1a0d46d4e95c336a04298317cdf4a866d0f5c4ad8736e4dbe975995ae49dd2db"
+    },
+    {
+      "net": "/BD6",
+      "node_count": 30,
+      "edge_count": 38,
+      "component_count": 1,
+      "pad_count": 5,
+      "pads_touching_copper": 5,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "32",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "20",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "78",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "f7c0656ab4d3ecb4c7ba0a97bf810cc92d9bd96639cc8099b89bd703ea290a7d"
+    },
+    {
+      "net": "/BD7",
+      "node_count": 23,
+      "edge_count": 26,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "30",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "21",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "77",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "7c5301cb032ad132efd2d40fa373f00115fd796a7038bd07b82611563e0ff697"
+    },
+    {
+      "net": "/D0",
+      "node_count": 11,
+      "edge_count": 10,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "40",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "36",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "7c53083ebfe702b37acbd781eccdc2c2ed556950ad1d6dbaec1ece6a1fb64fcc"
+    },
+    {
+      "net": "/D1",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "39",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "37",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "bfc4b773d3ac6cba6fc5028aa82481d833281eb3a86d66c8fdb95fe92094a757"
+    },
+    {
+      "net": "/D2",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "38",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "38",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9fc5b72be099a7d8066197029903bf96df5eec8cf7aea49b09a61c6c1efacac9"
+    },
+    {
+      "net": "/D3",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "37",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "39",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "904c0fba767f84e4c86f87fe4c96ce3c389fe189a545c383a43417c77676647e"
+    },
+    {
+      "net": "/D4",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "36",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "40",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "e596174427cab3affd509d79af6bee8432ad355364180404530e771aa77cf989"
+    },
+    {
+      "net": "/D5",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "35",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "41",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "ac70225d667f743bb8ad1ef2c036f7a7d64eee115711243a78ad7508bfdd9e33"
+    },
+    {
+      "net": "/D6",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "34",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "42",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "08b7fd703d90893bd307ff78b0d18508b80f4a8202f9e004377823152b5676cc"
+    },
+    {
+      "net": "/D7",
+      "node_count": 6,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "33",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "43",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "a45166e96bb93514c0d35771140ecc354564a01c498199894fa467032393b5b8"
+    },
+    {
+      "net": "/EECS",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "U3",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "76",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "58b393442fd7616d8328b2f7a863bb62aa321b80869147c92f0327551ba7c142"
+    },
+    {
+      "net": "/IOCHRDY",
+      "node_count": 13,
+      "edge_count": 12,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "41",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "35",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "0fbd1dd27fc478a6e46b485832bc7c0b123a7f668aa2ead4d2035fd0bedae7a2"
+    },
+    {
+      "net": "/IRQ3",
+      "node_count": 13,
+      "edge_count": 12,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "25",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "6cb18d7fadd41aa02d778ac76f83788959f9425f0e36e84e41c3789a378d4670"
+    },
+    {
+      "net": "/IRQ4",
+      "node_count": 11,
+      "edge_count": 10,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "24",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "62694f6d790d00c2b8e634bcead5494d0bbed66cd91fb2fa1fe8fc41b6ef2cc2"
+    },
+    {
+      "net": "/IRQ5",
+      "node_count": 10,
+      "edge_count": 10,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "23",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "0472dad4da255e4ce4ff90fc9759b00a225b42dc82ea24b98fa1269a436f682c"
+    },
+    {
+      "net": "/IRQ9",
+      "node_count": 12,
+      "edge_count": 12,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "d81d54b8b83d675c0c93c4821190adb190708b634f07c1bc3bcc9420e54f10ed"
+    },
+    {
+      "net": "/JP",
+      "node_count": 8,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "RN1",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "65",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "da33f8efb93379593c18dded2f8344bef87a67b1da59306bd1e82c25180950d7"
+    },
+    {
+      "net": "/LED_CRS",
+      "node_count": 11,
+      "edge_count": 13,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R3",
+          "pad": "2",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "62",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "812294914b777fdecb1b172b5356d3633df7a253dd6ef1984f8aaf2ba2eea30a"
+    },
+    {
+      "net": "/LED_LINK",
+      "node_count": 9,
+      "edge_count": 8,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R2",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "61",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "e7342aee4b4b22212c23b36154814120b0a9481488b8c324c4f59f513d29aa2c"
+    },
+    {
+      "net": "/RSTDRV",
+      "node_count": 8,
+      "edge_count": 7,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "33",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "565a9c6ac3b1c43f2ca8a817473e6e4838face1c887b357d5eeb0153c77edd27"
+    },
+    {
+      "net": "/TP_RX+",
+      "node_count": 22,
+      "edge_count": 25,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R1",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "59",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "7ec080aa76b97404270a9f9033fc8003c5073e9d15fd13c447574f1094550f8d"
+    },
+    {
+      "net": "/TP_RX-",
+      "node_count": 12,
+      "edge_count": 12,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R1",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "58",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "a534e8655a4a6ca63ae28ad77b63ec0cf40f424b0d42cea4e8d58963beb1f8bb"
+    },
+    {
+      "net": "/TP_TX+",
+      "node_count": 6,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "45",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "e5090de482781c281fd6b80ac59a713f276f9aecdc34410ba0b8e2c7e307c3de"
+    },
+    {
+      "net": "/TP_TX-",
+      "node_count": 5,
+      "edge_count": 4,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "46",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "6d5d23ed5ecb4fa3edeea2f6c2b30121922d52e622b967c8f68183eccf135699"
+    },
+    {
+      "net": "/~BCS",
+      "node_count": 17,
+      "edge_count": 19,
+      "component_count": 1,
+      "pad_count": 3,
+      "pads_touching_copper": 3,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "28",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "22",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "75",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "183d54c8bb44b92f3c671fce4c2251e5299da0bf98963fc0de5c02ea286c4ad1"
+    },
+    {
+      "net": "/~IOCS16",
+      "node_count": 4,
+      "edge_count": 3,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R6",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "96",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "055ed4bc1d2b42dd7d4798bf7d124960ec3d9b27ea0d032fef5da9adb704723f"
+    },
+    {
+      "net": "/~IOR",
+      "node_count": 10,
+      "edge_count": 10,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "14",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "29",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "b28d3f6ad9b98c50751d72b458b9bab6a2616832a1c6a4a49fba9e7adda50d4e"
+    },
+    {
+      "net": "/~IOW",
+      "node_count": 11,
+      "edge_count": 11,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "13",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "30",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "4cc226658700e3da566540efad3bdd893f73c58b1ed16e6bd7e8259672542dcb"
+    },
+    {
+      "net": "/~SMEMR",
+      "node_count": 30,
+      "edge_count": 30,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "24",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "12",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "24",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "31",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "dd530ff1afe7399e62c9fcf595d4f5bd38de00ee0107cedf5506856a76ee4065"
+    },
+    {
+      "net": "/~SMEMW",
+      "node_count": 33,
+      "edge_count": 34,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "10",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "11",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "31",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "32",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "687e328262b6ed8d04ffd8962cb974d582e58b66d2b71d4a371f03b07b7fe284"
+    },
+    {
+      "net": "GND",
+      "node_count": 246,
+      "edge_count": 691,
+      "component_count": 3,
+      "pad_count": 46,
+      "pads_touching_copper": 44,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "40",
+          "component": 0,
+          "degree": 4,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J2",
+          "pad": "39",
+          "component": 0,
+          "degree": 5,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "10",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "31",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "16",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "component": 0,
+          "degree": 9,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "component": 0,
+          "degree": 10,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C1",
+          "pad": "1",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C2",
+          "pad": "1",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C3",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C4",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C5",
+          "pad": "2",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C6",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C7",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C8",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R6",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "14",
+          "component": 1,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "28",
+          "component": 2,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "44",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "52",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "83",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "86",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R8",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "component": 0,
+          "degree": 4,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "component": 0,
+          "degree": 4,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "8",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C9",
+          "pad": "2",
+          "component": 0,
+          "degree": 6,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C10",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "14"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "28"
+        }
+      ],
+      "digest": "d419981770d20d02892c45372bd7c639af30679fcc4c8ecd7462f871e0a61c46"
+    },
+    {
+      "net": "Net-(BUS1-Pad15)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "15",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "15"
+        }
+      ],
+      "digest": "df8c2e70802463530883fd459c5b691c3b0bcf1c7c76324eb5a7dda3a9a9755e"
+    },
+    {
+      "net": "Net-(BUS1-Pad16)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "16",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "16"
+        }
+      ],
+      "digest": "d603912e385fefc77e84a3683246e63de6a3237fedf353e578c89489c7ec94ac"
+    },
+    {
+      "net": "Net-(BUS1-Pad17)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "17",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "17"
+        }
+      ],
+      "digest": "5501ca66bc80a668e642cbe0e3a2a1439e3d686afa491bf6fe4b682474f2e16d"
+    },
+    {
+      "net": "Net-(BUS1-Pad18)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "18",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "18"
+        }
+      ],
+      "digest": "c8029bae4d167d1b1d88e3ba000a55ee4843983d866827b0c4b04ee8af47d55d"
+    },
+    {
+      "net": "Net-(BUS1-Pad19)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "19",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "19"
+        }
+      ],
+      "digest": "bdf662960c78e955c07fab2ec87424cdf1b091381dc1d5cf78059b326cff2317"
+    },
+    {
+      "net": "Net-(BUS1-Pad20)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "20",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "20"
+        }
+      ],
+      "digest": "fedb14bbed2dc2664736c9cdc626560442dccbff16b4a3aaa4e94c48aeddab82"
+    },
+    {
+      "net": "Net-(BUS1-Pad21)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "21",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "21"
+        }
+      ],
+      "digest": "367160840fbffee842c066384dafb11608c86074b07f9decf3fe5c922b982ccf"
+    },
+    {
+      "net": "Net-(BUS1-Pad22)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "22",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "22"
+        }
+      ],
+      "digest": "cf865bd649e7739d358d7a2b0828739fe5c3bb22c27d4eb5568fdd0e759c07ca"
+    },
+    {
+      "net": "Net-(BUS1-Pad26)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "26",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "26"
+        }
+      ],
+      "digest": "97a7a203c2ecfb198e84e2e21ce69db3bc2403e9919432b49fbd48def4925b59"
+    },
+    {
+      "net": "Net-(BUS1-Pad27)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "27",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "27"
+        }
+      ],
+      "digest": "6646d7b7928bdf121bdbd434d42d5ed9e112cfcbd14c85065ec14bc653dc757e"
+    },
+    {
+      "net": "Net-(BUS1-Pad28)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "28",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "28"
+        }
+      ],
+      "digest": "19ba6d50fa0753758f145feb5decf95b21a5e4e8e9c6b356ee82e88942d4490d"
+    },
+    {
+      "net": "Net-(BUS1-Pad30)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "30",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "30"
+        }
+      ],
+      "digest": "8304ffa28f4e57c0a04e84bb67118ebea6372b13b3518123552fd7fea427600f"
+    },
+    {
+      "net": "Net-(BUS1-Pad32)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "32",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "32"
+        }
+      ],
+      "digest": "af15530080bceec324e88ba74563c6dcda041273d87fdf4f353c6df7a10fa80b"
+    },
+    {
+      "net": "Net-(BUS1-Pad5)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "5",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "5"
+        }
+      ],
+      "digest": "bf4204f3babd990aafc30474e139514a9e2b2b98f09ef36fe798ef6b398ab5b6"
+    },
+    {
+      "net": "Net-(BUS1-Pad6)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "6",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "6"
+        }
+      ],
+      "digest": "0b038b7bee1d3032d30bc28112e139268ea8457f290e47fcb5de86a5f89ca527"
+    },
+    {
+      "net": "Net-(BUS1-Pad7)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "7",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "7"
+        }
+      ],
+      "digest": "ba150e4ed17b723338b142da5c8eab16340eed801d6ef8fb0f04c297367377a2"
+    },
+    {
+      "net": "Net-(BUS1-Pad8)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "8",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "8"
+        }
+      ],
+      "digest": "1888e86519e3c1d5b5c42b4ef6135182635408c46a97946ac323003e955fbb8c"
+    },
+    {
+      "net": "Net-(BUS1-Pad9)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "9",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "BUS1",
+          "pad": "9"
+        }
+      ],
+      "digest": "39aeaf2266de44ec2b3f3b1c05dedb6daa61575afa3c235eaafd25fc63ea7a3d"
+    },
+    {
+      "net": "Net-(C1-Pad2)",
+      "node_count": 15,
+      "edge_count": 18,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "Y1",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C1",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R7",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "50",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "04b907ea03834415c5239afb9483ee0f41f617c9edca85dfdb9af618489dd7fc"
+    },
+    {
+      "net": "Net-(C2-Pad2)",
+      "node_count": 17,
+      "edge_count": 23,
+      "component_count": 1,
+      "pad_count": 4,
+      "pads_touching_copper": 4,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "Y1",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C2",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R7",
+          "pad": "2",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "51",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "221ce33fabaff60fb139655f386a81a7b7a021a459d1d40d8fdc330f0c683ea1"
+    },
+    {
+      "net": "Net-(C3-Pad1)",
+      "node_count": 4,
+      "edge_count": 3,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "C3",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "f44042307dc41e004cd279ed911fa85521f872c511574511cf56d5ef18937253"
+    },
+    {
+      "net": "Net-(C4-Pad1)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "C4",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "d4eb276732bed34ea9843a9cbae327f8050c25210f7f9cc3dcd36449c86fb93f"
+    },
+    {
+      "net": "Net-(J1-PadL2)",
+      "node_count": 4,
+      "edge_count": 3,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R3",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "e9ff2b424084e411ae80d043b415c0534b4e3731b88149bda7d78e0e92214cd7"
+    },
+    {
+      "net": "Net-(J1-PadL3)",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "R2",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "ec23e3c0963ea398d634f0be1a17bf96f1a2885cfa9c946454050fe92d800377"
+    },
+    {
+      "net": "Net-(J1-PadR7)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J1",
+          "pad": "R7",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "J1",
+          "pad": "R7"
+        }
+      ],
+      "digest": "46fd7f6bbc5a4a9e5bfb5cb912fa477a9acc959d32fbd9c771e02974907faebe"
+    },
+    {
+      "net": "Net-(J2-Pad3)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "3",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "J2",
+          "pad": "3"
+        }
+      ],
+      "digest": "f131ce19c6898f7250fcae3bfcb5b1b593ad8b50652eeca6eb3995ce41320178"
+    },
+    {
+      "net": "Net-(J2-Pad5)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "5",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "J2",
+          "pad": "5"
+        }
+      ],
+      "digest": "161c8243a566bb2d31b2637179839e43820028483a95fdc95184b129bc748159"
+    },
+    {
+      "net": "Net-(J2-Pad7)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "7",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "J2",
+          "pad": "7"
+        }
+      ],
+      "digest": "66c231bdcf8d0d40b66707b3b78f19ab3847aa1e420912fa7df665b538e2b9a1"
+    },
+    {
+      "net": "Net-(RN1-Pad5)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW2",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "4d2c7e0740e578602f1b7df9d820238886f403fa7f443567d22493956bdb5d2b"
+    },
+    {
+      "net": "Net-(RN1-Pad6)",
+      "node_count": 5,
+      "edge_count": 4,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW2",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "c36b562ca13c61946e33ae0918c4f80f8976650441808e27707467c39ce31630"
+    },
+    {
+      "net": "Net-(RN1-Pad7)",
+      "node_count": 5,
+      "edge_count": 4,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW1",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "7",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "d07014f20144f750d4b941b8b3bb0ae13646939102ada589cf2e924f3eb1c465"
+    },
+    {
+      "net": "Net-(RN1-Pad8)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW1",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "8",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "58a9578ef8ed34e89909bc3ac366f731fd55b83a262b837c5bfc6d26273d14fd"
+    },
+    {
+      "net": "Net-(RN2-Pad5)",
+      "node_count": 7,
+      "edge_count": 7,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "4",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "c277dd05181316bae749dd56d4b4fec0c76fbf3893795539d6cb8ec795ee6630"
+    },
+    {
+      "net": "Net-(RN2-Pad6)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "0ad465f0ff3efa85b1cd421166df4c3ff82e1b48b41ae3f259826698702265e0"
+    },
+    {
+      "net": "Net-(RN2-Pad7)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "7",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "88fd3c01141514970d8c16875c900fa449b0b458285943cda152008543c9bd98"
+    },
+    {
+      "net": "Net-(RN2-Pad8)",
+      "node_count": 5,
+      "edge_count": 4,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "8",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "9725e658b57ce0e08db0b248594da7e87d7a1f0d80c9bdec3190f6bea27dd534"
+    },
+    {
+      "net": "Net-(RN3-Pad5)",
+      "node_count": 4,
+      "edge_count": 3,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "1d8c2a2592f779c1ccd130c7b373c4da8036bab93d9a8b57667a7de53e3d8f05"
+    },
+    {
+      "net": "Net-(RN3-Pad6)",
+      "node_count": 7,
+      "edge_count": 7,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "48ae90c522b339c746376762a28a5dde207f026368efd58e2a40d3f54e805f14"
+    },
+    {
+      "net": "Net-(RN3-Pad7)",
+      "node_count": 6,
+      "edge_count": 5,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "2",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "7",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "fd4e09cf7a02176fb12da2efd59c4eecb1ea8bac7382798e7a7f31df330cddd7"
+    },
+    {
+      "net": "Net-(RN3-Pad8)",
+      "node_count": 7,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "8",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "b275c356c9d94b2173a487d0e82b12690bf85f2ca09bc79022c2f44e76e3e9e6"
+    },
+    {
+      "net": "Net-(RN4-Pad3)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "3",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "RN4",
+          "pad": "3"
+        }
+      ],
+      "digest": "00ce4cc199a21d9e1e9b871a0a09a428080487257b3b30a581f78d0cf7d7c51c"
+    },
+    {
+      "net": "Net-(RN4-Pad4)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "4",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "RN4",
+          "pad": "4"
+        }
+      ],
+      "digest": "8f10e86ed031d66a7a23d0ccf0a2f68b72e96388218a3830cd71bdea6886828f"
+    },
+    {
+      "net": "Net-(RN4-Pad5)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "5",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "RN4",
+          "pad": "5"
+        }
+      ],
+      "digest": "0e4341172a4c7f7bae62f6844bb8d64fe778134cb3260431c22ab9f970b1769c"
+    },
+    {
+      "net": "Net-(RN4-Pad6)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "6",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "RN4",
+          "pad": "6"
+        }
+      ],
+      "digest": "985b47feda84cca46804c3355ada427c23e771a2049c5aa35165b147cde27585"
+    },
+    {
+      "net": "Net-(RN4-Pad7)",
+      "node_count": 6,
+      "edge_count": 6,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "5",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "7",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [],
+      "digest": "685242677f15edc0c0d08209d9ad0206919836f552913238dbf398b7814f1b7a"
+    },
+    {
+      "net": "Net-(U1-Pad100)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "100",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "100"
+        }
+      ],
+      "digest": "93fb358a4532e49b33f6a7056bd1a2d15653f33c878f18b990c3501e986d4f7b"
+    },
+    {
+      "net": "Net-(U1-Pad48)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "48",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "48"
+        }
+      ],
+      "digest": "895244cd7f75950ff37c535f68e02c51d620a11e4d10de0daf7f88532ba8251d"
+    },
+    {
+      "net": "Net-(U1-Pad49)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "49",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "49"
+        }
+      ],
+      "digest": "e0d427e163c9f78e116c4b54444b98f4a76d64a63e8e3a15b42c20d7dd447331"
+    },
+    {
+      "net": "Net-(U1-Pad53)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "53",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "53"
+        }
+      ],
+      "digest": "41926d24c4e53b64a789fc74aea3c7fe5cf7d6f940ae65d5ba92da24d0c71d0f"
+    },
+    {
+      "net": "Net-(U1-Pad54)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "54",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "54"
+        }
+      ],
+      "digest": "f2a47c824cfda771848a3d11fb285ed28e48f231e607dc34c095dc991c91c90a"
+    },
+    {
+      "net": "Net-(U1-Pad55)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "55",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "55"
+        }
+      ],
+      "digest": "88be1c8ba9c1b69a7be0ed0669974284ff6c2498c8c200843403cecd308ab13b"
+    },
+    {
+      "net": "Net-(U1-Pad56)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "56",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "56"
+        }
+      ],
+      "digest": "62e3915de03e76dd9639887b9a0089e62cea9681b325eb4b5ed58fc1531d9486"
+    },
+    {
+      "net": "Net-(U1-Pad60)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "60",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "60"
+        }
+      ],
+      "digest": "e0a609353d0f191d2e8bb35966048a3ecfaf998d743ebd6a7717e20df1e44b05"
+    },
+    {
+      "net": "Net-(U1-Pad63)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "63",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "63"
+        }
+      ],
+      "digest": "1750e6f168a505fbd17caeb00f8e2adb33478536875d2273e26755969ff79670"
+    },
+    {
+      "net": "Net-(U1-Pad87)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "87",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "87"
+        }
+      ],
+      "digest": "65f452be6415820466330ceb04d6b2f7c799d786b519c609144d9a6dbbc99493"
+    },
+    {
+      "net": "Net-(U1-Pad88)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "88",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "88"
+        }
+      ],
+      "digest": "ee5b17dd3c3b491790b575415401f37e32a5c329f79dcd29513b2b3d9ac8f776"
+    },
+    {
+      "net": "Net-(U1-Pad90)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "90",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "90"
+        }
+      ],
+      "digest": "bb23cd4efb1cc0bf75deb61ce74bad8fef7451ab2214a2dd721580c9ed5732e8"
+    },
+    {
+      "net": "Net-(U1-Pad91)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "91",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "91"
+        }
+      ],
+      "digest": "5d5651c034d57e244d11adee65efe2473d7f972b1178a9b73e5734c9afd57e38"
+    },
+    {
+      "net": "Net-(U1-Pad92)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "92",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "92"
+        }
+      ],
+      "digest": "d7220c17ab4ba81f3e511e1905894870d81d695d1506e512ba42558903607435"
+    },
+    {
+      "net": "Net-(U1-Pad93)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "93",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "93"
+        }
+      ],
+      "digest": "ac16e049a09b79386a93a7951de8421dea27c4cf81723d8a3a0b37a7583fc2fc"
+    },
+    {
+      "net": "Net-(U1-Pad94)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "94",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "94"
+        }
+      ],
+      "digest": "bcca55b1e7e11d1341bdc921c5694326f035f7c238b17064f50a624a3c15604b"
+    },
+    {
+      "net": "Net-(U1-Pad95)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "95",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "95"
+        }
+      ],
+      "digest": "670088d254a71564ca467c4fd6a5e68517577cb9753c87a23f2de63ba6fd3843"
+    },
+    {
+      "net": "Net-(U1-Pad97)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "97",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "97"
+        }
+      ],
+      "digest": "c3e8a2601869131bacee6b2811ea357d270ed8bf20de98316605a5e5fc877d4d"
+    },
+    {
+      "net": "Net-(U1-Pad98)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "98",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "98"
+        }
+      ],
+      "digest": "6095918f8c9673d16f8d0c62a73e31c899a01950c6fc175744a884adc6b298f2"
+    },
+    {
+      "net": "Net-(U1-Pad99)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "99",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "99"
+        }
+      ],
+      "digest": "2293e396fbd8872a5a124704cd18b3b699a0d9bfefa24403a3f9b2b390b01410"
+    },
+    {
+      "net": "Net-(U3-Pad7)",
+      "node_count": 1,
+      "edge_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U3",
+          "pad": "7",
+          "component": 0,
+          "degree": 0,
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U3",
+          "pad": "7"
+        }
+      ],
+      "digest": "04301073dceeb1a0c8b8e7f81ab94ea42e519c2ebc5cf158b3d0cbd01881d28a"
+    },
+    {
+      "net": "VCC",
+      "node_count": 179,
+      "edge_count": 370,
+      "component_count": 5,
+      "pad_count": 34,
+      "pads_touching_copper": 30,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "2",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J2",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "3",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "29",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "10",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "9",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "8",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "7",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "6",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "8",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "7",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "6",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "5",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW2",
+          "pad": "4",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW2",
+          "pad": "3",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW1",
+          "pad": "4",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW1",
+          "pad": "3",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "32",
+          "component": 0,
+          "degree": 6,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "6",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "8",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C5",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C6",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C7",
+          "pad": "1",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C8",
+          "pad": "1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "6",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "17",
+          "component": 1,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "47",
+          "component": 2,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "57",
+          "component": 3,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "70",
+          "component": 4,
+          "degree": 0,
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "89",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L1",
+          "component": 0,
+          "degree": 2,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L4",
+          "component": 0,
+          "degree": 1,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C9",
+          "pad": "1",
+          "component": 0,
+          "degree": 3,
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C10",
+          "pad": "1",
+          "component": 0,
+          "degree": 6,
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "17"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "47"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "57"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "ref": "U1",
+          "pad": "70"
+        }
+      ],
+      "digest": "2db0170db3e2f957cd508c3840bbc086d7744980478e7dd3ad54564a9d6c2736"
+    }
+  ],
+  "digest": "9b705801e17554d186562f679a344278689b34d4ab44d38a26fb318955a92929"
+}

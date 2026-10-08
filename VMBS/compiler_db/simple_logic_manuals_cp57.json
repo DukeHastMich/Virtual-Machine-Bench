@@ -1,0 +1,4 @@
+{"checkpoint":"CP57","documents":[
+ {"parts":["SN74LS83A","SN74LS283"],"manufacturer":"Texas Instruments","title":"4-Bit Binary Full Adders With Fast Carry","url":"https://www.ti.com/product/SN74LS283","facts":["LS283 and LS83A are electrically and functionally identical","terminal arrangement differs","4-bit addition plus carry-in and carry-out"]},
+ {"parts":["SN74LS95B"],"manufacturer":"Texas Instruments","title":"4-Bit Parallel-Access Shift Registers","url":"https://e2e.ti.com/cfs-file/__key/communityserver-discussions-components-files/935/sn54x95.pdf","facts":["parallel and serial inputs","parallel outputs","mode control and two clock inputs","parallel load on high-to-low clock-2 transition","shift-right QA toward QD on high-to-low clock-1 transition"]}
+]}

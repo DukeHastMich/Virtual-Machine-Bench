@@ -30,3 +30,77 @@ Backup/
 # OS noise
 Thumbs.db
 Desktop.ini
+
+# Local BIOS library
+/Bios Library/
+
+# Local chipset library
+/Chpset Library/
+
+# Local binary assets and reference material (publication audit)
+/Banks/
+*.rom
+*.ROM
+*.rom.*
+*.ROM.*
+*.hdd
+*.HDD
+*.img
+*.IMG
+*.ima
+*.IMA
+*.iso
+*.ISO
+*.vhd
+*.vhdx
+*.vmdk
+*.qcow2
+*.sf2
+*.sf3
+*.sfArk
+*.sfark
+*.mlb
+/HardwareDocs/**/*.pdf
+/Resources/**/*.pdf
+/VMBS/reference_manuals/**/*.pdf
+/Local Library/
+
+# Downloaded bundles and local backup archives
+*.zip
+*.ZIP
+*.rar
+*.RAR
+*.7z
+/Firmware/Backup*/
+
+# Compiled/generated artifacts; keep the source files
+*.dll
+*.exe
+*.pdb
+*.lst
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+/VMBS/work/
+/VMBS/analysis*/
+/VMBS/generated/
+/VMBS/cp29_smoke/
+*.kicad_prl
+
+# Machine-local configuration and credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+*.local.json
+*.pfx
+*.p12
+*.key
+id_rsa
+id_ed25519
+credentials.json
+secrets.json
+
+# Project-owned firmware required by VMB
+!/Firmware/atbios.rom

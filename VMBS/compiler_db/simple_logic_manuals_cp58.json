@@ -1,0 +1,121 @@
+{
+  "checkpoint": "CP58",
+  "documents": [
+    {
+      "parts": [
+        "SN74LS03"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "quad 2-input NAND with open-collector outputs",
+      "url": "https://www.ti.com/product/SN74LS03",
+      "facts": [
+        "four independent 2-input NAND gates",
+        "open-collector outputs"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS05"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "hex inverter with open-collector outputs",
+      "url": "https://www.ti.com/product/SN74LS05",
+      "facts": [
+        "six independent inverters",
+        "open-collector outputs"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS06"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "hex high-voltage open-collector inverter/driver",
+      "url": "https://www.ti.com/product/SN74LS06",
+      "facts": [
+        "six inverter buffers/drivers",
+        "open-collector high-voltage outputs",
+        "40 mA maximum low-level output current listed by TI"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS10"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "triple 3-input NAND",
+      "url": "https://www.ti.com/product/SN74LS10",
+      "facts": [
+        "three independent 3-input NAND gates"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS11"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "triple 3-input AND",
+      "url": "https://www.ti.com/product/SN74LS11",
+      "facts": [
+        "three independent 3-input AND gates"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS14"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "hex Schmitt-trigger inverter (binary functional resolution)",
+      "url": "https://www.ti.com/product/SN74LS14",
+      "facts": [
+        "six inverters",
+        "Schmitt-trigger inputs with distinct positive-going and negative-going thresholds"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS20"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "dual 4-input NAND",
+      "url": "https://www.ti.com/product/SN74LS20",
+      "facts": [
+        "two independent 4-input NAND gates"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS21"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "dual 4-input AND",
+      "url": "https://www.ti.com/product/SN74LS21",
+      "facts": [
+        "two independent 4-input AND gates"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS27"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "triple 3-input NOR",
+      "url": "https://www.ti.com/product/SN74LS27",
+      "facts": [
+        "three independent 3-input NOR gates"
+      ]
+    },
+    {
+      "parts": [
+        "SN74LS30"
+      ],
+      "manufacturer": "Texas Instruments",
+      "title": "single 8-input NAND",
+      "url": "https://www.ti.com/product/SN74LS30",
+      "facts": [
+        "single 8-input NAND gate"
+      ]
+    }
+  ],
+  "modeling_note": "CP58 models digital functional behavior only. Open-collector released state is high impedance; LS14 analog hysteresis thresholds and family-specific propagation/electrical characteristics remain evidence-bound and are not collapsed into binary behavioral code."
+}

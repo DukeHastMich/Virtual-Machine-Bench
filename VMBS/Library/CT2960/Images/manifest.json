@@ -1,0 +1,43 @@
+{
+  "format": "VMBS-LIBRARY-IMAGE-MANIFEST-1",
+  "specimen": "CT2960",
+  "policy": "Full-card/source photographs live once under VMB/VMBS/Library/<board>/Images. Component Store may keep crops with provenance references; originals are immutable evidence.",
+  "files": [
+    {
+      "file": "back_full.jpg",
+      "sha256": "7918bc0585ba719feaa15a0a7d9c75fb7b0a601fb83c9775bc867a11ae4c9cdb",
+      "bytes": 378578,
+      "role": "immutable_source_photo"
+    },
+    {
+      "file": "detail_01.jpg",
+      "sha256": "4d54635c87a4426aa2f035907f944719d6595fca53f91ad9821e524259c6d9a5",
+      "bytes": 314011,
+      "role": "immutable_source_photo"
+    },
+    {
+      "file": "detail_02.jpg",
+      "sha256": "be23c0cc662a66951a7d06b3aef448e4ffdddf3c90f3d8f38fd413c07a0715d9",
+      "bytes": 389171,
+      "role": "immutable_source_photo"
+    },
+    {
+      "file": "detail_03.jpg",
+      "sha256": "dc00f8616be21ead60ea31cc3921e9c7981dc75f662104b401b591ebe821eeac",
+      "bytes": 542343,
+      "role": "immutable_source_photo"
+    },
+    {
+      "file": "detail_04.jpg",
+      "sha256": "b2f4115798163dcebfebb7c9f8b7e2358903c8024cc2056f3154aa25d58718e5",
+      "bytes": 566263,
+      "role": "immutable_source_photo"
+    },
+    {
+      "file": "front_full.jpg",
+      "sha256": "4f70e5fec5751f9763da817a46cf7b4b3286b7b28eb193a8adca0b586e76625c",
+      "bytes": 401225,
+      "role": "immutable_source_photo"
+    }
+  ]
+}

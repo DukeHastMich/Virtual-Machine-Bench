@@ -1,0 +1,16 @@
+{
+  "format": "VMBS-DIAGNOSTICS-1",
+  "tits": {
+    "name": "Truncated Information To Substrate",
+    "type": "bit",
+    "DOWN": 0,
+    "UP": 1,
+    "rule": "UP only when unresolved information is required for the requested target; details are separate diagnostics."
+  },
+  "resolution_states": [
+    "known_relevant",
+    "known_irrelevant",
+    "unknown_nonblocking",
+    "unresolved_required"
+  ]
+}

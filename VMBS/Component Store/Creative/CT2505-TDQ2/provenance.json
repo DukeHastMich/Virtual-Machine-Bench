@@ -1,0 +1,16 @@
+{
+  "format": "VMBS-COMPONENT-IMAGE-PROVENANCE-1",
+  "specimen": "CT2960",
+  "crop": "Images/CT2960_U3_top.png",
+  "crop_sha256": "058ea573c192124a4b4967960ec2105cc38cf423c2a4b33ea0374876027178b5",
+  "source": "Library/CT2960/Images/front_full.jpg",
+  "source_sha256": "4f70e5fec5751f9763da817a46cf7b4b3286b7b28eb193a8adca0b586e76625c",
+  "crop_bounds_xyxy": [
+    120,
+    600,
+    650,
+    1040
+  ],
+  "identity_note": "observed marking: ViBRA 16C / CT2505-TDQ2; exact silicon documentation not yet primary-verified",
+  "policy": "Crop is derived evidence; immutable full-card source remains in project Library."
+}

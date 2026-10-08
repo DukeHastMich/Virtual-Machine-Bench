@@ -1,0 +1,2523 @@
+{
+  "format": "VMB-BOARD-CODE-1",
+  "source_sha256": "4191c8e4928eab7597c73bc6494c41beb6a633a8da1955be1bce65b86c44de2a",
+  "instructions": [
+    {
+      "op": "ALLOC_MODULE",
+      "id": "U1",
+      "module_id": "VMB.NET.RTL8019AS",
+      "part_id": "4AECB118F6AE94C783F6BA53B22456B7"
+    },
+    {
+      "op": "ALLOC_MODULE",
+      "id": "U2",
+      "module_id": "VMB.MEM.SST39SF040",
+      "part_id": "AEBA7B6DF0B6213956905056E5D78D89"
+    },
+    {
+      "op": "ALLOC_MODULE",
+      "id": "U3",
+      "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+      "part_id": "BBF5502243066D8F17C8F57329479768"
+    },
+    {
+      "op": "ATTACH_PLATFORM",
+      "id": "BUS1",
+      "platform": "ISA8",
+      "signals": [
+        {
+          "signal": "+5V",
+          "net": "VCC",
+          "pad": "29"
+        },
+        {
+          "signal": "+5V",
+          "net": "VCC",
+          "pad": "3"
+        },
+        {
+          "signal": "A0",
+          "net": "/A0",
+          "pad": "62"
+        },
+        {
+          "signal": "A1",
+          "net": "/A1",
+          "pad": "61"
+        },
+        {
+          "signal": "A10",
+          "net": "/A10",
+          "pad": "52"
+        },
+        {
+          "signal": "A11",
+          "net": "/A11",
+          "pad": "51"
+        },
+        {
+          "signal": "A12",
+          "net": "/A12",
+          "pad": "50"
+        },
+        {
+          "signal": "A13",
+          "net": "/A13",
+          "pad": "49"
+        },
+        {
+          "signal": "A14",
+          "net": "/A14",
+          "pad": "48"
+        },
+        {
+          "signal": "A15",
+          "net": "/A15",
+          "pad": "47"
+        },
+        {
+          "signal": "A16",
+          "net": "/A16",
+          "pad": "46"
+        },
+        {
+          "signal": "A17",
+          "net": "/A17",
+          "pad": "45"
+        },
+        {
+          "signal": "A18",
+          "net": "/A18",
+          "pad": "44"
+        },
+        {
+          "signal": "A19",
+          "net": "/A19",
+          "pad": "43"
+        },
+        {
+          "signal": "A2",
+          "net": "/A2",
+          "pad": "60"
+        },
+        {
+          "signal": "A3",
+          "net": "/A3",
+          "pad": "59"
+        },
+        {
+          "signal": "A4",
+          "net": "/A4",
+          "pad": "58"
+        },
+        {
+          "signal": "A5",
+          "net": "/A5",
+          "pad": "57"
+        },
+        {
+          "signal": "A6",
+          "net": "/A6",
+          "pad": "56"
+        },
+        {
+          "signal": "A7",
+          "net": "/A7",
+          "pad": "55"
+        },
+        {
+          "signal": "A8",
+          "net": "/A8",
+          "pad": "54"
+        },
+        {
+          "signal": "A9",
+          "net": "/A9",
+          "pad": "53"
+        },
+        {
+          "signal": "AEN",
+          "net": "/AEN",
+          "pad": "42"
+        },
+        {
+          "signal": "D0",
+          "net": "/D0",
+          "pad": "40"
+        },
+        {
+          "signal": "D1",
+          "net": "/D1",
+          "pad": "39"
+        },
+        {
+          "signal": "D2",
+          "net": "/D2",
+          "pad": "38"
+        },
+        {
+          "signal": "D3",
+          "net": "/D3",
+          "pad": "37"
+        },
+        {
+          "signal": "D4",
+          "net": "/D4",
+          "pad": "36"
+        },
+        {
+          "signal": "D5",
+          "net": "/D5",
+          "pad": "35"
+        },
+        {
+          "signal": "D6",
+          "net": "/D6",
+          "pad": "34"
+        },
+        {
+          "signal": "D7",
+          "net": "/D7",
+          "pad": "33"
+        },
+        {
+          "signal": "GND",
+          "net": "GND",
+          "pad": "1"
+        },
+        {
+          "signal": "GND",
+          "net": "GND",
+          "pad": "10"
+        },
+        {
+          "signal": "GND",
+          "net": "GND",
+          "pad": "31"
+        },
+        {
+          "signal": "IOCHRDY",
+          "net": "/IOCHRDY",
+          "pad": "41"
+        },
+        {
+          "signal": "IOR#",
+          "net": "/~IOR",
+          "pad": "14"
+        },
+        {
+          "signal": "IOW#",
+          "net": "/~IOW",
+          "pad": "13"
+        },
+        {
+          "signal": "IRQ3",
+          "net": "/IRQ3",
+          "pad": "25"
+        },
+        {
+          "signal": "IRQ4",
+          "net": "/IRQ4",
+          "pad": "24"
+        },
+        {
+          "signal": "IRQ5",
+          "net": "/IRQ5",
+          "pad": "23"
+        },
+        {
+          "signal": "IRQ9",
+          "net": "/IRQ9",
+          "pad": "4"
+        },
+        {
+          "signal": "RESETDRV",
+          "net": "/RSTDRV",
+          "pad": "2"
+        },
+        {
+          "signal": "SMEMR#",
+          "net": "/~SMEMR",
+          "pad": "12"
+        },
+        {
+          "signal": "SMEMW#",
+          "net": "/~SMEMW",
+          "pad": "11"
+        }
+      ]
+    },
+    {
+      "op": "CREATE_CONTROL",
+      "id": "SW1",
+      "kind": "DIP_SWITCH",
+      "elements": 2,
+      "change_while_powered": false,
+      "storage": "MACHINE_PCB_INSTANCE"
+    },
+    {
+      "op": "CREATE_CONTROL",
+      "id": "SW2",
+      "kind": "DIP_SWITCH",
+      "elements": 2,
+      "change_while_powered": false,
+      "storage": "MACHINE_PCB_INSTANCE"
+    },
+    {
+      "op": "CREATE_CONTROL",
+      "id": "SW3",
+      "kind": "DIP_SWITCH",
+      "elements": 4,
+      "change_while_powered": false,
+      "storage": "MACHINE_PCB_INSTANCE"
+    },
+    {
+      "op": "CREATE_CONTROL",
+      "id": "SW4",
+      "kind": "DIP_SWITCH",
+      "elements": 5,
+      "change_while_powered": false,
+      "storage": "MACHINE_PCB_INSTANCE"
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "JP",
+      "role": "configuration_mode",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW1",
+            "element": 1
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "PNP",
+      "role": "pnp_force",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW1",
+            "element": 2
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "BS4",
+      "role": "boot_rom_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW4",
+            "element": 5
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "BS3",
+      "role": "boot_rom_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW4",
+            "element": 4
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "BS2",
+      "role": "boot_rom_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW4",
+            "element": 3
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "BS1",
+      "role": "boot_rom_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW4",
+            "element": 2
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "BS0",
+      "role": "boot_rom_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW4",
+            "element": 1
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IOS3",
+      "role": "io_base_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW3",
+            "element": 4
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IOS2",
+      "role": "io_base_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW3",
+            "element": 3
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IOS1",
+      "role": "io_base_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW3",
+            "element": 2
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IOS0",
+      "role": "io_base_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW3",
+            "element": 1
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IRQS2",
+      "role": "irq_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "INTERNAL_DEFAULT",
+        "value": 0
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IRQS1",
+      "role": "irq_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW2",
+            "element": 2
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U1",
+      "pin": "IRQS0",
+      "role": "irq_select",
+      "sampling": "reset_latched",
+      "source": {
+        "kind": "USER_CONTROL",
+        "bindings": [
+          {
+            "control": "SW2",
+            "element": 1
+          }
+        ]
+      }
+    },
+    {
+      "op": "BIND_CONFIG_PIN",
+      "module": "U3",
+      "pin": "ORG",
+      "role": "organization_select",
+      "sampling": "static",
+      "source": {
+        "kind": "CONSTANT",
+        "value": 1
+      }
+    },
+    {
+      "op": "DEFINE_PROPERTY",
+      "module": "U1",
+      "property": "BOOT_ROM",
+      "status": "USER_SELECTABLE",
+      "allowed_values": [
+        {
+          "enabled": true,
+          "base": 786432,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 786432,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 786432,
+          "window_bytes": 32768,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 786432,
+          "window_bytes": 65536,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 802816,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 802816,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 819200,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 819200,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 819200,
+          "window_bytes": 32768,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 835584,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 835584,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 851968,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 851968,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 851968,
+          "window_bytes": 32768,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 851968,
+          "window_bytes": 65536,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 868352,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 868352,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 884736,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 884736,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 884736,
+          "window_bytes": 32768,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": true,
+          "base": 901120,
+          "window_bytes": 16384,
+          "mode": "PAGED",
+          "max_payload_bytes": 4194304
+        },
+        {
+          "enabled": true,
+          "base": 901120,
+          "window_bytes": 16384,
+          "mode": "LINEAR"
+        },
+        {
+          "enabled": false
+        }
+      ],
+      "default_value": {
+        "enabled": false
+      },
+      "selectors": [
+        {
+          "pin": "BS4",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW4",
+                "element": 5
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "BS3",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW4",
+                "element": 4
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "BS2",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW4",
+                "element": 3
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "BS1",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW4",
+                "element": 2
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "BS0",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW4",
+                "element": 1
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        }
+      ],
+      "physical_irq_paths": null
+    },
+    {
+      "op": "DEFINE_PROPERTY",
+      "module": "U1",
+      "property": "IO_BASE",
+      "status": "USER_SELECTABLE",
+      "allowed_values": [
+        512,
+        544,
+        576,
+        608,
+        640,
+        672,
+        704,
+        736,
+        768,
+        800,
+        832,
+        864,
+        896,
+        928,
+        960,
+        992
+      ],
+      "default_value": 768,
+      "selectors": [
+        {
+          "pin": "IOS3",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW3",
+                "element": 4
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "IOS2",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW3",
+                "element": 3
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "IOS1",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW3",
+                "element": 2
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "IOS0",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW3",
+                "element": 1
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        }
+      ],
+      "physical_irq_paths": null
+    },
+    {
+      "op": "DEFINE_PROPERTY",
+      "module": "U1",
+      "property": "IRQ",
+      "status": "USER_SELECTABLE",
+      "allowed_values": [
+        3,
+        4,
+        5,
+        9
+      ],
+      "default_value": 9,
+      "selectors": [
+        {
+          "pin": "IRQS2",
+          "source": {
+            "kind": "INTERNAL_DEFAULT",
+            "value": 0
+          },
+          "possible_bits": [
+            0
+          ]
+        },
+        {
+          "pin": "IRQS1",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW2",
+                "element": 2
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        },
+        {
+          "pin": "IRQS0",
+          "source": {
+            "kind": "USER_CONTROL",
+            "bindings": [
+              {
+                "control": "SW2",
+                "element": 1
+              }
+            ]
+          },
+          "possible_bits": [
+            0,
+            1
+          ]
+        }
+      ],
+      "physical_irq_paths": [
+        3,
+        4,
+        5,
+        9
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET1",
+      "net": "/A0",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A0",
+          "pad": "5",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A0",
+          "pad": "12",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A0",
+          "pad": "62",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET2",
+      "net": "/A1",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A1",
+          "pad": "7",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A1",
+          "pad": "11",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A1",
+          "pad": "61",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET3",
+      "net": "/A10",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A10",
+          "pad": "18",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A10",
+          "pad": "23",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A10",
+          "pad": "52",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET4",
+      "net": "/A11",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A11",
+          "pad": "19",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A11",
+          "pad": "25",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A11",
+          "pad": "51",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET5",
+      "net": "/A12",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A12",
+          "pad": "20",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A12",
+          "pad": "4",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A12",
+          "pad": "50",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET6",
+      "net": "/A13",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A13",
+          "pad": "21",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A13",
+          "pad": "28",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A13",
+          "pad": "49",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET7",
+      "net": "/A14",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A14",
+          "pad": "22",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A14",
+          "pad": "48",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET8",
+      "net": "/A15",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A15",
+          "pad": "23",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A15",
+          "pad": "47",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET9",
+      "net": "/A16",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A16",
+          "pad": "24",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A16",
+          "pad": "46",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET10",
+      "net": "/A17",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A17",
+          "pad": "25",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A17",
+          "pad": "45",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET11",
+      "net": "/A18",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A18",
+          "pad": "26",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A18",
+          "pad": "44",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET12",
+      "net": "/A19",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A19",
+          "pad": "27",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A19",
+          "pad": "43",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET13",
+      "net": "/A2",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A2",
+          "pad": "8",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A2",
+          "pad": "10",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A2",
+          "pad": "60",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET14",
+      "net": "/A3",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A3",
+          "pad": "9",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A3",
+          "pad": "9",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A3",
+          "pad": "59",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET15",
+      "net": "/A4",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A4",
+          "pad": "10",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A4",
+          "pad": "8",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A4",
+          "pad": "58",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET16",
+      "net": "/A5",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A5",
+          "pad": "11",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A5",
+          "pad": "7",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A5",
+          "pad": "57",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET17",
+      "net": "/A6",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A6",
+          "pad": "12",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A6",
+          "pad": "6",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A6",
+          "pad": "56",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET18",
+      "net": "/A7",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A7",
+          "pad": "13",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A7",
+          "pad": "5",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A7",
+          "pad": "55",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET19",
+      "net": "/A8",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A8",
+          "pad": "15",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A8",
+          "pad": "27",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A8",
+          "pad": "54",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET20",
+      "net": "/A9",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A9",
+          "pad": "16",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A9",
+          "pad": "26",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A9",
+          "pad": "53",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET21",
+      "net": "/AEN",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "AEN",
+          "pad": "34",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "AEN",
+          "pad": "42",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET22",
+      "net": "/D0",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D0",
+          "pad": "36",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D0",
+          "pad": "40",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET23",
+      "net": "/D1",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D1",
+          "pad": "37",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D1",
+          "pad": "39",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET24",
+      "net": "/D2",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D2",
+          "pad": "38",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D2",
+          "pad": "38",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET25",
+      "net": "/D3",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D3",
+          "pad": "39",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D3",
+          "pad": "37",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET26",
+      "net": "/D4",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D4",
+          "pad": "40",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D4",
+          "pad": "36",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET27",
+      "net": "/D5",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D5",
+          "pad": "41",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D5",
+          "pad": "35",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET28",
+      "net": "/D6",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D6",
+          "pad": "42",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D6",
+          "pad": "34",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET29",
+      "net": "/D7",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D7",
+          "pad": "43",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D7",
+          "pad": "33",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET30",
+      "net": "/~IOR",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOR#",
+          "pad": "29",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOR#",
+          "pad": "14",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET31",
+      "net": "/~IOW",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOW#",
+          "pad": "30",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOW#",
+          "pad": "13",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET32",
+      "net": "GND",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "VSS",
+          "pad": "16",
+          "direction": "power",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "1",
+          "platform": "ISA8"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "10",
+          "platform": "ISA8"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "31",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET33",
+      "net": "VCC",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "VDD",
+          "pad": "32",
+          "direction": "power",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "+5V",
+          "pad": "29",
+          "platform": "ISA8"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "+5V",
+          "pad": "3",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET34",
+      "net": "/RSTDRV",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "RESETDRV",
+          "pad": "33",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "RESETDRV",
+          "pad": "2",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET35",
+      "net": "/IRQ9",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "pad": "4",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "pad": "4",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET41",
+      "net": "/~SMEMW",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "SMEMW#",
+          "pad": "32",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "WE#",
+          "pad": "31",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "SMEMW#",
+          "pad": "11",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET42",
+      "net": "/~SMEMR",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "SMEMR#",
+          "pad": "31",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "OE#",
+          "pad": "24",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "SMEMR#",
+          "pad": "12",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET51",
+      "net": "/IRQ5",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "pad": "1",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "pad": "23",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET52",
+      "net": "/IRQ4",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "pad": "2",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "pad": "24",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET53",
+      "net": "/IRQ3",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "pad": "3",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "pad": "25",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET59",
+      "net": "/IOCHRDY",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOCHRDY",
+          "pad": "35",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOCHRDY",
+          "pad": "41",
+          "platform": "ISA8"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET71",
+      "net": "/BA18",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A18",
+          "pad": "69",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A18",
+          "pad": "1",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET72",
+      "net": "/BA17",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A17",
+          "pad": "71",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A17",
+          "pad": "30",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET73",
+      "net": "/BA16",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A16",
+          "pad": "72",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A16",
+          "pad": "2",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET74",
+      "net": "/BD6",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D6",
+          "pad": "78",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D6",
+          "pad": "20",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DI",
+          "pad": "3",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DI",
+          "pad": "78",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET75",
+      "net": "/BD5",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D5",
+          "pad": "79",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D5",
+          "pad": "19",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CLK",
+          "pad": "2",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CLK",
+          "pad": "79",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET76",
+      "net": "/BD4",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D4",
+          "pad": "80",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D4",
+          "pad": "18",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET77",
+      "net": "/BD3",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D3",
+          "pad": "17",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D3",
+          "pad": "81",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET78",
+      "net": "/BD2",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D2",
+          "pad": "15",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D2",
+          "pad": "82",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET79",
+      "net": "/BD1",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D1",
+          "pad": "14",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D1",
+          "pad": "84",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET80",
+      "net": "/BD0",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D0",
+          "pad": "13",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D0",
+          "pad": "85",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET88",
+      "net": "/BA15",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A15",
+          "pad": "73",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A15",
+          "pad": "3",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET89",
+      "net": "/BA14",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A14",
+          "pad": "74",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A14",
+          "pad": "29",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET90",
+      "net": "/~BCS",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "CE#",
+          "pad": "22",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "CE#",
+          "pad": "75",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET91",
+      "net": "/EECS",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CS",
+          "pad": "1",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CS",
+          "pad": "76",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS"
+        }
+      ]
+    },
+    {
+      "op": "LINK",
+      "id": "NET92",
+      "net": "/BD7",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D7",
+          "pad": "77",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D7",
+          "pad": "21",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DO",
+          "pad": "77",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS"
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DO",
+          "pad": "4",
+          "direction": "output",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C"
+        }
+      ]
+    },
+    {
+      "op": "CREATE_DEVICE_SLOT",
+      "slot_id": "U2",
+      "instance_id": "U2",
+      "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+      "kind": "firmware",
+      "payload_id": null,
+      "installation": "MANUAL_FROM_FIRMWARE_STORE_TO_MACHINE_PCB_INSTANCE",
+      "storage": "MACHINE_PCB_INSTANCE",
+      "size_bytes": 524288,
+      "required_when": {
+        "module": "U1",
+        "property": "BOOT_ROM",
+        "predicate": {
+          "enabled": true
+        }
+      },
+      "default_required": false
+    },
+    {
+      "op": "CREATE_DEVICE_SLOT",
+      "slot_id": "U3",
+      "instance_id": "U3",
+      "part_id": "BBF5502243066D8F17C8F57329479768",
+      "kind": "persistent_eeprom",
+      "payload_id": null,
+      "installation": "MANUAL_OR_BLANK_MACHINE_PCB_INSTANCE",
+      "storage": "MACHINE_PCB_INSTANCE",
+      "size_bits": 1024
+    },
+    {
+      "op": "FINALIZE_BOARD",
+      "hardware_tits": 0,
+      "execution_tits": 1,
+      "default_execution_tits": 0
+    }
+  ],
+  "instruction_count": 85
+}

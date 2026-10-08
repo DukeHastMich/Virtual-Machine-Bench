@@ -1,0 +1,60 @@
+# C&T CS8221 four-package chipset composition specimen.
+# The nets below are taken from the 1987 NEAT data book pin descriptions.
+# Coordinates are deliberately synthetic prototype positions, not a historical board.
+board ct-neat-reference-286 {
+    title "C&T CS8221 NEAT worker-composition reference";
+    units mm;
+    outline 240 220;
+
+    component U211 : ct-82c211 {
+        place 60 80 rot 0 side top;
+    }
+
+    component U212 : ct-82c212 {
+        place 110 80 rot 0 side top;
+    }
+
+    component U215 : ct-82c215 {
+        place 110 130 rot 0 side top;
+    }
+
+    component U206 : ct-82c206 {
+        place 60 130 rot 0 side top;
+    }
+
+    net PROCCLK {
+        endpoint U211.PROCCLK;
+        endpoint U212.PROCCLK;
+    }
+
+    net RESET4 {
+        endpoint U211.RESET4;
+        endpoint U212.RESET4;
+    }
+
+    net HLDA1 {
+        endpoint U211.HLDA1;
+        endpoint U212.HLDA1;
+        endpoint U215.HLDA1;
+    }
+
+    net PARERR {
+        endpoint U215.PAR_ERR;
+        endpoint U211.PAR_ERR;
+    }
+
+    net ACEN {
+        endpoint U211.ACEN;
+        endpoint U215.ACEN;
+    }
+
+    net DLE {
+        endpoint U212.DLE;
+        endpoint U215.DLE;
+    }
+
+    net DRD {
+        endpoint U212.DRD;
+        endpoint U215.DRD;
+    }
+}

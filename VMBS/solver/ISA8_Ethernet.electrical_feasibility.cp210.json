@@ -1,0 +1,280 @@
+{
+  "format": "VMBS-ELECTRICAL-FEASIBILITY-1",
+  "board": "ISA8_Ethernet.bs.v2",
+  "result": "TITS_UP_MISSING_EVIDENCE",
+  "checks": [
+    {
+      "check": "SUPPLY_WINDOWS_EXTRACTED",
+      "status": "PASS_WITH_GAPS",
+      "count": 2,
+      "detail": "Only explicit numeric/range Store evidence is normalized."
+    },
+    {
+      "check": "DRIVER_CONTENTION_SCREEN",
+      "status": "PASS",
+      "candidates": 0,
+      "detail": "Multiple known outputs are candidates, not proven contention, until output-stage/enable semantics are typed."
+    }
+  ],
+  "supply_requirements": [
+    {
+      "ref": "U2",
+      "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+      "window_v": [
+        4.5,
+        5.5
+      ],
+      "source": "component_store.electrical"
+    },
+    {
+      "ref": "U3",
+      "part_id": "BBF5502243066D8F17C8F57329479768",
+      "window_v": [
+        2.5,
+        5.5
+      ],
+      "source": "component_store.electrical"
+    }
+  ],
+  "conflict_candidates": [],
+  "gaps": [
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D0",
+      "path_id": "NETPATH:22",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D1",
+      "path_id": "NETPATH:23",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D2",
+      "path_id": "NETPATH:24",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D3",
+      "path_id": "NETPATH:25",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D4",
+      "path_id": "NETPATH:26",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D5",
+      "path_id": "NETPATH:27",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D6",
+      "path_id": "NETPATH:28",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/D7",
+      "path_id": "NETPATH:29",
+      "count": 1
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "GND",
+      "path_id": "NETPATH:32"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "VCC",
+      "path_id": "NETPATH:33"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "/~IOCS16",
+      "path_id": "NETPATH:60"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(C1-Pad2)",
+      "path_id": "NETPATH:61"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(C2-Pad2)",
+      "path_id": "NETPATH:62"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(C3-Pad1)",
+      "path_id": "NETPATH:63"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(C4-Pad1)",
+      "path_id": "NETPATH:64"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "/LED_LINK",
+      "path_id": "NETPATH:69"
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD6",
+      "path_id": "NETPATH:74",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD5",
+      "path_id": "NETPATH:75",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD4",
+      "path_id": "NETPATH:76",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD3",
+      "path_id": "NETPATH:77",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD2",
+      "path_id": "NETPATH:78",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD1",
+      "path_id": "NETPATH:79",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD0",
+      "path_id": "NETPATH:80",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BA15",
+      "path_id": "NETPATH:88",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BA14",
+      "path_id": "NETPATH:89",
+      "count": 1
+    },
+    {
+      "code": "BIDIRECTIONAL_ENABLE_SEMANTICS_REQUIRED",
+      "net": "/BD7",
+      "path_id": "NETPATH:92",
+      "count": 2
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "/LED_CRS",
+      "path_id": "NETPATH:97"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN1-Pad7)",
+      "path_id": "NETPATH:111"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN1-Pad8)",
+      "path_id": "NETPATH:112"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN1-Pad6)",
+      "path_id": "NETPATH:113"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN1-Pad5)",
+      "path_id": "NETPATH:114"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN2-Pad5)",
+      "path_id": "NETPATH:115"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN2-Pad6)",
+      "path_id": "NETPATH:116"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN2-Pad8)",
+      "path_id": "NETPATH:117"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN2-Pad7)",
+      "path_id": "NETPATH:118"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN3-Pad7)",
+      "path_id": "NETPATH:119"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN3-Pad8)",
+      "path_id": "NETPATH:120"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN3-Pad6)",
+      "path_id": "NETPATH:121"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN3-Pad5)",
+      "path_id": "NETPATH:122"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(J1-PadL2)",
+      "path_id": "NETPATH:124"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(J1-PadL3)",
+      "path_id": "NETPATH:125"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "/AUI",
+      "path_id": "NETPATH:130"
+    },
+    {
+      "code": "DIRECTION_UNRESOLVED",
+      "net": "Net-(RN4-Pad7)",
+      "path_id": "NETPATH:134"
+    }
+  ],
+  "summary": {
+    "supply_windows": 2,
+    "contention_candidates": 0,
+    "gaps": 43
+  }
+}

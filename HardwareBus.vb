@@ -39,6 +39,16 @@ Public Enum ClockBatchFlushReason As Byte
     Reset = 6
 End Enum
 
+' Typed machine-clock synchronization boundary.
+'
+' This replaces per-RunSlice closure/delegate objects; it does NOT change when
+' HardwareBus synchronizes pending motherboard time.  Port/MMIO/device topology
+' paths still call exactly the same two operations at the same physical points.
+Public Interface ITimeBatchSynchronizer286
+    Sub SynchronizePendingTime(reasonInBed As ClockBatchFlushReason)
+    Sub TimingTopologyChanged()
+End Interface
+
 ' CROMWELL LEAN PCB DECODE BRICK 2
 ' These interfaces describe host-side representations of physical decode wiring.
 ' They are not guest-visible enumeration services.
@@ -67,6 +77,24 @@ End Interface
 ' VRAM/shadow RAM/open-bus memory cycles therefore do not need to flush pending
 ' device clocks before every byte access.
 Public Interface IMemoryClockIndependentDevice
+End Interface
+
+' A clocked mapped-memory device may have both timing-sensitive MMIO and plain
+' storage apertures.  The old all-or-nothing marker forced every byte touching
+' such a device to flush the entire coordinated motherboard clock batch.
+'
+' This interface keeps the decision at the modeled device boundary:
+'   * SynchronizeBefore = the result/state of this cycle can depend on elapsed
+'     device time or on another clocked engine sharing the same backing store.
+'   * ChangesTimingTopology = a successful cycle may change future wake/timing
+'     behavior and therefore dirties the machine-clock deadline.
+'
+' A topology-changing access is always synchronized before the cycle by the bus.
+Public Interface IMemoryAccessTimingProvider
+    Function MemoryAccessRequiresSynchronization(address As UInteger,
+                                                 isWrite As Boolean) As Boolean
+    Function MemoryAccessChangesTimingTopology(address As UInteger,
+                                               isWrite As Boolean) As Boolean
 End Interface
 
 Public Interface IMotherboardLocalPortDevice
@@ -133,8 +161,14 @@ Public NotInheritable Class NeatMemoryController286
     Friend ReadOnly LowMemoryInBed(1024 * 1024 - 1) As Byte
     Friend ReadOnly ExtendedMemoryInBed(15 * 1024 * 1024 - 1) As Byte
 
+    ' Test-only observer used by the isolated SingleStep harness to scrub every
+    ' address actually written by the emulated CPU between cases.  Normal VMB
+    ' execution leaves this Nothing, so it has no guest-visible effect.
+    Friend Property SingleStepWriteObserverInBed As Action(Of UInteger)
+
     Private _installedMemoryBytesInBed As UInteger = &H1000000UI
     Private _romStartInBed As UInteger = &H100000UI
+    Private _highRomAliasStartInBed As UInteger = &H1000000UI
     Private _a20EnabledInBed As Boolean
 
     Public ReadOnly Property Identity As String
@@ -194,12 +228,8 @@ Public NotInheritable Class NeatMemoryController286
         ' motherboard decode therefore exposes the system ROM again at the top
         ' of the 24-bit physical space.  Resolve that board decode before the
         ' compatibility A20 gate so a reset fetch cannot be folded into DRAM.
-        Dim romBytesInBed As UInteger = &H100000UI - _romStartInBed
-        If romBytesInBed <> 0UI Then
-            Dim highRomStartInBed As UInteger = &H1000000UI - romBytesInBed
-            If address >= highRomStartInBed Then
-                Return _romStartInBed + (address - highRomStartInBed)
-            End If
+        If address >= _highRomAliasStartInBed Then
+            Return _romStartInBed + (address - _highRomAliasStartInBed)
         End If
 
         If Not _a20EnabledInBed Then address = address And &HEFFFFFUI
@@ -211,6 +241,8 @@ Public NotInheritable Class NeatMemoryController286
             Throw New ArgumentException("System ROM must be between 1 and 65536 bytes.", NameOf(data))
         End If
         _romStartInBed = CUInt(&H100000 - data.Length)
+        _highRomAliasStartInBed =
+            &H1000000UI - CUInt(data.Length)
         Array.Copy(data, 0, LowMemoryInBed, CInt(_romStartInBed), data.Length)
     End Sub
 
@@ -236,6 +268,7 @@ Public NotInheritable Class NeatMemoryController286
     Public Property MirrorLegacyMemory As Boolean = False
     Public Property MirrorLegacyTextCells As Boolean
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Function ClassifyLocalTargetNormalized(address As UInteger) As AtMemoryCycleTarget286
         If address < &H100000UI Then
             If address >= _romStartInBed Then Return AtMemoryCycleTarget286.SystemRom
@@ -245,9 +278,23 @@ Public NotInheritable Class NeatMemoryController286
         Return AtMemoryCycleTarget286.OpenBus
     End Function
 
+    ' Compatibility entry point for callers which do not already own the decode.
     <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Function ReadLocalByteNormalized(address As UInteger) As Byte
-        Select Case ClassifyLocalTargetNormalized(address)
+        Return ReadLocalByteNormalizedKnownTarget(
+            address,
+            ClassifyLocalTargetNormalized(address))
+    End Function
+
+    ' Hot bridge entry: the motherboard bridge has already classified this exact
+    ' physical transaction in order to apply READY.  Do not ask the memory
+    ' controller to decode the same address a second time.
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Friend Function ReadLocalByteNormalizedKnownTarget(
+        address As UInteger,
+        targetInBed As AtMemoryCycleTarget286) As Byte
+
+        Select Case targetInBed
             Case AtMemoryCycleTarget286.LocalDram, AtMemoryCycleTarget286.SystemRom
                 If address < &H100000UI Then
                     Return LowMemoryInBed(CInt(address))
@@ -260,7 +307,23 @@ Public NotInheritable Class NeatMemoryController286
 
     <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Sub WriteLocalByteNormalized(address As UInteger, value As Byte)
-        If ClassifyLocalTargetNormalized(address) <> AtMemoryCycleTarget286.LocalDram Then Return
+        WriteLocalByteNormalizedKnownTarget(
+            address,
+            value,
+            ClassifyLocalTargetNormalized(address))
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Friend Sub WriteLocalByteNormalizedKnownTarget(
+        address As UInteger,
+        value As Byte,
+        targetInBed As AtMemoryCycleTarget286)
+
+        If targetInBed <> AtMemoryCycleTarget286.LocalDram Then Return
+
+        If SingleStepWriteObserverInBed IsNot Nothing Then
+            SingleStepWriteObserverInBed.Invoke(address And &HFFFFFFUI)
+        End If
 
         If address < &H100000UI Then
             LowMemoryInBed(CInt(address)) = value
@@ -272,15 +335,44 @@ Public NotInheritable Class NeatMemoryController286
 
     <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Function ReadLocalWordNormalized(firstAddress As UInteger) As UInt16
-        Dim secondAddress As UInteger = firstAddress + 1UI
-        Return CUShort(CUInt(ReadLocalByteNormalized(firstAddress)) Or
-                       (CUInt(ReadLocalByteNormalized(secondAddress)) << 8))
+        Dim targetInBed As AtMemoryCycleTarget286 =
+            ClassifyLocalTargetNormalized(firstAddress)
+        Return ReadLocalWordNormalizedKnownTarget(firstAddress, targetInBed)
+    End Function
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Friend Function ReadLocalWordNormalizedKnownTarget(
+        firstAddress As UInteger,
+        targetInBed As AtMemoryCycleTarget286) As UInt16
+
+        Dim secondAddressInBed As UInteger = firstAddress + 1UI
+        Return CUShort(
+            CUInt(ReadLocalByteNormalizedKnownTarget(firstAddress, targetInBed)) Or
+            (CUInt(ReadLocalByteNormalizedKnownTarget(secondAddressInBed, targetInBed)) << 8))
     End Function
 
     <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Sub WriteLocalWordNormalized(firstAddress As UInteger, value As UInt16)
-        WriteLocalByteNormalized(firstAddress, CByte(value And &HFFUS))
-        WriteLocalByteNormalized(firstAddress + 1UI, CByte(value >> 8))
+        Dim targetInBed As AtMemoryCycleTarget286 =
+            ClassifyLocalTargetNormalized(firstAddress)
+        WriteLocalWordNormalizedKnownTarget(firstAddress, value, targetInBed)
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Friend Sub WriteLocalWordNormalizedKnownTarget(
+        firstAddress As UInteger,
+        value As UInt16,
+        targetInBed As AtMemoryCycleTarget286)
+
+        If targetInBed <> AtMemoryCycleTarget286.LocalDram Then Return
+        WriteLocalByteNormalizedKnownTarget(
+            firstAddress,
+            CByte(value And &HFFUS),
+            targetInBed)
+        WriteLocalByteNormalizedKnownTarget(
+            firstAddress + 1UI,
+            CByte(value >> 8),
+            targetInBed)
     End Sub
 
     Private Sub MirrorLegacyWriteInBed(address As UInteger, value As Byte)
@@ -408,6 +500,14 @@ Public NotInheritable Class NeatMotherboardBridge286
     Private _readyWaitSinkInBed As Action(Of Integer, Boolean)
     Private _readyPolicyInBed As Func(Of AtReadyCycle286, Integer)
     Private _readyPolicyDescriptionInBed As Func(Of String)
+
+    ' Fast copies of the 82C212's CPU-local READY settings.  These are NOT
+    ' independent timing knobs: the chipset owns the values and pushes every
+    ' RB7 timing change here.  A negative value means "cache not attached",
+    ' in which case the full READY policy remains authoritative.
+    Private _cpuLocalDramReadyWaitTStatesInBed As Integer = -1
+    Private _cpuSystemRomReadyWaitTStatesInBed As Integer = -1
+
     Private ReadOnly _readyCycleCountInBed(3) As ULong
     Private ReadOnly _readyWaitCycleCountInBed(3) As ULong
     Private ReadOnly _readyWaitTStatesInBed(3) As ULong
@@ -520,36 +620,90 @@ Public NotInheritable Class NeatMotherboardBridge286
         _readyPolicyInBed = readyPolicyInBed
         _readyPolicyDescriptionInBed = readyPolicyDescriptionInBed
     End Sub
+
+    ' The 82C212 local RAM/ROM wait fields are already specified directly in
+    ' 80286 READY Tw states.  Keep a copy at the bridge where every CPU memory
+    ' transaction passes, instead of rebuilding an AtReadyCycle286 and calling
+    ' back through the chipset merely to reread the same RB7 bits.
+    '
+    ' This does NOT bypass the chipset.  NeatCs8221Chipset owns these values and
+    ' calls this method immediately whenever RB7 changes or the chipset resets.
+    Public Sub UpdateCpuLocalReadyWaitStates(ramWaitTStatesInBed As Integer,
+                                             romWaitTStatesInBed As Integer)
+        If ramWaitTStatesInBed < 0 OrElse romWaitTStatesInBed < 0 Then
+            Throw New ArgumentOutOfRangeException(
+                NameOf(ramWaitTStatesInBed),
+                "CPU-local NEAT READY wait states cannot be negative.")
+        End If
+
+        _cpuLocalDramReadyWaitTStatesInBed = ramWaitTStatesInBed
+        _cpuSystemRomReadyWaitTStatesInBed = romWaitTStatesInBed
+    End Sub
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub ApplyReadyWaitStatesInBed(masterInBed As AtBusMaster286,
                                           kindInBed As AtBusCycleKind286,
                                           readyClassInBed As AtReadyCycleClass286,
                                           addressOrPortInBed As UInteger,
                                           widthBytesInBed As Integer)
-        Dim indexInBed As Integer = MasterIndexInBed(masterInBed)
-        _readyCycleCountInBed(indexInBed) += 1UL
-        If _readyPolicyInBed Is Nothing Then Return
+        Dim indexInBed As Integer
+        If RuntimeDiagnostics.Enabled Then
+            indexInBed = MasterIndexInBed(masterInBed)
+            _readyCycleCountInBed(indexInBed) += 1UL
+        End If
 
-        Dim cycleInBed As New AtReadyCycle286(masterInBed,
-                                              kindInBed,
-                                              readyClassInBed,
-                                              addressOrPortInBed,
-                                              widthBytesInBed)
-        Dim waitTStatesInBed As Integer = _readyPolicyInBed.Invoke(cycleInBed)
+        Dim waitTStatesInBed As Integer
+        Dim resolvedFromLocalCacheInBed As Boolean
+
+        ' Only CPU cycles to motherboard-local DRAM/System ROM qualify.  DMA
+        ' cycles must still pass through the full policy because the 82C206 DMA
+        ' wait control is added in its own SCLK-derived clock domain.  ISA,
+        ' motherboard I/O, mapped memory, and open-bus cycles likewise remain on
+        ' the complete policy path.
+        If masterInBed = AtBusMaster286.Cpu Then
+            Select Case readyClassInBed
+                Case AtReadyCycleClass286.LocalDram
+                    If _cpuLocalDramReadyWaitTStatesInBed >= 0 Then
+                        waitTStatesInBed = _cpuLocalDramReadyWaitTStatesInBed
+                        resolvedFromLocalCacheInBed = True
+                    End If
+
+                Case AtReadyCycleClass286.SystemRom
+                    If _cpuSystemRomReadyWaitTStatesInBed >= 0 Then
+                        waitTStatesInBed = _cpuSystemRomReadyWaitTStatesInBed
+                        resolvedFromLocalCacheInBed = True
+                    End If
+            End Select
+        End If
+
+        If Not resolvedFromLocalCacheInBed Then
+            If _readyPolicyInBed Is Nothing Then Return
+
+            Dim cycleInBed As New AtReadyCycle286(masterInBed,
+                                                  kindInBed,
+                                                  readyClassInBed,
+                                                  addressOrPortInBed,
+                                                  widthBytesInBed)
+            waitTStatesInBed = _readyPolicyInBed.Invoke(cycleInBed)
+        End If
+
         If waitTStatesInBed < 0 Then
             _arbitrationFaultCountInBed += 1UL
             Throw New InvalidOperationException("NEAT READY policy returned a negative wait-state duration.")
         End If
         If waitTStatesInBed = 0 Then Return
 
-        _readyWaitCycleCountInBed(indexInBed) += 1UL
-        _readyWaitTStatesInBed(indexInBed) += CULng(waitTStatesInBed)
-        If waitTStatesInBed > _readyMaxWaitTStatesInBed(indexInBed) Then
-            _readyMaxWaitTStatesInBed(indexInBed) = waitTStatesInBed
+        If RuntimeDiagnostics.Enabled Then
+            _readyWaitCycleCountInBed(indexInBed) += 1UL
+            _readyWaitTStatesInBed(indexInBed) += CULng(waitTStatesInBed)
+            If waitTStatesInBed > _readyMaxWaitTStatesInBed(indexInBed) Then
+                _readyMaxWaitTStatesInBed(indexInBed) = waitTStatesInBed
+            End If
         End If
 
-        ' The sink adds physical stall T-states to the bounded CPU time ledger.
-        ' For DMA masters those T-states represent time during which the CPU owns
-        ' no bus; only CPU-originated READY stretching lights the B annunciator.
+        ' The sink adds the exact same physical stall T-states to the CPU timing
+        ' ledger as before.  We optimized how the NEAT setting is looked up, not
+        ' the number or placement of guest-visible READY waits.
         If _readyWaitSinkInBed IsNot Nothing Then
             _readyWaitSinkInBed.Invoke(waitTStatesInBed, masterInBed = AtBusMaster286.Cpu)
         End If
@@ -594,7 +748,7 @@ Public NotInheritable Class NeatMotherboardBridge286
         _ownerDepthInBed = 0
         If _holdLineAssertedInBed Then
             _holdLineAssertedInBed = False
-            _holdReleaseCountInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _holdReleaseCountInBed += 1UL
             If _cpuHoldLineWriterInBed IsNot Nothing Then _cpuHoldLineWriterInBed.Invoke(False)
         ElseIf _cpuHoldLineWriterInBed IsNot Nothing Then
             _cpuHoldLineWriterInBed.Invoke(False)
@@ -610,7 +764,7 @@ Public NotInheritable Class NeatMotherboardBridge286
         Dim indexInBed As Integer = MasterIndexInBed(masterInBed)
         If _externalRequestInBed(indexInBed) = assertedInBed Then Return
         _externalRequestInBed(indexInBed) = assertedInBed
-        If assertedInBed Then _externalRequestCountInBed(indexInBed) += 1UL
+        If assertedInBed AndAlso RuntimeDiagnostics.Enabled Then _externalRequestCountInBed(indexInBed) += 1UL
         ReconcileHoldLineInBed()
     End Sub
 
@@ -626,7 +780,7 @@ Public NotInheritable Class NeatMotherboardBridge286
         End If
         _pendingRefreshCyclesInBed += 1UL
         _pendingRefreshActionInBed = refreshCycleInBed
-        _externalRequestCountInBed(indexInBed) += 1UL
+        If RuntimeDiagnostics.Enabled Then _externalRequestCountInBed(indexInBed) += 1UL
         If Not _externalRequestInBed(indexInBed) Then
             _externalRequestInBed(indexInBed) = True
             ReconcileHoldLineInBed()
@@ -696,16 +850,16 @@ Public NotInheritable Class NeatMotherboardBridge286
     Private Sub SetOwnerInBed(ownerInBed As AtBusOwner286)
         If _ownerInBed = ownerInBed Then Return
         _ownerInBed = ownerInBed
-        _ownerTransitionCountInBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _ownerTransitionCountInBed += 1UL
     End Sub
 
     Private Sub SetHoldLineInBed(assertedInBed As Boolean)
         If _holdLineAssertedInBed = assertedInBed Then Return
         _holdLineAssertedInBed = assertedInBed
         If assertedInBed Then
-            _holdAssertionCountInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _holdAssertionCountInBed += 1UL
         Else
-            _holdReleaseCountInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _holdReleaseCountInBed += 1UL
         End If
 
         If _cpuHoldLineWriterInBed IsNot Nothing Then
@@ -714,7 +868,7 @@ Public NotInheritable Class NeatMotherboardBridge286
 
         If assertedInBed Then
             If CpuHldaAssertedInBed() Then
-                _hldaObservationCountInBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _hldaObservationCountInBed += 1UL
                 If _ownerInBed = AtBusOwner286.Cpu AndAlso _ownerDepthInBed = 0 Then
                     SetOwnerInBed(AtBusOwner286.HeldNoMaster)
                 End If
@@ -780,7 +934,7 @@ Public NotInheritable Class NeatMotherboardBridge286
         End If
 
         _ownerDepthInBed += 1
-        _externalGrantCountInBed(indexInBed) += 1UL
+        If RuntimeDiagnostics.Enabled Then _externalGrantCountInBed(indexInBed) += 1UL
     End Sub
 
     Private Sub EndExternalCycleInBed(masterInBed As AtBusMaster286)
@@ -811,7 +965,7 @@ Public NotInheritable Class NeatMotherboardBridge286
                                   ReadyClassForIoInBed(port, 1),
                                   CUInt(port),
                                   1)
-        _ioRead8InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _ioRead8InBed += 1UL
         Return _fabricInBed.ReadByte(port)
     End Function
 
@@ -823,7 +977,7 @@ Public NotInheritable Class NeatMotherboardBridge286
                                   ReadyClassForIoInBed(port, 2),
                                   CUInt(port),
                                   2)
-        _ioRead16InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _ioRead16InBed += 1UL
         Return _fabricInBed.ReadWord(port)
     End Function
 
@@ -837,7 +991,7 @@ Public NotInheritable Class NeatMotherboardBridge286
                                   ReadyClassForIoInBed(port, 1),
                                   CUInt(port),
                                   1)
-        _ioWrite8InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _ioWrite8InBed += 1UL
         _fabricInBed.WriteByte(port, value)
     End Sub
 
@@ -849,30 +1003,30 @@ Public NotInheritable Class NeatMotherboardBridge286
                                   ReadyClassForIoInBed(port, 2),
                                   CUInt(port),
                                   2)
-        _ioWrite16InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _ioWrite16InBed += 1UL
         _fabricInBed.WriteWord(port, value)
     End Sub
 
     <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Public Function MemoryPageMayRouteToDeviceInBed(address As UInteger) As Boolean
         Dim normalizedInBed As UInteger = _memoryInBed.NormalizePhysicalAddress(address)
-        _pageGateQueriesInBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
         Dim selectedInBed As Boolean = _fabricInBed.MemoryPageMayRouteToDeviceInBed(normalizedInBed)
-        If selectedInBed Then _pageGatePositiveInBed += 1UL
+        If selectedInBed AndAlso RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
         Return selectedInBed
     End Function
 
     Public Function TryReadMappedMemoryByte(address As UInteger, ByRef value As Byte) As Boolean
         AssertCpuMayUseBusInBed()
         Dim normalizedInBed As UInteger = _memoryInBed.NormalizePhysicalAddress(address)
-        _mappedRead8InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _mappedRead8InBed += 1UL
         Return _fabricInBed.TryReadMemoryByte(normalizedInBed, value)
     End Function
 
     Public Function TryWriteMappedMemoryByte(address As UInteger, value As Byte) As Boolean
         AssertCpuMayUseBusInBed()
         Dim normalizedInBed As UInteger = _memoryInBed.NormalizePhysicalAddress(address)
-        _mappedWrite8InBed += 1UL
+        If RuntimeDiagnostics.Enabled Then _mappedWrite8InBed += 1UL
         Return _fabricInBed.TryWriteMemoryByte(normalizedInBed, value)
     End Function
 
@@ -894,17 +1048,17 @@ Public NotInheritable Class NeatMotherboardBridge286
         End If
 
         Try
-            _memoryRead8InBed(MasterIndexInBed(masterInBed)) += 1UL
+            If RuntimeDiagnostics.Enabled Then _memoryRead8InBed(MasterIndexInBed(masterInBed)) += 1UL
             Dim normalizedInBed As UInteger = _memoryInBed.NormalizePhysicalAddress(address)
 
-            _pageGateQueriesInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
             Dim pageSelectedInBed As Boolean =
                 _fabricInBed.MemoryPageMayRouteToDeviceInBed(normalizedInBed)
             If pageSelectedInBed Then
-                _pageGatePositiveInBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
                 Dim mappedValueInBed As Byte
                 Dim mappedTimingTargetInBed As AtMemoryCycleTarget286
-                _mappedRead8InBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _mappedRead8InBed += 1UL
                 If _fabricInBed.TryReadMemoryByte(normalizedInBed,
                                                   mappedValueInBed,
                                                   mappedTimingTargetInBed) Then
@@ -924,7 +1078,9 @@ Public NotInheritable Class NeatMotherboardBridge286
                                       ReadyClassForMemoryTargetInBed(targetInBed, 1),
                                       normalizedInBed,
                                       1)
-            Return _memoryInBed.ReadLocalByteNormalized(normalizedInBed)
+            Return _memoryInBed.ReadLocalByteNormalizedKnownTarget(
+                normalizedInBed,
+                targetInBed)
         Finally
             If externalInBed Then EndExternalCycleInBed(masterInBed)
         End Try
@@ -950,16 +1106,16 @@ Public NotInheritable Class NeatMotherboardBridge286
         End If
 
         Try
-            _memoryWrite8InBed(MasterIndexInBed(masterInBed)) += 1UL
+            If RuntimeDiagnostics.Enabled Then _memoryWrite8InBed(MasterIndexInBed(masterInBed)) += 1UL
             Dim normalizedInBed As UInteger = _memoryInBed.NormalizePhysicalAddress(address)
 
-            _pageGateQueriesInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
             Dim pageSelectedInBed As Boolean =
                 _fabricInBed.MemoryPageMayRouteToDeviceInBed(normalizedInBed)
             If pageSelectedInBed Then
-                _pageGatePositiveInBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
                 Dim mappedTimingTargetInBed As AtMemoryCycleTarget286
-                _mappedWrite8InBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _mappedWrite8InBed += 1UL
                 If _fabricInBed.TryWriteMemoryByte(normalizedInBed,
                                                    value,
                                                    mappedTimingTargetInBed) Then
@@ -979,7 +1135,10 @@ Public NotInheritable Class NeatMotherboardBridge286
                                       ReadyClassForMemoryTargetInBed(targetInBed, 1),
                                       normalizedInBed,
                                       1)
-            _memoryInBed.WriteLocalByteNormalized(normalizedInBed, value)
+            _memoryInBed.WriteLocalByteNormalizedKnownTarget(
+                normalizedInBed,
+                value,
+                targetInBed)
         Finally
             If externalInBed Then EndExternalCycleInBed(masterInBed)
         End Try
@@ -1009,15 +1168,15 @@ Public NotInheritable Class NeatMotherboardBridge286
 
             Dim firstMappedCandidateInBed As Boolean =
                 _fabricInBed.MemoryPageMayRouteToDeviceInBed(firstInBed)
-            _pageGateQueriesInBed += 1UL
-            If firstMappedCandidateInBed Then _pageGatePositiveInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
+            If firstMappedCandidateInBed AndAlso RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
 
             Dim secondMappedCandidateInBed As Boolean = firstMappedCandidateInBed
             If (firstInBed >> 12) <> (secondInBed >> 12) Then
                 secondMappedCandidateInBed =
                     _fabricInBed.MemoryPageMayRouteToDeviceInBed(secondInBed)
-                _pageGateQueriesInBed += 1UL
-                If secondMappedCandidateInBed Then _pageGatePositiveInBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
+                If secondMappedCandidateInBed AndAlso RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
             End If
 
             If Not firstMappedCandidateInBed AndAlso Not secondMappedCandidateInBed Then
@@ -1028,14 +1187,16 @@ Public NotInheritable Class NeatMotherboardBridge286
                     Dim externalInBed As Boolean = masterInBed <> AtBusMaster286.Cpu
                     If externalInBed Then BeginExternalCycleInBed(masterInBed)
                     Try
-                        _memoryRead16InBed(MasterIndexInBed(masterInBed)) += 1UL
+                        If RuntimeDiagnostics.Enabled Then _memoryRead16InBed(MasterIndexInBed(masterInBed)) += 1UL
                         directWordInBed = True
                         ApplyReadyWaitStatesInBed(masterInBed,
                                                   AtBusCycleKind286.PhysicalMemoryRead16,
                                                   ReadyClassForMemoryTargetInBed(firstTargetInBed, 2),
                                                   firstInBed,
                                                   2)
-                        Return _memoryInBed.ReadLocalWordNormalized(firstInBed)
+                        Return _memoryInBed.ReadLocalWordNormalizedKnownTarget(
+                            firstInBed,
+                            firstTargetInBed)
                     Finally
                         If externalInBed Then EndExternalCycleInBed(masterInBed)
                     End Try
@@ -1078,15 +1239,15 @@ Public NotInheritable Class NeatMotherboardBridge286
 
             Dim firstMappedCandidateInBed As Boolean =
                 _fabricInBed.MemoryPageMayRouteToDeviceInBed(firstInBed)
-            _pageGateQueriesInBed += 1UL
-            If firstMappedCandidateInBed Then _pageGatePositiveInBed += 1UL
+            If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
+            If firstMappedCandidateInBed AndAlso RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
 
             Dim secondMappedCandidateInBed As Boolean = firstMappedCandidateInBed
             If (firstInBed >> 12) <> (secondInBed >> 12) Then
                 secondMappedCandidateInBed =
                     _fabricInBed.MemoryPageMayRouteToDeviceInBed(secondInBed)
-                _pageGateQueriesInBed += 1UL
-                If secondMappedCandidateInBed Then _pageGatePositiveInBed += 1UL
+                If RuntimeDiagnostics.Enabled Then _pageGateQueriesInBed += 1UL
+                If secondMappedCandidateInBed AndAlso RuntimeDiagnostics.Enabled Then _pageGatePositiveInBed += 1UL
             End If
 
             If Not firstMappedCandidateInBed AndAlso Not secondMappedCandidateInBed Then
@@ -1096,14 +1257,17 @@ Public NotInheritable Class NeatMotherboardBridge286
                     Dim externalInBed As Boolean = masterInBed <> AtBusMaster286.Cpu
                     If externalInBed Then BeginExternalCycleInBed(masterInBed)
                     Try
-                        _memoryWrite16InBed(MasterIndexInBed(masterInBed)) += 1UL
+                        If RuntimeDiagnostics.Enabled Then _memoryWrite16InBed(MasterIndexInBed(masterInBed)) += 1UL
                         directWordInBed = True
                         ApplyReadyWaitStatesInBed(masterInBed,
                                                   AtBusCycleKind286.PhysicalMemoryWrite16,
                                                   ReadyClassForMemoryTargetInBed(firstTargetInBed, 2),
                                                   firstInBed,
                                                   2)
-                        _memoryInBed.WriteLocalWordNormalized(firstInBed, value)
+                        _memoryInBed.WriteLocalWordNormalizedKnownTarget(
+                            firstInBed,
+                            value,
+                            firstTargetInBed)
                         Return
                     Finally
                         If externalInBed Then EndExternalCycleInBed(masterInBed)
@@ -1330,10 +1494,23 @@ Public Class HardwareBus
     Private ReadOnly _uncachedMemoryDevices As New List(Of IMemoryMappedDevice)()
     Private ReadOnly _resettableDevices As New List(Of IResettableDevice)()
 
+    ' Cold-path physical population ledger.  Hot bus cycles never consult this
+    ' list; it exists only so a powered-down chassis can remove an expansion
+    ' board and rebuild the compiled decode wiring without leaving stale clock,
+    ' reset, MMIO or event registrations behind.
+    Private ReadOnly _registeredObjects As New List(Of Object)()
+
     ' The port table represents PCB chip-select wiring. Each entry contains only
     ' devices which can ever decode that port. Programmable decoders are still
     ' asked HandlesPort at the actual cycle.
     Private ReadOnly _portRoutes(65535) As PortRoute
+
+    ' Hot path for the common case: exactly one fixed-decode device owns this
+    ' port.  Such a device's HandlesPort() answer was already proven when the PCB
+    ' decode table was compiled and, by definition, cannot change at runtime.
+    ' Dynamic ISA cards (currently S3 and NE2000) never enter this table.
+    Private ReadOnly _directStaticPortDevices(65535) As IPortDevice
+    Private ReadOnly _directStaticPortUsesAtBusTiming(65535) As Boolean
 
     ' Memory is resolved lazily per 4 KiB page. Ordinary RAM pages very quickly
     ' cache an empty route, making instruction fetch/data RAM bypass the device
@@ -1347,12 +1524,14 @@ Public Class HardwareBus
     ' Installed only while MachineClock286 is executing a CPU batch. CPU I/O
     ' forces elapsed motherboard time visible before the transaction. Memory
     ' devices explicitly marked clock-independent do not force that flush.
-    Private _timeSynchronizer As Action(Of ClockBatchFlushReason)
-    Private _timingTopologyChanged As Action
+    Private _timeSynchronizer As ITimeBatchSynchronizer286
     Private _synchronizingTime As Boolean
 
     Public Sub Register(device As Object)
         If device Is Nothing Then Throw New ArgumentNullException(NameOf(device))
+        If IsRegistered(device) Then
+            Throw New InvalidOperationException("The same physical device instance is already registered on this bus.")
+        End If
 
         Dim portDevice As IPortDevice = TryCast(device, IPortDevice)
         If portDevice IsNot Nothing Then
@@ -1396,6 +1575,192 @@ Public Class HardwareBus
 
         Dim resettable As IResettableDevice = TryCast(device, IResettableDevice)
         If resettable IsNot Nothing Then _resettableDevices.Add(resettable)
+
+        _registeredObjects.Add(device)
+    End Sub
+
+    ' Register a newly inserted cold-service device immediately before an
+    ' existing physical decode anchor. Removable ISA boards use the motherboard
+    ' open-bus memory terminator as that anchor so a card reinserted after startup
+    ' retains the same electrical decode priority it had at initial assembly.
+    Public Sub RegisterBefore(device As Object, beforeDeviceInBed As Object)
+        If device Is Nothing Then Throw New ArgumentNullException(NameOf(device))
+        If beforeDeviceInBed Is Nothing Then Throw New ArgumentNullException(NameOf(beforeDeviceInBed))
+        If IsRegistered(device) Then
+            Throw New InvalidOperationException("The same physical device instance is already registered on this bus.")
+        End If
+
+        Dim anchorIndexInBed As Integer = RegisteredObjectIndexInBed(beforeDeviceInBed)
+        If anchorIndexInBed < 0 Then
+            Throw New InvalidOperationException("The requested registration anchor is not installed on this bus.")
+        End If
+
+        SynchronizePendingTime(ClockBatchFlushReason.Explicit)
+
+        Dim portDeviceInBed As IPortDevice = TryCast(device, IPortDevice)
+        If portDeviceInBed IsNot Nothing Then
+            Dim insertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IPortDevice Then insertIndexInBed += 1
+            Next
+            _devices.Insert(insertIndexInBed, portDeviceInBed)
+        End If
+
+        Dim clockedInBed As IClockedDevice = TryCast(device, IClockedDevice)
+        If clockedInBed IsNot Nothing Then
+            Dim insertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IClockedDevice Then insertIndexInBed += 1
+            Next
+            _clockedDevices.Insert(insertIndexInBed, clockedInBed)
+
+            Dim wakeSourceInBed As IClockWakeSource = TryCast(device, IClockWakeSource)
+            If wakeSourceInBed IsNot Nothing Then
+                Dim wakeInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    If TypeOf _registeredObjects(indexInBed) Is IClockWakeSource Then wakeInsertIndexInBed += 1
+                Next
+                _wakeSources.Insert(wakeInsertIndexInBed, wakeSourceInBed)
+            End If
+        End If
+
+        Dim memoryDeviceInBed As IMemoryMappedDevice = TryCast(device, IMemoryMappedDevice)
+        If memoryDeviceInBed IsNot Nothing Then
+            Dim memoryInsertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IMemoryMappedDevice Then memoryInsertIndexInBed += 1
+            Next
+            _memoryDevices.Insert(memoryInsertIndexInBed, memoryDeviceInBed)
+
+            If TypeOf memoryDeviceInBed Is IPageCoherentMemoryDecode Then
+                Dim pageInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    Dim priorMemoryInBed As IMemoryMappedDevice = TryCast(_registeredObjects(indexInBed), IMemoryMappedDevice)
+                    If priorMemoryInBed IsNot Nothing AndAlso TypeOf priorMemoryInBed Is IPageCoherentMemoryDecode Then pageInsertIndexInBed += 1
+                Next
+                _pageCoherentMemoryDevices.Insert(pageInsertIndexInBed, memoryDeviceInBed)
+            Else
+                Dim uncachedInsertIndexInBed As Integer = 0
+                For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                    Dim priorMemoryInBed As IMemoryMappedDevice = TryCast(_registeredObjects(indexInBed), IMemoryMappedDevice)
+                    If priorMemoryInBed IsNot Nothing AndAlso Not TypeOf priorMemoryInBed Is IPageCoherentMemoryDecode Then uncachedInsertIndexInBed += 1
+                Next
+                _uncachedMemoryDevices.Insert(uncachedInsertIndexInBed, memoryDeviceInBed)
+            End If
+        End If
+
+        Dim decodeSourceInBed As IMemoryDecodeChangeSource = TryCast(device, IMemoryDecodeChangeSource)
+        If decodeSourceInBed IsNot Nothing Then
+            AddHandler decodeSourceInBed.MemoryDecodeChanged, AddressOf InvalidateMemoryDecodeCache
+        End If
+
+        Dim resettableInBed As IResettableDevice = TryCast(device, IResettableDevice)
+        If resettableInBed IsNot Nothing Then
+            Dim resetInsertIndexInBed As Integer = 0
+            For indexInBed As Integer = 0 To anchorIndexInBed - 1
+                If TypeOf _registeredObjects(indexInBed) Is IResettableDevice Then resetInsertIndexInBed += 1
+            Next
+            _resettableDevices.Insert(resetInsertIndexInBed, resettableInBed)
+        End If
+
+        _registeredObjects.Insert(anchorIndexInBed, device)
+        RebuildPortDecodeInBed()
+        RebuildClockClassificationInBed()
+        InvalidateMemoryDecodeCache()
+        NotifyTimingTopologyChanged()
+    End Sub
+
+    ' Remove one physical device from the motherboard fabric.  This is a cold
+    ' chassis/service operation, not ISA hot-plug emulation.  The caller owns the
+    ' policy which guarantees that the machine is powered down before invoking it.
+    '
+    ' All compiled decode and machine-clock membership is rebuilt here so an empty
+    ' slot is genuinely electrically absent: no port/MMIO decode, no clock calls,
+    ' no wake deadlines, no reset callback and no stale decode-change event hook.
+    Public Function Unregister(device As Object) As Boolean
+        If device Is Nothing Then Throw New ArgumentNullException(NameOf(device))
+
+        Dim registeredIndexInBed As Integer = RegisteredObjectIndexInBed(device)
+        If registeredIndexInBed < 0 Then Return False
+
+        SynchronizePendingTime(ClockBatchFlushReason.Explicit)
+
+        Dim decodeSourceInBed As IMemoryDecodeChangeSource =
+            TryCast(device, IMemoryDecodeChangeSource)
+        If decodeSourceInBed IsNot Nothing Then
+            RemoveHandler decodeSourceInBed.MemoryDecodeChanged,
+                AddressOf InvalidateMemoryDecodeCache
+        End If
+
+        Dim portDeviceInBed As IPortDevice = TryCast(device, IPortDevice)
+        If portDeviceInBed IsNot Nothing Then _devices.Remove(portDeviceInBed)
+
+        Dim clockedInBed As IClockedDevice = TryCast(device, IClockedDevice)
+        If clockedInBed IsNot Nothing Then _clockedDevices.Remove(clockedInBed)
+
+        Dim wakeSourceInBed As IClockWakeSource = TryCast(device, IClockWakeSource)
+        If wakeSourceInBed IsNot Nothing Then _wakeSources.Remove(wakeSourceInBed)
+
+        Dim memoryDeviceInBed As IMemoryMappedDevice = TryCast(device, IMemoryMappedDevice)
+        If memoryDeviceInBed IsNot Nothing Then
+            _memoryDevices.Remove(memoryDeviceInBed)
+            _pageCoherentMemoryDevices.Remove(memoryDeviceInBed)
+            _uncachedMemoryDevices.Remove(memoryDeviceInBed)
+        End If
+
+        Dim resettableInBed As IResettableDevice = TryCast(device, IResettableDevice)
+        If resettableInBed IsNot Nothing Then _resettableDevices.Remove(resettableInBed)
+
+        _registeredObjects.RemoveAt(registeredIndexInBed)
+
+        RebuildPortDecodeInBed()
+        RebuildClockClassificationInBed()
+        InvalidateMemoryDecodeCache()
+        NotifyTimingTopologyChanged()
+        Return True
+    End Function
+
+    Public Function IsRegistered(device As Object) As Boolean
+        If device Is Nothing Then Return False
+        Return RegisteredObjectIndexInBed(device) >= 0
+    End Function
+
+    Public ReadOnly Property RegisteredDeviceCount As Integer
+        Get
+            Return _registeredObjects.Count
+        End Get
+    End Property
+
+    Private Function RegisteredObjectIndexInBed(device As Object) As Integer
+        For indexInBed As Integer = 0 To _registeredObjects.Count - 1
+            If Object.ReferenceEquals(_registeredObjects(indexInBed), device) Then Return indexInBed
+        Next
+        Return -1
+    End Function
+
+    Private Sub RebuildPortDecodeInBed()
+        Array.Clear(_portRoutes, 0, _portRoutes.Length)
+        Array.Clear(_directStaticPortDevices, 0, _directStaticPortDevices.Length)
+        Array.Clear(_directStaticPortUsesAtBusTiming, 0, _directStaticPortUsesAtBusTiming.Length)
+
+        For Each deviceInBed As IPortDevice In _devices
+            CompilePortDecode(deviceInBed)
+        Next
+    End Sub
+
+    Private Sub RebuildClockClassificationInBed()
+        _unclassifiedClockedDevices = 0
+        _unclassifiedClockedDeviceNamesInBed.Clear()
+
+        For Each clockedInBed As IClockedDevice In _clockedDevices
+            If TypeOf clockedInBed Is IClockWakeSource OrElse
+               TypeOf clockedInBed Is IClockBatchSafeDevice Then Continue For
+
+            _unclassifiedClockedDevices += 1
+            Dim typeNameInBed As String = clockedInBed.GetType().FullName
+            If String.IsNullOrWhiteSpace(typeNameInBed) Then typeNameInBed = clockedInBed.GetType().Name
+            _unclassifiedClockedDeviceNamesInBed.Add(typeNameInBed)
+        Next
     End Sub
 
     ' Compile the physical port chip-select candidates once when the virtual PCB
@@ -1403,6 +1768,9 @@ Public Class HardwareBus
     Private Sub CompilePortDecode(device As IPortDevice)
         Dim dynamicDecode As IPortDecodeCandidateProvider =
             TryCast(device, IPortDecodeCandidateProvider)
+        Dim fixedDecodeInBed As Boolean = dynamicDecode Is Nothing
+        Dim fixedUsesAtBusTimingInBed As Boolean =
+            Not TypeOf device Is IMotherboardLocalPortDevice
 
         For portNumber As Integer = 0 To 65535
             Dim port As UInt16 = CUShort(portNumber)
@@ -1418,16 +1786,41 @@ Public Class HardwareBus
                 If route Is Nothing Then
                     route = New PortRoute()
                     _portRoutes(portNumber) = route
+                    route.Add(device)
+
+                    ' One immutable decoder and no collision: the runtime cycle
+                    ' can go directly to the selected chip without asking its
+                    ' HandlesPort() method again.
+                    If fixedDecodeInBed Then
+                        _directStaticPortDevices(portNumber) = device
+                        _directStaticPortUsesAtBusTiming(portNumber) =
+                            fixedUsesAtBusTimingInBed
+                    End If
+                Else
+                    route.Add(device)
+
+                    ' Multiple potential chip selects require the full ordered
+                    ' route walk.  This preserves physical registration/decode
+                    ' priority even if the new candidate itself is static.
+                    _directStaticPortDevices(portNumber) = Nothing
                 End If
-                route.Add(device)
             End If
         Next
     End Sub
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Function ResolvePortDevice(port As UInt16) As IPortDevice
-        Dim route As PortRoute = _portRoutes(CInt(port))
+        Dim portNumberInBed As Integer = CInt(port)
+
+        Dim directInBed As IPortDevice = _directStaticPortDevices(portNumberInBed)
+        If directInBed IsNot Nothing Then Return directInBed
+
+        Dim route As PortRoute = _portRoutes(portNumberInBed)
         If route Is Nothing OrElse route.First Is Nothing Then Return Nothing
 
+        ' Routes which reach here either contain a programmable decoder or more
+        ' than one physical candidate.  Retain the exact old per-cycle selection
+        ' logic for those ports.
         If route.First.HandlesPort(port) Then Return route.First
         If route.Additional IsNot Nothing Then
             For Each device As IPortDevice In route.Additional
@@ -1437,36 +1830,49 @@ Public Class HardwareBus
         Return Nothing
     End Function
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Friend Function PortUsesAtBusTimingInBed(port As UInt16) As Boolean
+        Dim portNumberInBed As Integer = CInt(port)
+        If _directStaticPortDevices(portNumberInBed) IsNot Nothing Then
+            Return _directStaticPortUsesAtBusTiming(portNumberInBed)
+        End If
+
         Dim deviceInBed As IPortDevice = ResolvePortDevice(port)
         If deviceInBed Is Nothing Then Return True
         Return Not TypeOf deviceInBed Is IMotherboardLocalPortDevice
     End Function
 
-    Friend Sub InstallTimeBatchSynchronizer(synchronize As Action(Of ClockBatchFlushReason),
-                                             timingTopologyChanged As Action)
-        _timeSynchronizer = synchronize
-        _timingTopologyChanged = timingTopologyChanged
+    Friend Sub InstallTimeBatchSynchronizer(synchronizerInBed As ITimeBatchSynchronizer286)
+        If synchronizerInBed Is Nothing Then
+            Throw New ArgumentNullException(NameOf(synchronizerInBed))
+        End If
+        _timeSynchronizer = synchronizerInBed
     End Sub
 
     Friend Sub ClearTimeBatchSynchronizer()
         _timeSynchronizer = Nothing
-        _timingTopologyChanged = Nothing
         _synchronizingTime = False
     End Sub
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub SynchronizePendingTime(Optional reason As ClockBatchFlushReason = ClockBatchFlushReason.Explicit)
-        If _timeSynchronizer Is Nothing OrElse _synchronizingTime Then Return
+        Dim synchronizerInBed As ITimeBatchSynchronizer286 = _timeSynchronizer
+        If synchronizerInBed Is Nothing OrElse _synchronizingTime Then Return
+
         _synchronizingTime = True
         Try
-            _timeSynchronizer.Invoke(reason)
+            synchronizerInBed.SynchronizePendingTime(reason)
         Finally
             _synchronizingTime = False
         End Try
     End Sub
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub NotifyTimingTopologyChanged()
-        If _timingTopologyChanged IsNot Nothing Then _timingTopologyChanged.Invoke()
+        Dim synchronizerInBed As ITimeBatchSynchronizer286 = _timeSynchronizer
+        If synchronizerInBed IsNot Nothing Then
+            synchronizerInBed.TimingTopologyChanged()
+        End If
     End Sub
 
     Public ReadOnly Property HasUnclassifiedClockedDevices As Boolean
@@ -1540,14 +1946,51 @@ Public Class HardwareBus
         Return candidates.Length <> 0 OrElse _uncachedMemoryDevices.Count <> 0
     End Function
 
-    Private Function MemoryAccessRequiresSynchronization(device As IMemoryMappedDevice) As Boolean
-        Return Not TypeOf device Is IMemoryClockIndependentDevice
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function MemoryAccessRequiresSynchronization(device As IMemoryMappedDevice,
+                                                         address As UInteger,
+                                                         isWrite As Boolean) As Boolean
+        If TypeOf device Is IMemoryClockIndependentDevice Then Return False
+
+        Dim providerInBed As IMemoryAccessTimingProvider =
+            TryCast(device, IMemoryAccessTimingProvider)
+        If providerInBed IsNot Nothing Then
+            Return providerInBed.MemoryAccessRequiresSynchronization(address, isWrite)
+        End If
+
+        ' Legacy/future clocked mapped devices remain conservative.
+        Return True
+    End Function
+
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
+    Private Function MemoryAccessChangesTimingTopology(device As IMemoryMappedDevice,
+                                                       address As UInteger,
+                                                       isWrite As Boolean) As Boolean
+        If TypeOf device Is IMemoryClockIndependentDevice Then Return False
+
+        Dim providerInBed As IMemoryAccessTimingProvider =
+            TryCast(device, IMemoryAccessTimingProvider)
+        If providerInBed IsNot Nothing Then
+            Return providerInBed.MemoryAccessChangesTimingTopology(address, isWrite)
+        End If
+
+        ' Preserve the old behavior for devices which have not classified their
+        ' mapped-memory cycles yet.
+        Return True
     End Function
 
     Private Function TryReadMappedDevice(device As IMemoryMappedDevice,
                                          address As UInteger,
                                          ByRef value As Byte) As Boolean
-        If MemoryAccessRequiresSynchronization(device) Then SynchronizePendingTime(ClockBatchFlushReason.MemoryAccess)
+        Dim topologyMayChangeInBed As Boolean =
+            MemoryAccessChangesTimingTopology(device, address, False)
+        Dim synchronizeInBed As Boolean =
+            topologyMayChangeInBed OrElse
+            MemoryAccessRequiresSynchronization(device, address, False)
+
+        If synchronizeInBed Then
+            SynchronizePendingTime(ClockBatchFlushReason.MemoryAccess)
+        End If
 
         Dim conditional As IConditionalMemoryMappedDevice =
             TryCast(device, IConditionalMemoryMappedDevice)
@@ -1557,14 +2000,22 @@ Public Class HardwareBus
             value = device.ReadMemoryByte(address)
         End If
 
-        If MemoryAccessRequiresSynchronization(device) Then NotifyTimingTopologyChanged()
+        If topologyMayChangeInBed Then NotifyTimingTopologyChanged()
         Return True
     End Function
 
     Private Function TryWriteMappedDevice(device As IMemoryMappedDevice,
                                           address As UInteger,
                                           value As Byte) As Boolean
-        If MemoryAccessRequiresSynchronization(device) Then SynchronizePendingTime(ClockBatchFlushReason.MemoryAccess)
+        Dim topologyMayChangeInBed As Boolean =
+            MemoryAccessChangesTimingTopology(device, address, True)
+        Dim synchronizeInBed As Boolean =
+            topologyMayChangeInBed OrElse
+            MemoryAccessRequiresSynchronization(device, address, True)
+
+        If synchronizeInBed Then
+            SynchronizePendingTime(ClockBatchFlushReason.MemoryAccess)
+        End If
 
         Dim conditional As IConditionalMemoryMappedDevice =
             TryCast(device, IConditionalMemoryMappedDevice)
@@ -1574,7 +2025,7 @@ Public Class HardwareBus
             device.WriteMemoryByte(address, value)
         End If
 
-        If MemoryAccessRequiresSynchronization(device) Then NotifyTimingTopologyChanged()
+        If topologyMayChangeInBed Then NotifyTimingTopologyChanged()
         Return True
     End Function
 
@@ -1643,12 +2094,14 @@ Public Class HardwareBus
         Return False
     End Function
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Function ReadPortByteCore(port As UInt16) As Byte
         Dim device As IPortDevice = ResolvePortDevice(port)
         If device Is Nothing Then Return &HFF
         Return device.ReadPort(port)
     End Function
 
+    <Runtime.CompilerServices.MethodImpl(Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)>
     Private Sub WritePortByteCore(port As UInt16, value As Byte)
         Dim device As IPortDevice = ResolvePortDevice(port)
         If device IsNot Nothing Then device.WritePort(port, value)
@@ -2111,6 +2564,22 @@ Public Class Pit8253
         Public RefreshToggle As Boolean
     End Class
 
+    ' Immutable beginning-of-interval picture of one PIT channel.  Host-side
+    ' transducers may copy this on the machine owner and then evaluate OUT at
+    ' sample offsets on a worker thread without touching live PIT state.
+    Friend Structure ChannelOutputSnapshot
+        Friend ReloadValue As Integer
+        Friend Counter As Integer
+        Friend Mode As Integer
+        Friend Output As Boolean
+        Friend Gate As Boolean
+        Friend NullCount As Boolean
+        Friend Running As Boolean
+        Friend StrobeLowTicks As Integer
+        Friend Phase As Long
+        Friend TimeNumeratorRemainder As Long
+    End Structure
+
     Private ReadOnly _channels() As Channel = {
         New Channel() With {.Gate = True},
         New Channel() With {.Gate = True},
@@ -2472,70 +2941,111 @@ Public Class Pit8253
     ' physical-time offset WITHOUT mutating PIT state.  PcSpeakerDevice is
     ' clocked immediately before the PIT and uses this to render every PCM
     ' sample inside a batched motherboard time interval.
-    Public Function GetOutputAtOffset(channelIndex As Integer, elapsedPicoseconds As Long) As Boolean
+    Friend Function CaptureOutputSnapshot(channelIndex As Integer) As ChannelOutputSnapshot
         If channelIndex < 0 OrElse channelIndex > 2 Then
             Throw New ArgumentOutOfRangeException(NameOf(channelIndex))
         End If
-        If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
 
         Dim channel As Channel = _channels(channelIndex)
-        If elapsedPicoseconds = 0 OrElse channel.NullCount OrElse channel.ReloadValue <= 0 Then
-            Return channel.Output
+        Return New ChannelOutputSnapshot With {
+            .ReloadValue = channel.ReloadValue,
+            .Counter = channel.Counter,
+            .Mode = channel.Mode,
+            .Output = channel.Output,
+            .Gate = channel.Gate,
+            .NullCount = channel.NullCount,
+            .Running = channel.Running,
+            .StrobeLowTicks = channel.StrobeLowTicks,
+            .Phase = channel.Phase,
+            .TimeNumeratorRemainder = _timeNumeratorRemainder
+        }
+    End Function
+
+    ' Existing live-PIT helper retained for diagnostics/other callers.
+    Public Function GetOutputAtOffset(channelIndex As Integer, elapsedPicoseconds As Long) As Boolean
+        Return GetOutputAtOffset(CaptureOutputSnapshot(channelIndex), elapsedPicoseconds)
+    End Function
+
+    ' Worker-safe form: evaluates only the immutable snapshot.  This is the same
+    ' PIT logic used by the old PC-speaker presenter, merely detached from the
+    ' machine-owner thread so 48-kHz host sampling cannot slow the emulated CPU.
+    Friend Shared Function GetOutputAtOffset(snapshotInBed As ChannelOutputSnapshot,
+                                             elapsedPicoseconds As Long) As Boolean
+        If elapsedPicoseconds < 0 Then Throw New ArgumentOutOfRangeException(NameOf(elapsedPicoseconds))
+
+        If elapsedPicoseconds = 0 OrElse
+           snapshotInBed.NullCount OrElse
+           snapshotInBed.ReloadValue <= 0 Then
+            Return snapshotInBed.Output
         End If
 
-        ' Include the PIT's fractional input-clock remainder exactly as the real
-        ' AdvanceTime path will.  Decomposing whole seconds keeps the multiply
-        ' bounded even if a diagnostic ever asks for an unusually large offset.
-        Dim wholeSecondsInBed As Long = elapsedPicoseconds \ MachineProfile286.PicosecondsPerSecond
-        Dim remainderPicosecondsInBed As Long = elapsedPicoseconds Mod MachineProfile286.PicosecondsPerSecond
+        ' Include the PIT fractional input-clock remainder exactly as AdvanceTime
+        ' will.  This makes a copied beginning-of-interval snapshot sufficient to
+        ' reconstruct channel OUT at every host sample boundary in that interval.
+        Dim wholeSecondsInBed As Long =
+            elapsedPicoseconds \ MachineProfile286.PicosecondsPerSecond
+        Dim remainderPicosecondsInBed As Long =
+            elapsedPicoseconds Mod MachineProfile286.PicosecondsPerSecond
         Dim numeratorInBed As Long =
-            _timeNumeratorRemainder +
+            snapshotInBed.TimeNumeratorRemainder +
             remainderPicosecondsInBed * MachineProfile286.PitInputClockHz
         Dim ticksInBed As Long =
             wholeSecondsInBed * MachineProfile286.PitInputClockHz +
             numeratorInBed \ MachineProfile286.PicosecondsPerSecond
 
-        If ticksInBed <= 0 Then Return channel.Output
+        If ticksInBed <= 0 Then Return snapshotInBed.Output
 
-        Select Case channel.Mode
+        Select Case snapshotInBed.Mode
             Case 0
-                If Not channel.Running OrElse Not channel.Gate OrElse channel.Counter <= 0 Then
-                    Return channel.Output
+                If Not snapshotInBed.Running OrElse
+                   Not snapshotInBed.Gate OrElse
+                   snapshotInBed.Counter <= 0 Then
+                    Return snapshotInBed.Output
                 End If
-                Return ticksInBed >= channel.Counter
+                Return ticksInBed >= snapshotInBed.Counter
 
             Case 1
-                If Not channel.Running OrElse channel.Counter <= 0 Then Return channel.Output
-                If ticksInBed < channel.Counter Then Return False
+                If Not snapshotInBed.Running OrElse snapshotInBed.Counter <= 0 Then
+                    Return snapshotInBed.Output
+                End If
+                If ticksInBed < snapshotInBed.Counter Then Return False
                 Return True
 
             Case 2
-                If Not channel.Running OrElse Not channel.Gate Then Return channel.Output
-                Dim periodInBed As Long = channel.ReloadValue
-                Dim phaseInBed As Long = (channel.Phase + ticksInBed) Mod periodInBed
+                If Not snapshotInBed.Running OrElse Not snapshotInBed.Gate Then
+                    Return snapshotInBed.Output
+                End If
+                Dim periodInBed As Long = snapshotInBed.ReloadValue
+                Dim phaseInBed As Long = (snapshotInBed.Phase + ticksInBed) Mod periodInBed
                 Return phaseInBed <> periodInBed - 1L
 
             Case 3
-                If Not channel.Running OrElse Not channel.Gate Then Return channel.Output
-                Dim periodInBed As Long = channel.ReloadValue
-                Dim phaseInBed As Long = (channel.Phase + ticksInBed) Mod periodInBed
+                If Not snapshotInBed.Running OrElse Not snapshotInBed.Gate Then
+                    Return snapshotInBed.Output
+                End If
+                Dim periodInBed As Long = snapshotInBed.ReloadValue
+                Dim phaseInBed As Long = (snapshotInBed.Phase + ticksInBed) Mod periodInBed
                 Dim highTicksInBed As Long = (periodInBed + 1L) \ 2L
                 Return phaseInBed < highTicksInBed
 
             Case 4, 5
-                If channel.StrobeLowTicks > 0 Then
-                    Return ticksInBed >= channel.StrobeLowTicks
+                If snapshotInBed.StrobeLowTicks > 0 Then
+                    Return ticksInBed >= snapshotInBed.StrobeLowTicks
                 End If
 
-                If Not channel.Running OrElse channel.Counter <= 0 Then Return channel.Output
-                If channel.Mode = 4 AndAlso Not channel.Gate Then Return channel.Output
+                If Not snapshotInBed.Running OrElse snapshotInBed.Counter <= 0 Then
+                    Return snapshotInBed.Output
+                End If
+                If snapshotInBed.Mode = 4 AndAlso Not snapshotInBed.Gate Then
+                    Return snapshotInBed.Output
+                End If
 
-                If ticksInBed < channel.Counter Then Return True
-                If ticksInBed = channel.Counter Then Return False
+                If ticksInBed < snapshotInBed.Counter Then Return True
+                If ticksInBed = snapshotInBed.Counter Then Return False
                 Return True
 
             Case Else
-                Return channel.Output
+                Return snapshotInBed.Output
         End Select
     End Function
 

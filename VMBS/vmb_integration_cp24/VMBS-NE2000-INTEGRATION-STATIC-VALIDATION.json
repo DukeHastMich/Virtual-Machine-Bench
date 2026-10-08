@@ -1,0 +1,22 @@
+{
+  "checks": {
+    "project_unique_compile_entries": true,
+    "generated_board_in_project": true,
+    "adapter_in_project": true,
+    "materializer_calls_generated_board": true,
+    "legacy_direct_ne2000_factory_removed": true,
+    "adapter_implements_runtime": true,
+    "adapter_maps_rtl_module": true,
+    "adapter_installs_isa8_card": true,
+    "generated_default_finalize": true,
+    "generated_defaults_present": true
+  },
+  "pass": true,
+  "compile_entries": 83,
+  "changed_files": [
+    "MachineMaterialization.vb",
+    "VirtualComputer.Modern.vbproj",
+    "Generated Boards/ISA8 Ethernet/ISA8_Ethernet.GeneratedBoard.vb",
+    "Generated Boards/ISA8 Ethernet/VmbGeneratedBoardRuntime.vb"
+  ]
+}

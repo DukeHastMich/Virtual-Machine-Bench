@@ -1,0 +1,34 @@
+{
+  "format": "VMBS-END-TO-END-1",
+  "source": "/mnt/data/vmbs_run/VMBS_CP16/upstream/isa8_eth/KiCad/ISA8_Ethernet.kicad_pcb",
+  "artifacts": {
+    "board.bs.json": "6515b80134e684b16c6480b7137e75fc35b416a3f3cc560033df6018f1eb7961",
+    "board.ir.json": "44ddbbab2f250a19ad14570f5d756e7730207044d788d5304137498b823ce07d",
+    "construction.ir.json": "4191c8e4928eab7597c73bc6494c41beb6a633a8da1955be1bce65b86c44de2a",
+    "board.code.json": "2b036a814e2f813a187f1b06ef1d0735433591cbf73d02d083e17baeabe9a00e",
+    "reference.runtime.json": "e8a578986755e166c8d91efa76b3f2b45bde1a03de98a8bfcc882dbe4cf187f7",
+    "GeneratedBoard.vb": "03dccc53bd788e17e621a8e1bed39dfaa3e3277f17529d40380f3dc24001147e"
+  },
+  "board_ir": {
+    "devices": 34,
+    "nets": 135,
+    "controls": 4,
+    "vmb_module_instances": 3,
+    "interface_links": 56,
+    "decoded_properties": 3,
+    "errors": 0
+  },
+  "constructor": {
+    "modules": 3,
+    "platforms": 1,
+    "controls": 4,
+    "configuration_bindings": 15,
+    "decoded_properties": 3,
+    "interface_links": 56,
+    "programmed_device_slots": 2,
+    "hardware_errors": 0,
+    "execution_incomplete": 1
+  },
+  "reference_runtime_valid": true,
+  "vb_lines": 104
+}

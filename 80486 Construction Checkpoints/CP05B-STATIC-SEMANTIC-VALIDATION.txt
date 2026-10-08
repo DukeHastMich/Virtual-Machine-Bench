@@ -1,0 +1,20 @@
+Intel486 CP05B static/semantic validation
+date=2026-09-10
+
+method_balance Intel486ExecutionEngine.vb: 185/185 PASS
+method_balance Intel486Mmu.vb: 29/29 PASS
+method_balance Intel486ExecutionTypes.vb: 3/3 PASS
+method_balance Intel486Dx2.vb: 31/31 PASS
+compile_include Intel486ExecutionTypes.vb: PASS
+compile_include Intel486ExecutionEngine.vb: PASS
+signed_wrap_hazard_scan: PASS
+cr0_et_hardwired_source: PASS
+parity_formula_8bit_exhaustive: PASS
+add_flags_8bit_exhaustive: PASS
+sub_flags_8bit_exhaustive: PASS
+unsigned_wrap_edge_vectors: PASS
+double_fault_pair_vectors: PASS
+sha256 Processors/80286/ProcessorCore.vb 00bd02a63aa5627ecc52ae9b0ae21d999d336c6ac6cffc7bbfe849143a497c18
+sha256 Math Coprocessors/Intel 80287/Intel80287.vb 5f12c0085b4a1cf63123fbf1dcbc3776cb3e4d8dca7e9056a17fbf0de5c75455
+
+OVERALL_STATIC_RESULT=PASS

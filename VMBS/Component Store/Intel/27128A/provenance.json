@@ -1,0 +1,14 @@
+{
+  "component": "Intel 27128A",
+  "primary_source": {
+    "publisher": "Intel Corporation",
+    "title": "27128A 128K (16K x 8) Production and UV Erasable PROMs",
+    "order_number": "230849-009",
+    "revision_date": "October 1990",
+    "retrieval_url": "https://www.pcjs.org/documents/datasheets/intel/INTEL_27128A_EPROM.pdf",
+    "local_archive_status": "TITS UP: remote PDF read and audited; byte archive download failed in this runtime"
+  },
+  "audited_pages": ["5-28", "5-29", "5-31", "5-32", "5-33"],
+  "claims": ["organization/package/pinout", "read DC limits", "read AC timing by speed grade", "read/output-disable/standby control truth table"],
+  "checkpoint": "CP87"
+}

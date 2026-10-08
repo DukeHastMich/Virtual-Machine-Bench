@@ -1,0 +1,14 @@
+{
+  "component": "Microchip AT27C512R",
+  "primary_source": {
+    "publisher": "Microchip Technology Inc.",
+    "title": "AT27C512R 512-Kbit (64K x 8) One-Time Programmable, Read-Only Memory",
+    "document_number": "DS20006752A",
+    "revision_year": 2022,
+    "retrieval_url": "https://ww1.microchip.com/downloads/aemDocuments/documents/MPD/ProductDocuments/DataSheets/AT27C512R-512-Kbit-OTP-ROM-Data-Sheet-DS20006752.pdf",
+    "local_archive_status": "TITS UP: remote PDF read and audited; byte archive download failed in this runtime"
+  },
+  "audited_pages": ["3", "4", "6", "7", "8"],
+  "claims": ["PDIP-28 pinout", "PLCC-32 pinout", "read/output-disable/standby truth table", "5 V +/-10% read supply", "read DC limits", "-45/-70 read timing"],
+  "checkpoint": "CP88"
+}

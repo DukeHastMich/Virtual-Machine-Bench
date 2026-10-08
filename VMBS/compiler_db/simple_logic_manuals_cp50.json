@@ -1,0 +1,9 @@
+{
+  "format":"VMBS-COMPONENT-EVIDENCE-1","checkpoint":"CP50",
+  "parts":[
+    {"module_id":"VMB.LOGIC.74XX138","documented_variant":"SN74LS138","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/lit/gpn/SN74LS138","facts":{"function":"3-to-8 decoder/demultiplexer; two active-low and one active-high enables; active-low outputs","package_pin_count":16,"operating_c_min":0,"operating_c_max":70}},
+    {"module_id":"VMB.LOGIC.74XX157","documented_variant":"SN74LS157","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/product/SN74LS157","facts":{"function":"quad 2-line to 1-line data selector/multiplexer with common select and strobe","package_pin_count":16,"operating_c_min":0,"operating_c_max":70}},
+    {"module_id":"VMB.LOGIC.74XX74","documented_variant":"SN74LS74A","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/lit/ds/symlink/sn74ls74a.pdf","facts":{"function":"dual positive-edge D flip-flop with asynchronous preset and clear","package_pin_count":14,"supply_v_min":4.75,"supply_v_max":5.25,"fmax_mhz_min_at_5v_25c":25,"forbidden_both_async_low_outputs":"Q and Qbar both HIGH"}},
+    {"module_id":"VMB.LOGIC.74XX273","documented_variant":"SN74LS273","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/lit/ds/sdls090/sdls090.pdf","facts":{"function":"octal positive-edge D flip-flop with direct clear","package_pin_count":20,"clock_frequency_max_mhz_product_page":35,"operating_c_min":0,"operating_c_max":70}}
+  ]
+}

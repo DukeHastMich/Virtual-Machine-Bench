@@ -267,6 +267,22 @@ Public Class AtKeyboard101
         _hostTransmissionInhibited = inhibited
     End Sub
 
+    ' Cheap idle predicate for the 8042 motherboard wrapper.  This does not
+    ' suppress keyboard state; it only says whether elapsed time by itself can
+    ' change the keyboard before another host/guest action occurs.
+    Public ReadOnly Property HasTimedActivity As Boolean
+        Get
+            If _resetAcceptanceDelayRemaining > 0 Then Return True
+            If _batDelayRemaining > 0 Then Return True
+            If _typematicKey <> AtPhysicalKey.None AndAlso
+               _scanningEnabled AndAlso
+               _typematicDelayRemaining > 0 Then
+                Return True
+            End If
+            Return False
+        End Get
+    End Property
+
     ' Event-aware motherboard scheduler hook.  This reports only keyboard-side
     ' transitions which can create a new serial byte without a CPU access.
     Public ReadOnly Property PicosecondsUntilNextEvent As Long

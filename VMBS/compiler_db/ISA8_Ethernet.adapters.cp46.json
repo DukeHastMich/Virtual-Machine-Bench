@@ -1,0 +1,536 @@
+{
+  "format": "VMB-ADAPTER-IR-1",
+  "source_format": "VMB-GLUE-IR-1",
+  "principle": "Semantic adapters derived from interface contracts; no board/part special cases.",
+  "adapter_groups": [
+    {
+      "instance_id": "U1",
+      "interface": "BOOT_ROM",
+      "adapter": "RTL8019_BOOT_ROM",
+      "binding_kinds": [
+        "external_memory_bus"
+      ],
+      "signals": {
+        "A18": [
+          "/BA18"
+        ],
+        "A17": [
+          "/BA17"
+        ],
+        "A16": [
+          "/BA16"
+        ],
+        "D6": [
+          "/BD6"
+        ],
+        "D5": [
+          "/BD5"
+        ],
+        "D4": [
+          "/BD4"
+        ],
+        "D3": [
+          "/BD3"
+        ],
+        "D2": [
+          "/BD2"
+        ],
+        "D1": [
+          "/BD1"
+        ],
+        "D0": [
+          "/BD0"
+        ],
+        "A15": [
+          "/BA15"
+        ],
+        "A14": [
+          "/BA14"
+        ],
+        "CE#": [
+          "/~BCS"
+        ],
+        "D7": [
+          "/BD7"
+        ]
+      },
+      "nets": [
+        "/BA14",
+        "/BA15",
+        "/BA16",
+        "/BA17",
+        "/BA18",
+        "/BD0",
+        "/BD1",
+        "/BD2",
+        "/BD3",
+        "/BD4",
+        "/BD5",
+        "/BD6",
+        "/BD7",
+        "/~BCS"
+      ]
+    },
+    {
+      "instance_id": "U1",
+      "interface": "MICROWIRE_3WIRE",
+      "adapter": "RTL8019_MICROWIRE",
+      "binding_kinds": [
+        "serial_protocol"
+      ],
+      "signals": {
+        "DI": [
+          "/BD6"
+        ],
+        "CLK": [
+          "/BD5"
+        ],
+        "CS": [
+          "/EECS"
+        ],
+        "DO": [
+          "/BD7"
+        ]
+      },
+      "nets": [
+        "/BD5",
+        "/BD6",
+        "/BD7",
+        "/EECS"
+      ]
+    },
+    {
+      "instance_id": "U2",
+      "interface": "PARALLEL_X8_MEMORY",
+      "adapter": "PARALLEL_MEMORY_X8",
+      "binding_kinds": [
+        "bus_control",
+        "method_address",
+        "method_data",
+        "power"
+      ],
+      "signals": {
+        "A0": [
+          "/A0"
+        ],
+        "A1": [
+          "/A1"
+        ],
+        "A10": [
+          "/A10"
+        ],
+        "A11": [
+          "/A11"
+        ],
+        "A12": [
+          "/A12"
+        ],
+        "A13": [
+          "/A13"
+        ],
+        "A2": [
+          "/A2"
+        ],
+        "A3": [
+          "/A3"
+        ],
+        "A4": [
+          "/A4"
+        ],
+        "A5": [
+          "/A5"
+        ],
+        "A6": [
+          "/A6"
+        ],
+        "A7": [
+          "/A7"
+        ],
+        "A8": [
+          "/A8"
+        ],
+        "A9": [
+          "/A9"
+        ],
+        "VSS": [
+          "GND"
+        ],
+        "VDD": [
+          "VCC"
+        ],
+        "WE#": [
+          "/~SMEMW"
+        ],
+        "OE#": [
+          "/~SMEMR"
+        ],
+        "A18": [
+          "/BA18"
+        ],
+        "A17": [
+          "/BA17"
+        ],
+        "A16": [
+          "/BA16"
+        ],
+        "D6": [
+          "/BD6"
+        ],
+        "D5": [
+          "/BD5"
+        ],
+        "D4": [
+          "/BD4"
+        ],
+        "D3": [
+          "/BD3"
+        ],
+        "D2": [
+          "/BD2"
+        ],
+        "D1": [
+          "/BD1"
+        ],
+        "D0": [
+          "/BD0"
+        ],
+        "A15": [
+          "/BA15"
+        ],
+        "A14": [
+          "/BA14"
+        ],
+        "CE#": [
+          "/~BCS"
+        ],
+        "D7": [
+          "/BD7"
+        ]
+      },
+      "nets": [
+        "/A0",
+        "/A1",
+        "/A10",
+        "/A11",
+        "/A12",
+        "/A13",
+        "/A2",
+        "/A3",
+        "/A4",
+        "/A5",
+        "/A6",
+        "/A7",
+        "/A8",
+        "/A9",
+        "/BA14",
+        "/BA15",
+        "/BA16",
+        "/BA17",
+        "/BA18",
+        "/BD0",
+        "/BD1",
+        "/BD2",
+        "/BD3",
+        "/BD4",
+        "/BD5",
+        "/BD6",
+        "/BD7",
+        "/~BCS",
+        "/~SMEMR",
+        "/~SMEMW",
+        "GND",
+        "VCC"
+      ]
+    },
+    {
+      "instance_id": "U3",
+      "interface": "MICROWIRE_3WIRE",
+      "adapter": "MICROWIRE_93LC46",
+      "binding_kinds": [
+        "serial_protocol"
+      ],
+      "signals": {
+        "DI": [
+          "/BD6"
+        ],
+        "CLK": [
+          "/BD5"
+        ],
+        "CS": [
+          "/EECS"
+        ],
+        "DO": [
+          "/BD7"
+        ]
+      },
+      "nets": [
+        "/BD5",
+        "/BD6",
+        "/BD7",
+        "/EECS"
+      ]
+    }
+  ],
+  "cross_adapter_nets": [
+    {
+      "net": "/BA14",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BA15",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BA16",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BA17",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BA18",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD0",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD1",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD2",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD3",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD4",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    },
+    {
+      "net": "/BD5",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "RTL8019_MICROWIRE"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        },
+        {
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "MICROWIRE_93LC46"
+        }
+      ]
+    },
+    {
+      "net": "/BD6",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "RTL8019_MICROWIRE"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        },
+        {
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "MICROWIRE_93LC46"
+        }
+      ]
+    },
+    {
+      "net": "/BD7",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "RTL8019_MICROWIRE"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        },
+        {
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "MICROWIRE_93LC46"
+        }
+      ]
+    },
+    {
+      "net": "/EECS",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "RTL8019_MICROWIRE"
+        },
+        {
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "adapter": "MICROWIRE_93LC46"
+        }
+      ]
+    },
+    {
+      "net": "/~BCS",
+      "adapter_groups": [
+        {
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "adapter": "RTL8019_BOOT_ROM"
+        },
+        {
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "adapter": "PARALLEL_MEMORY_X8"
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "adapter_groups": 4,
+    "cross_adapter_nets": 15
+  },
+  "ready": true
+}

@@ -1,0 +1,2394 @@
+{
+  "format": "VMB-GLUE-IR-1",
+  "principle": "Derived backend-neutral glue plan. Board Script remains canonical board IR.",
+  "source_format": "VMB-CONSTRUCTION-IR-1",
+  "operations": [
+    {
+      "id": "NET1",
+      "net": "/A0",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A0",
+          "pad": "5",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A0",
+          "pad": "12",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A0",
+          "pad": "62",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET2",
+      "net": "/A1",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A1",
+          "pad": "7",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A1",
+          "pad": "11",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A1",
+          "pad": "61",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET3",
+      "net": "/A10",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A10",
+          "pad": "18",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A10",
+          "pad": "23",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A10",
+          "pad": "52",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET4",
+      "net": "/A11",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A11",
+          "pad": "19",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A11",
+          "pad": "25",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A11",
+          "pad": "51",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET5",
+      "net": "/A12",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A12",
+          "pad": "20",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A12",
+          "pad": "4",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A12",
+          "pad": "50",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET6",
+      "net": "/A13",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A13",
+          "pad": "21",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A13",
+          "pad": "28",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A13",
+          "pad": "49",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET7",
+      "net": "/A14",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A14",
+          "pad": "22",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A14",
+          "pad": "48",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET8",
+      "net": "/A15",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A15",
+          "pad": "23",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A15",
+          "pad": "47",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET9",
+      "net": "/A16",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A16",
+          "pad": "24",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A16",
+          "pad": "46",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET10",
+      "net": "/A17",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A17",
+          "pad": "25",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A17",
+          "pad": "45",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET11",
+      "net": "/A18",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A18",
+          "pad": "26",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A18",
+          "pad": "44",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET12",
+      "net": "/A19",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A19",
+          "pad": "27",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A19",
+          "pad": "43",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET13",
+      "net": "/A2",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A2",
+          "pad": "8",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A2",
+          "pad": "10",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A2",
+          "pad": "60",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET14",
+      "net": "/A3",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A3",
+          "pad": "9",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A3",
+          "pad": "9",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A3",
+          "pad": "59",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET15",
+      "net": "/A4",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A4",
+          "pad": "10",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A4",
+          "pad": "8",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A4",
+          "pad": "58",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET16",
+      "net": "/A5",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A5",
+          "pad": "11",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A5",
+          "pad": "7",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A5",
+          "pad": "57",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET17",
+      "net": "/A6",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A6",
+          "pad": "12",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A6",
+          "pad": "6",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A6",
+          "pad": "56",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET18",
+      "net": "/A7",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A7",
+          "pad": "13",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A7",
+          "pad": "5",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A7",
+          "pad": "55",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET19",
+      "net": "/A8",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A8",
+          "pad": "15",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A8",
+          "pad": "27",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A8",
+          "pad": "54",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET20",
+      "net": "/A9",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "A9",
+          "pad": "16",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A9",
+          "pad": "26",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "A9",
+          "pad": "53",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET21",
+      "net": "/AEN",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "AEN",
+          "pad": "34",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "AEN",
+          "pad": "42",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET22",
+      "net": "/D0",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D0",
+          "pad": "36",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D0",
+          "pad": "40",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET23",
+      "net": "/D1",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D1",
+          "pad": "37",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D1",
+          "pad": "39",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET24",
+      "net": "/D2",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D2",
+          "pad": "38",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D2",
+          "pad": "38",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET25",
+      "net": "/D3",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D3",
+          "pad": "39",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D3",
+          "pad": "37",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET26",
+      "net": "/D4",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D4",
+          "pad": "40",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D4",
+          "pad": "36",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET27",
+      "net": "/D5",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D5",
+          "pad": "41",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D5",
+          "pad": "35",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET28",
+      "net": "/D6",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D6",
+          "pad": "42",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D6",
+          "pad": "34",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET29",
+      "net": "/D7",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "D7",
+          "pad": "43",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "D7",
+          "pad": "33",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET30",
+      "net": "/~IOR",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOR#",
+          "pad": "29",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOR#",
+          "pad": "14",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET31",
+      "net": "/~IOW",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOW#",
+          "pad": "30",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOW#",
+          "pad": "13",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET32",
+      "net": "GND",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "power"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "VSS",
+          "pad": "16",
+          "direction": "power",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "power",
+            "runtime_behavior": "validated_not_signal_simulated"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "1",
+          "platform": "ISA8",
+          "binding": null
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "10",
+          "platform": "ISA8",
+          "binding": null
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "GND",
+          "pad": "31",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET33",
+      "net": "VCC",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "power"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "VDD",
+          "pad": "32",
+          "direction": "power",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "power",
+            "runtime_behavior": "validated_not_signal_simulated"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "+5V",
+          "pad": "29",
+          "platform": "ISA8",
+          "binding": null
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "+5V",
+          "pad": "3",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET34",
+      "net": "/RSTDRV",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "RESETDRV",
+          "pad": "33",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "RESETDRV",
+          "pad": "2",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET35",
+      "net": "/IRQ9",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "pad": "4",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "pad": "4",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET41",
+      "net": "/~SMEMW",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "bus_control",
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "SMEMW#",
+          "pad": "32",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "WE#",
+          "pad": "31",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "bus_control",
+            "adapter": "PARALLEL_MEMORY_X8"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "SMEMW#",
+          "pad": "11",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET42",
+      "net": "/~SMEMR",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "bus_control",
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "SMEMR#",
+          "pad": "31",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "OE#",
+          "pad": "24",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "bus_control",
+            "adapter": "PARALLEL_MEMORY_X8"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "SMEMR#",
+          "pad": "12",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET51",
+      "net": "/IRQ5",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "pad": "1",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "pad": "23",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET52",
+      "net": "/IRQ4",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "pad": "2",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "pad": "24",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET53",
+      "net": "/IRQ3",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "pad": "3",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "pad": "25",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET59",
+      "net": "/IOCHRDY",
+      "operation": "platform_net",
+      "binding_kinds": [
+        "isa_controller"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "ISA8",
+          "signal": "IOCHRDY",
+          "pad": "35",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "isa_controller",
+            "register_read": "ReadRegister",
+            "register_write": "WriteRegister",
+            "dma_read": "RemoteDmaReadByte",
+            "dma_write": "RemoteDmaWriteByte",
+            "irq_event": "InterruptChanged"
+          }
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "instance_id": "BUS1",
+          "interface": "ISA8",
+          "signal": "IOCHRDY",
+          "pad": "41",
+          "platform": "ISA8",
+          "binding": null
+        }
+      ]
+    },
+    {
+      "id": "NET71",
+      "net": "/BA18",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A18",
+          "pad": "69",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A18",
+          "pad": "1",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET72",
+      "net": "/BA17",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A17",
+          "pad": "71",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A17",
+          "pad": "30",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET73",
+      "net": "/BA16",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A16",
+          "pad": "72",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A16",
+          "pad": "2",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET74",
+      "net": "/BD6",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data",
+        "serial_protocol"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D6",
+          "pad": "78",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D6",
+          "pad": "20",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DI",
+          "pad": "3",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "MICROWIRE_93LC46"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DI",
+          "pad": "78",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "RTL8019_MICROWIRE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET75",
+      "net": "/BD5",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data",
+        "serial_protocol"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D5",
+          "pad": "79",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D5",
+          "pad": "19",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CLK",
+          "pad": "2",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "MICROWIRE_93LC46"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CLK",
+          "pad": "79",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "RTL8019_MICROWIRE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET76",
+      "net": "/BD4",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D4",
+          "pad": "80",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D4",
+          "pad": "18",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET77",
+      "net": "/BD3",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D3",
+          "pad": "17",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D3",
+          "pad": "81",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET78",
+      "net": "/BD2",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D2",
+          "pad": "15",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D2",
+          "pad": "82",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET79",
+      "net": "/BD1",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D1",
+          "pad": "14",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D1",
+          "pad": "84",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET80",
+      "net": "/BD0",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D0",
+          "pad": "13",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D0",
+          "pad": "85",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET88",
+      "net": "/BA15",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A15",
+          "pad": "73",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A15",
+          "pad": "3",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET89",
+      "net": "/BA14",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_address"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "A14",
+          "pad": "74",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "A14",
+          "pad": "29",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_address",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET90",
+      "net": "/~BCS",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "bus_control",
+        "external_memory_bus"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "CE#",
+          "pad": "22",
+          "direction": "input",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "bus_control",
+            "adapter": "PARALLEL_MEMORY_X8"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "CE#",
+          "pad": "75",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET91",
+      "net": "/EECS",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "serial_protocol"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CS",
+          "pad": "1",
+          "direction": "input",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "MICROWIRE_93LC46"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "CS",
+          "pad": "76",
+          "direction": "output",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "RTL8019_MICROWIRE"
+          }
+        }
+      ]
+    },
+    {
+      "id": "NET92",
+      "net": "/BD7",
+      "operation": "internal_net",
+      "binding_kinds": [
+        "external_memory_bus",
+        "method_data",
+        "serial_protocol"
+      ],
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "BOOT_ROM",
+          "signal": "D7",
+          "pad": "77",
+          "direction": "bidirectional",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "external_memory_bus",
+            "adapter": "RTL8019_BOOT_ROM"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U2",
+          "interface": "PARALLEL_X8_MEMORY",
+          "signal": "D7",
+          "pad": "21",
+          "direction": "bidirectional",
+          "module_id": "VMB.MEM.SST39SF040",
+          "binding": {
+            "kind": "method_data",
+            "read": "ReadByte",
+            "write": "WriteByte"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U1",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DO",
+          "pad": "77",
+          "direction": "input",
+          "module_id": "VMB.NET.RTL8019AS",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "RTL8019_MICROWIRE"
+          }
+        },
+        {
+          "kind": "MODULE_PIN",
+          "instance_id": "U3",
+          "interface": "MICROWIRE_3WIRE",
+          "signal": "DO",
+          "pad": "4",
+          "direction": "output",
+          "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+          "binding": {
+            "kind": "serial_protocol",
+            "adapter": "MICROWIRE_93LC46"
+          }
+        }
+      ]
+    }
+  ],
+  "statistics": {
+    "platform_net": 41,
+    "internal_net": 15
+  },
+  "errors": [],
+  "ready": true
+}

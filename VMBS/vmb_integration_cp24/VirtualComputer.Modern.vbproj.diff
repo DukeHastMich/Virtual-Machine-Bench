@@ -1,0 +1,17 @@
+--- /mnt/data/vmb_actual/tree/VirtualComputer.Modern.vbproj	2026-09-16 16:52:28.000000000 +0000
++++ /mnt/data/vmb_integration_cp24/VirtualComputer.Modern.vbproj	2026-10-01 08:14:19.590032668 +0000
+@@ -1,4 +1,4 @@
+-﻿<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
++<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+   <PropertyGroup>
+     <OutputType>WinExe</OutputType>
+     <TargetFramework>net8.0-windows</TargetFramework>
+@@ -108,6 +108,8 @@
+     <Compile Include="MachineConfiguration.vb" />
+     <Compile Include="MachineBuildScript.vb" />
+     <Compile Include="MachineMaterialization.vb" />
++    <Compile Include="Generated Boards\ISA8 Ethernet\ISA8_Ethernet.GeneratedBoard.vb" />
++    <Compile Include="Generated Boards\ISA8 Ethernet\VmbGeneratedBoardRuntime.vb" />
+     <Compile Include="Motherboards\MotherboardCatalog.vb" />
+     <Compile Include="Motherboards\MotherboardRuntime.vb" />
+     <Compile Include="Motherboards\Common\MachineFabricContracts.vb" />

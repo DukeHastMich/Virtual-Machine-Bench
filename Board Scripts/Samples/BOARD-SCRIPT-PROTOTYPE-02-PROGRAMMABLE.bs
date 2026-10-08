@@ -1,0 +1,38 @@
+# Prototype 02: programmable logic is a physical component plus board-selected personality.
+# This is language-design syntax; no manufacturer/device facts are invented here.
+board prototype-02-programmable {
+    title "Board Script programmable-logic intent specimen";
+
+    component U_FPGA : $PART_ID_FROM_COMPONENT_STORE {
+        place 40 30 rot 0 side top;
+    }
+
+    power FPGA_CORE {
+        voltage $FROM_COMPONENT_AND_BOARD_DESIGN;
+        member U_FPGA.CORE_RAIL;
+    }
+
+    program U_FPGA {
+        kind fpga_bitstream;
+        payload "logic/main.bit";
+        sha256 $REQUIRED_CONTENT_HASH;
+        required true;
+    }
+
+    # Board-specific use of reusable FPGA resources belongs here, not in the part record.
+    pinmap U_FPGA {
+        ISA_D0 = $PACKAGE_PIN;
+        ISA_D1 = $PACKAGE_PIN;
+        SYSCLK = $CLOCK_CAPABLE_PACKAGE_PIN;
+    }
+
+    io_bank U_FPGA.BANK0 {
+        voltage $BOARD_SELECTED_VOLTAGE;
+        standard $BOARD_SELECTED_IO_STANDARD;
+    }
+
+    clock SYSCLK {
+        frequency $BOARD_SELECTED_FREQUENCY;
+        sink U_FPGA.SYSCLK;
+    }
+}

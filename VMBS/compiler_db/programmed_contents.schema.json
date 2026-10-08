@@ -1,0 +1,11 @@
+{
+  "format": "VMBS-PROGRAMMED-CONTENTS-1",
+  "principle": "Device identity is PART_ID; programmed bytes/equations belong to occurrence/build data.",
+  "binding_schema": {
+    "occurrence_id": "board instance",
+    "part_id": "physical device identity",
+    "content_kind": "rom|eprom|eeprom|flash|pal_gal|firmware",
+    "blob_ref": "content-addressed or project path",
+    "sha256": "required when contents present"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "checkpoint":"CP61",
+  "documents":[
+    {"parts":["6116"],"manufacturer":"Renesas","title":"6116 5.0V 2K x 8 Asynchronous Static RAM","url":"https://www.renesas.com/en/products/6116","facts":["2K x 8 organization","fully static asynchronous operation; no clocks or refresh","TTL-compatible I/O","variant access times and low-power/data-retention characteristics are device-specific"]},
+    {"parts":["AS6C6264"],"manufacturer":"Alliance Memory","title":"Low Power Asynchronous SRAM family","url":"https://www.alliancememory.com/product/low-power-asynchronous-sram/","facts":["8K x 8 organization","2.7V to 5.5V family listing","55 ns listed speed"]},
+    {"parts":["AS6C62256"],"manufacturer":"Alliance Memory","title":"32K x 8 Bit Low Power CMOS SRAM","url":"https://www.alliancememory.com/wp-content/uploads/AS6C62256-23-March-2016-rev1.2.pdf","facts":["32K x 8 organization","A0-A14 address inputs","DQ0-DQ7 bidirectional data","CE#, WE#, OE# control","tri-state output","fully static operation"]}
+  ],
+  "modeling_note":"Storage and digital control semantics are executable. Access timing, electrical thresholds/current, retention voltage and package-specific facts remain evidence-bound and are not generalized across aliases."
+}

@@ -1,0 +1,192 @@
+{
+  "format": "VMBS-FEASIBILITY-1",
+  "board": "ISA8_Ethernet",
+  "checks": [
+    {
+      "check": "NO_FABRICATED_ROUTE_BUDGETS",
+      "status": "PASS"
+    },
+    {
+      "check": "INTERFACE_GROUPING",
+      "status": "PASS",
+      "detail": "2 groups compiled"
+    }
+  ],
+  "result": "PASS_WITH_GAPS",
+  "blocking": [],
+  "gaps": [
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:32",
+      "net": "GND",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:33",
+      "net": "VCC",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:60",
+      "net": "/~IOCS16",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:61",
+      "net": "Net-(C1-Pad2)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:62",
+      "net": "Net-(C2-Pad2)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:63",
+      "net": "Net-(C3-Pad1)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:64",
+      "net": "Net-(C4-Pad1)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:69",
+      "net": "/LED_LINK",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:97",
+      "net": "/LED_CRS",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:111",
+      "net": "Net-(RN1-Pad7)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:112",
+      "net": "Net-(RN1-Pad8)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:113",
+      "net": "Net-(RN1-Pad6)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:114",
+      "net": "Net-(RN1-Pad5)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:115",
+      "net": "Net-(RN2-Pad5)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:116",
+      "net": "Net-(RN2-Pad6)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:117",
+      "net": "Net-(RN2-Pad8)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:118",
+      "net": "Net-(RN2-Pad7)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:119",
+      "net": "Net-(RN3-Pad7)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:120",
+      "net": "Net-(RN3-Pad8)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:121",
+      "net": "Net-(RN3-Pad6)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:122",
+      "net": "Net-(RN3-Pad5)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:124",
+      "net": "Net-(J1-PadL2)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:125",
+      "net": "Net-(J1-PadL3)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:130",
+      "net": "/AUI",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PATH_DIRECTION_AMBIGUOUS",
+      "path_id": "NETPATH:134",
+      "net": "Net-(RN4-Pad7)",
+      "severity": "BLOCKS_ACTIVE_ELECTRICAL_VERIFICATION"
+    },
+    {
+      "code": "PROGRAMMED_PAYLOAD_UNRESOLVED",
+      "subject": "U2",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "Programmed device exists but payload_id is unresolved."
+    },
+    {
+      "code": "PROGRAMMED_PAYLOAD_UNRESOLVED",
+      "subject": "U3",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "Programmed device exists but payload_id is unresolved."
+    },
+    {
+      "code": "UNTYPED_ENDPOINTS_REMAIN",
+      "subject": "ISA8_Ethernet.bs.v2",
+      "severity": "BLOCKS_VERIFICATION",
+      "detail": "216 net endpoints lack Component Store pin direction metadata; no direction was inferred."
+    }
+  ],
+  "summary": {
+    "checks": 2,
+    "blocking_conflicts": 0,
+    "knowledge_gaps": 28
+  }
+}

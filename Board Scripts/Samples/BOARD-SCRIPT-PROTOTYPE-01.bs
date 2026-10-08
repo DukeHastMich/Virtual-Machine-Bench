@@ -1,0 +1,31 @@
+# Prototype 01: board-level electrical/programmed intent without backend-language details.
+board prototype-01-intent {
+    title "Board Script Prototype 01 intent specimen";
+    units mm;
+    outline 100 80;
+
+    component U_ROM : eprom-27256-even {
+        place 30 20 rot 0 side top;
+    }
+
+    clock CPUCLK {
+        frequency 16 MHz;
+        source U_ROM.A0;
+    }
+
+    power VCC5 {
+        voltage 5 V;
+        member U_ROM.VCC;
+    }
+
+    program U_ROM {
+        kind firmware;
+        payload "example/firmware.bin";
+        required true;
+    }
+
+    constraint ISA_TRACE {
+        class = isa;
+        max_length_mm = 250;
+    }
+}

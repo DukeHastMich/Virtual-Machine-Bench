@@ -1,0 +1,10 @@
+{
+  "format": "VMBS-MANUAL-SOURCES-1",
+  "principle": "Manual evidence constrains semantics; unavailable facts remain TITS UP.",
+  "sources": [
+    {"subject":"RTL8019AS","manufacturer":"Realtek","document":"RTL8019AS Datasheet 2005-08-26","url":"https://www.tme.com/Document/f6444b58fe7d137bfcb43c6c92090b97/RTL8019AS.pdf","role":"behavior,pins,decode,timing"},
+    {"subject":"93LC46C","manufacturer":"Microchip","document":"DS20001749L","url":"https://ww1.microchip.com/downloads/aemDocuments/documents/MPD/ProductDocuments/DataSheets/93AA46A-B-C-93LC46A-B-C-93C46A-B-C-1-Kbit-Microwire-Compatible-Serial-EEPROM-Data-Sheet-DS20001749.pdf","role":"behavior,pins,electrical,timing"},
+    {"subject":"SST39SF040","manufacturer":"Microchip","document":"DS20005022","url":"https://ww1.microchip.com/downloads/aemDocuments/documents/MPD/ProductDocuments/DataSheets/SST39SF010A-SST39SF020A-SST39SF040-Data-Sheet-DS20005022.pdf","role":"behavior,pins,electrical,timing"},
+    {"subject":"Spartan-3A","manufacturer":"Xilinx/AMD","document":"DS529 + UG332","url":"https://docs.amd.com/","role":"programmable-logic architecture/configuration constraints"}
+  ]
+}

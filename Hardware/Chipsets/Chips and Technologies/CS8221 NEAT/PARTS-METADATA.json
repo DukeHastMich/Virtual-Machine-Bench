@@ -1,0 +1,42 @@
+{
+  "schema": "vmb.parts-metadata/1",
+  "family_id": "ct-cs8221-neat",
+  "family_name": "Chips and Technologies CS8221 NEAT",
+  "generated_from": [
+    "CS8221 New Enhanced AT (NEAT) Data Book, October 1987"
+  ],
+  "parts": [
+    {
+      "id": "ct-82c211",
+      "manufacturer": "Chips and Technologies",
+      "part_number": "82C211",
+      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
+      "role": "CPU/Bus Controller",
+      "scope": "chipset"
+    },
+    {
+      "id": "ct-82c212",
+      "manufacturer": "Chips and Technologies",
+      "part_number": "82C212",
+      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
+      "role": "Page/Interleave and EMS Memory Controller",
+      "scope": "chipset"
+    },
+    {
+      "id": "ct-82c215",
+      "manufacturer": "Chips and Technologies",
+      "part_number": "82C215",
+      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
+      "role": "Data/Address Buffer and parity logic",
+      "scope": "chipset"
+    },
+    {
+      "id": "ct-82c206",
+      "manufacturer": "Chips and Technologies",
+      "part_number": "82C206",
+      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
+      "role": "Integrated Peripherals Controller",
+      "scope": "chipset"
+    }
+  ]
+}

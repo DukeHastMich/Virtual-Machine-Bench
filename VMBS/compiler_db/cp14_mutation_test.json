@@ -1,0 +1,18 @@
+{
+  "test": "TOPOLOGY_MUTATION_CHANGES_DERIVATION",
+  "mutation": "SW3 pad1 detached from RN2 and tied to GND",
+  "before": {
+    "kind": "USER_CONTROL",
+    "bindings": [
+      {
+        "control": "SW3",
+        "element": 1
+      }
+    ]
+  },
+  "after": {
+    "kind": "INTERNAL_DEFAULT",
+    "value": 0
+  },
+  "pass": true
+}

@@ -2,26 +2,13 @@ Imports System
 Imports System.Text
 
 ' =============================================================================
-' IDE / ATA / ATAPI PRIMARY CHANNEL
+' IDE / ATA / ATAPI CHANNEL
 ' =============================================================================
-' Emulates the legacy primary IDE channel at:
-'
-'   1F0h  Data             (16-bit PIO data register)
-'   1F1h  Error / Features (read / write)
-'   1F2h  Sector Count     (ATA) / Interrupt Reason (ATAPI after PACKET)
-'   1F3h  Sector Number    (ATA)
-'   1F4h  Cylinder Low     (ATA) / ATAPI Byte Count Low
-'   1F5h  Cylinder High    (ATA) / ATAPI Byte Count High
-'   1F6h  Device / Head
-'   1F7h  Status / Command (read / write)
-'   3F6h  Alternate Status / Device Control (read / write)
-'
-' Physical layout represented here:
-'
-'   primary IDE channel
-'       device 0 (master) = ATA hard disk
-'       device 1 (slave)  = ATAPI CD-ROM
-'       IRQ14             = slave PIC input 6
+' One instance represents one legacy IDE channel. The command block, control
+' port and slave-PIC IRQ input are constructor straps so the same electrical
+' implementation can be used for the standard primary and secondary channels.
+' Each channel exposes two independent sockets. Either master or slave may be
+' empty, an ATA hard disk, or an ATAPI CD-ROM according to chassis configuration.
 '
 ' IMPORTANT MODELING RULES
 ' ------------------------
@@ -50,6 +37,12 @@ Imports System.Text
 ' This controller deliberately keeps device progress independent of IRQ service.
 ' A DOS driver is allowed to disable IDE interrupts and poll 1F7h/3F6h instead.
 ' =============================================================================
+Public Enum IdeDeviceKind As Byte
+    Empty = 0
+    AtaHardDisk = 1
+    AtapiCdRom = 2
+End Enum
+
 Public Class IdeController
     Implements IPortDevice, IWordPortDevice, IResettableDevice, IDisposable
 
@@ -139,11 +132,21 @@ Public Class IdeController
     End Class
 
     Private ReadOnly _pic As Pic8259
+    Private ReadOnly _commandBase As UInt16
+    Private ReadOnly _controlPort As UInt16
+    Private ReadOnly _systemIrq As Integer
+    Private ReadOnly _picIrqLine As Integer
+    Private ReadOnly _channelName As String
     Private ReadOnly _master As New IdeDeviceState()
     Private ReadOnly _slave As New IdeDeviceState()
 
-    Private _hardDisk As HardDiskImage
-    Private _cdrom As IsoImage
+    ' Socket population is independent of master/slave position.  A standard
+    ' IDE ribbon exposes two electrical positions; either may contain an ATA disk,
+    ' an ATAPI packet device, or nothing.  Media remains a separate host attachment.
+    Private _masterKind As IdeDeviceKind = IdeDeviceKind.AtaHardDisk
+    Private _slaveKind As IdeDeviceKind = IdeDeviceKind.AtapiCdRom
+    Private ReadOnly _hardDisks(1) As HardDiskImage
+    Private ReadOnly _cdroms(1) As IsoImage
 
     ' Device/Head and Device Control are channel-visible registers.  The Device
     ' bit in _driveHead selects which per-device task file is exposed at 1F1-1F5
@@ -151,8 +154,12 @@ Public Class IdeController
     Private _driveHead As Byte = &HA0
     Private _deviceControl As Byte
 
-    ' Host-only flight recorder.  Entries are made at ATA sector boundaries,
-    ' never by issuing extra guest I/O cycles, and survive processor-only reset.
+    ' Host-only flight recorder. Keep the high-frequency ATA hard-disk command/
+    ' sector strings disabled by default: FAT metadata operations can hit this path
+    ' hard enough that formatting/enqueuing trace text becomes guest-visible lag.
+    ' Cheap numeric counters remain live, and ATAPI / low-frequency channel events
+    ' are still retained for diagnosis. No guest I/O cycles are added by diagnostics.
+    Private Const TraceAtaHardDiskHotPathInBed As Boolean = False
     Private Const AtaDiagnosticCapacityInBed As Integer = 128
     Private ReadOnly _ataDiagnosticInBed As New Collections.Generic.Queue(Of String)()
     Private _ataDiagnosticSequenceInBed As ULong
@@ -162,79 +169,208 @@ Public Class IdeController
     Private _atapiReadSectorsInBed As ULong
     Private _atapiDataPhasesInBed As ULong
 
-    Public Event Activity()
+    Public Event Activity(slaveInBed As Boolean, kindInBed As IdeDeviceKind)
 
-    ' pic is the slave 8259 in an AT configuration; IDE is its local IRQ6,
-    ' which the cascaded pair exposes to the CPU as IRQ14.
-    Public Sub New(pic As Pic8259)
+    ' pic is the slave 8259 in an AT configuration. Standard PC/AT resources are
+    ' primary 1F0h/3F6h/IRQ14 (slave input 6) and secondary 170h/376h/IRQ15
+    ' (slave input 7). Alternate cards can still instantiate this channel with
+    ' different straps later without changing its task-file behavior.
+    Public Sub New(pic As Pic8259,
+                   Optional commandBase As UInt16 = &H1F0US,
+                   Optional controlPort As UInt16 = &H3F6US,
+                   Optional systemIrq As Integer = 14,
+                   Optional channelName As String = "Primary")
         If pic Is Nothing Then Throw New ArgumentNullException(NameOf(pic))
+        If systemIrq < 8 OrElse systemIrq > 15 Then Throw New ArgumentOutOfRangeException(NameOf(systemIrq))
+        If commandBase > &HFFF8US Then Throw New ArgumentOutOfRangeException(NameOf(commandBase))
         _pic = pic
+        _commandBase = commandBase
+        _controlPort = controlPort
+        _systemIrq = systemIrq
+        _picIrqLine = systemIrq - 8
+        _channelName = If(String.IsNullOrWhiteSpace(channelName), "IDE", channelName.Trim())
         ResetDevice()
+    End Sub
+
+    Public ReadOnly Property CommandBase As UInt16
+        Get
+            Return _commandBase
+        End Get
+    End Property
+
+    Public ReadOnly Property ControlPort As UInt16
+        Get
+            Return _controlPort
+        End Get
+    End Property
+
+    Public ReadOnly Property SystemIrq As Integer
+        Get
+            Return _systemIrq
+        End Get
+    End Property
+
+    Public ReadOnly Property ChannelName As String
+        Get
+            Return _channelName
+        End Get
+    End Property
+
+    Public ReadOnly Property MasterInstalled As Boolean
+        Get
+            Return _masterKind <> IdeDeviceKind.Empty
+        End Get
+    End Property
+
+    Public ReadOnly Property SlaveInstalled As Boolean
+        Get
+            Return _slaveKind <> IdeDeviceKind.Empty
+        End Get
+    End Property
+
+    Public ReadOnly Property MasterDeviceKind As IdeDeviceKind
+        Get
+            Return _masterKind
+        End Get
+    End Property
+
+    Public ReadOnly Property SlaveDeviceKind As IdeDeviceKind
+        Get
+            Return _slaveKind
+        End Get
+    End Property
+
+    Public Function GetDeviceKind(slaveInBed As Boolean) As IdeDeviceKind
+        Return If(slaveInBed, _slaveKind, _masterKind)
+    End Function
+
+    Public Sub ConfigureDeviceKinds(masterKindInBed As IdeDeviceKind,
+                                    slaveKindInBed As IdeDeviceKind)
+        ValidateDeviceKindInBed(masterKindInBed)
+        ValidateDeviceKindInBed(slaveKindInBed)
+
+        If _masterKind <> masterKindInBed Then DisposeMediaForSlotInBed(False)
+        If _slaveKind <> slaveKindInBed Then DisposeMediaForSlotInBed(True)
+        _masterKind = masterKindInBed
+        _slaveKind = slaveKindInBed
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("POPULATION master=" & DeviceKindTextInBed(_masterKind) &
+                          " slave=" & DeviceKindTextInBed(_slaveKind))
+        End If
+        ResetDevice()
+    End Sub
+
+    ' Compatibility wrapper retained for callers from the first dual-channel
+    ' brick: an installed master meant ATA and an installed slave meant ATAPI.
+    Public Sub ConfigureInstalledDevices(masterInstalled As Boolean, slaveInstalled As Boolean)
+        ConfigureDeviceKinds(If(masterInstalled, IdeDeviceKind.AtaHardDisk, IdeDeviceKind.Empty),
+                             If(slaveInstalled, IdeDeviceKind.AtapiCdRom, IdeDeviceKind.Empty))
+    End Sub
+
+    Private Shared Sub ValidateDeviceKindInBed(kindInBed As IdeDeviceKind)
+        Select Case kindInBed
+            Case IdeDeviceKind.Empty, IdeDeviceKind.AtaHardDisk, IdeDeviceKind.AtapiCdRom
+                Return
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(kindInBed))
+        End Select
     End Sub
 
     ' -------------------------------------------------------------------------
     ' Physical reset / media attachment
     ' -------------------------------------------------------------------------
     Public Sub ResetDevice() Implements IResettableDevice.ResetDevice
-        ' Motherboard RESET resets both devices and the shared channel controls,
-        ' but it does not detach the physical media supplied by the host.
+        ' Motherboard RESET resets both devices and shared channel controls, but
+        ' does not detach host media from mechanisms that remain installed.
         _driveHead = &HA0
         _deviceControl = 0
-        ResetAtaDeviceState(_master)
-        ResetAtapiDeviceState(_slave, False)
-        _pic.ClearIrq(6)
+        ResetDeviceStateForKindInBed(_master, _masterKind, False)
+        ResetDeviceStateForKindInBed(_slave, _slaveKind, False)
+        _pic.ClearIrq(_picIrqLine)
     End Sub
 
-    Public Sub MountHardDisk(image As HardDiskImage)
-        If _hardDisk IsNot Nothing Then _hardDisk.Dispose()
-        _hardDisk = image
+    Public Sub MountHardDisk(image As HardDiskImage, Optional slaveInBed As Boolean = False)
+        If image Is Nothing Then Throw New ArgumentNullException(NameOf(image))
+        If GetDeviceKind(slaveInBed) <> IdeDeviceKind.AtaHardDisk Then
+            Throw New InvalidOperationException(SocketDescriptionInBed(slaveInBed) & " does not contain an ATA hard disk.")
+        End If
+        Dim slotInBed As Integer = SlotIndexInBed(slaveInBed)
+        If _hardDisks(slotInBed) IsNot Nothing Then _hardDisks(slotInBed).Dispose()
+        _hardDisks(slotInBed) = image
     End Sub
 
-    Public Sub MountCdRom(image As IsoImage)
-        If _cdrom IsNot Nothing Then _cdrom.Dispose()
-        _cdrom = image
-        TraceAtaInBed("ATAPI media mounted sectors=" & image.SectorCount.ToString())
-
-        ' A newly inserted medium is reported once as UNIT ATTENTION / 28h.
-        ' The next ordinary packet command returns CHECK CONDITION and consumes
-        ' the pending event. The sense tuple remains available to REQUEST SENSE,
-        ' but a legacy driver that retries directly can then proceed normally.
-        SetUnitAttention(&H28, &H0)
+    Public Sub MountCdRom(image As IsoImage, Optional slaveInBed As Boolean = True)
+        If image Is Nothing Then Throw New ArgumentNullException(NameOf(image))
+        If GetDeviceKind(slaveInBed) <> IdeDeviceKind.AtapiCdRom Then
+            Throw New InvalidOperationException(SocketDescriptionInBed(slaveInBed) & " does not contain an ATAPI CD-ROM.")
+        End If
+        Dim slotInBed As Integer = SlotIndexInBed(slaveInBed)
+        If _cdroms(slotInBed) IsNot Nothing Then _cdroms(slotInBed).Dispose()
+        _cdroms(slotInBed) = image
+        Dim stateInBed As IdeDeviceState = StateForSlotInBed(slaveInBed)
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed(SocketDescriptionInBed(slaveInBed) & " ATAPI media mounted sectors=" & image.SectorCount.ToString())
+        End If
+        SetUnitAttention(stateInBed, &H28, &H0)
     End Sub
 
-    Public Sub EjectHardDisk()
-        If _hardDisk IsNot Nothing Then _hardDisk.Dispose()
-        _hardDisk = Nothing
+    Public Sub EjectHardDisk(Optional slaveInBed As Boolean = False)
+        Dim slotInBed As Integer = SlotIndexInBed(slaveInBed)
+        If _hardDisks(slotInBed) IsNot Nothing Then _hardDisks(slotInBed).Dispose()
+        _hardDisks(slotInBed) = Nothing
     End Sub
 
-    Public Sub EjectCdRom()
-        If _cdrom IsNot Nothing Then _cdrom.Dispose()
-        _cdrom = Nothing
-        TraceAtaInBed("ATAPI media ejected")
-        SetUnitAttention(&H28, &H0)
+    Public Sub EjectCdRom(Optional slaveInBed As Boolean = True)
+        Dim slotInBed As Integer = SlotIndexInBed(slaveInBed)
+        If _cdroms(slotInBed) IsNot Nothing Then _cdroms(slotInBed).Dispose()
+        _cdroms(slotInBed) = Nothing
+        If GetDeviceKind(slaveInBed) = IdeDeviceKind.AtapiCdRom Then
+            Dim stateInBed As IdeDeviceState = StateForSlotInBed(slaveInBed)
+            If RuntimeDiagnostics.Enabled Then
+                TraceAtaInBed(SocketDescriptionInBed(slaveInBed) & " ATAPI media ejected")
+            End If
+            SetUnitAttention(stateInBed, &H28, &H0)
+        End If
     End Sub
 
     Public ReadOnly Property HardDiskSectorCount As Long
         Get
-            Return If(_hardDisk Is Nothing, 0, _hardDisk.SectorCount)
+            Return GetHardDiskSectorCount(False)
         End Get
     End Property
 
     Public ReadOnly Property CdRomMounted As Boolean
         Get
-            Return _cdrom IsNot Nothing
+            Return IsCdRomMounted(True)
         End Get
     End Property
 
-    ' BIOS-facing helpers remain intentionally outside the task-file protocol.
-    ' They represent firmware use of the same physical disk, not a second disk.
+    Public Function GetHardDiskSectorCount(slaveInBed As Boolean) As Long
+        If GetDeviceKind(slaveInBed) <> IdeDeviceKind.AtaHardDisk Then Return 0
+        Dim diskInBed As HardDiskImage = HardDiskForSlotInBed(slaveInBed)
+        Return If(diskInBed Is Nothing, 0, diskInBed.SectorCount)
+    End Function
+
+    Public Function IsCdRomMounted(slaveInBed As Boolean) As Boolean
+        Return GetDeviceKind(slaveInBed) = IdeDeviceKind.AtapiCdRom AndAlso CdRomForSlotInBed(slaveInBed) IsNot Nothing
+    End Function
+
+    Public Function GetHardDiskIdentity(slaveInBed As Boolean) As HardDiskIdentity
+        Dim diskInBed As HardDiskImage = HardDiskForSlotInBed(slaveInBed)
+        Return If(diskInBed Is Nothing, Nothing, diskInBed.Identity)
+    End Function
+
+    ' BIOS-facing helpers intentionally target device 0 on this channel.  The
+    ' present BIOS boots the primary master; secondary/slave discovery is through
+    ' the normal IDE task file until BIOS fixed-disk enumeration is expanded.
     Public Function BiosRead(lba As Long, count As Integer) As Byte()
-        If _hardDisk Is Nothing OrElse count < 1 OrElse lba < 0 OrElse lba + count > _hardDisk.SectorCount Then Return Nothing
-        RaiseEvent Activity()
+        Dim diskInBed As HardDiskImage = _hardDisks(0)
+        If _masterKind <> IdeDeviceKind.AtaHardDisk OrElse diskInBed Is Nothing OrElse count < 1 OrElse lba < 0 OrElse lba + count > diskInBed.SectorCount Then Return Nothing
+        RaiseEvent Activity(False, IdeDeviceKind.AtaHardDisk)
         Try
             Dim result(count * 512 - 1) As Byte
             For index As Integer = 0 To count - 1
-                Array.Copy(_hardDisk.ReadSector(lba + index), 0, result, index * 512, 512)
+                Array.Copy(diskInBed.ReadSector(lba + index), 0, result, index * 512, 512)
             Next
             Return result
         Catch
@@ -243,22 +379,63 @@ Public Class IdeController
     End Function
 
     Public Function BiosWrite(lba As Long, data As Byte()) As Boolean
-        If _hardDisk Is Nothing OrElse data Is Nothing OrElse data.Length = 0 OrElse data.Length Mod 512 <> 0 Then Return False
-        RaiseEvent Activity()
+        Dim diskInBed As HardDiskImage = _hardDisks(0)
+        If _masterKind <> IdeDeviceKind.AtaHardDisk OrElse diskInBed Is Nothing OrElse data Is Nothing OrElse data.Length = 0 OrElse data.Length Mod 512 <> 0 Then Return False
+        RaiseEvent Activity(False, IdeDeviceKind.AtaHardDisk)
         Dim count As Integer = data.Length \ 512
-        If lba < 0 OrElse lba + count > _hardDisk.SectorCount Then Return False
+        If lba < 0 OrElse lba + count > diskInBed.SectorCount Then Return False
         Try
             For index As Integer = 0 To count - 1
                 Dim sectorData(511) As Byte
                 Array.Copy(data, index * 512, sectorData, 0, 512)
-                _hardDisk.WriteSector(lba + index, sectorData)
+                diskInBed.WriteSector(lba + index, sectorData)
             Next
-            _hardDisk.Flush()
+            diskInBed.Flush()
             Return True
         Catch
             Return False
         End Try
     End Function
+
+    Private Shared Function SlotIndexInBed(slaveInBed As Boolean) As Integer
+        Return If(slaveInBed, 1, 0)
+    End Function
+
+    Private Function StateForSlotInBed(slaveInBed As Boolean) As IdeDeviceState
+        Return If(slaveInBed, _slave, _master)
+    End Function
+
+    Private Function HardDiskForSlotInBed(slaveInBed As Boolean) As HardDiskImage
+        Return _hardDisks(SlotIndexInBed(slaveInBed))
+    End Function
+
+    Private Function CdRomForSlotInBed(slaveInBed As Boolean) As IsoImage
+        Return _cdroms(SlotIndexInBed(slaveInBed))
+    End Function
+
+    Private Function HardDiskForStateInBed(stateInBed As IdeDeviceState) As HardDiskImage
+        Return If(Object.ReferenceEquals(stateInBed, _slave), _hardDisks(1), _hardDisks(0))
+    End Function
+
+    Private Function CdRomForStateInBed(stateInBed As IdeDeviceState) As IsoImage
+        Return If(Object.ReferenceEquals(stateInBed, _slave), _cdroms(1), _cdroms(0))
+    End Function
+
+    Private Function DeviceKindForStateInBed(stateInBed As IdeDeviceState) As IdeDeviceKind
+        Return If(Object.ReferenceEquals(stateInBed, _slave), _slaveKind, _masterKind)
+    End Function
+
+    Private Function SocketDescriptionInBed(slaveInBed As Boolean) As String
+        Return _channelName & " " & If(slaveInBed, "slave", "master") & " socket"
+    End Function
+
+    Private Sub DisposeMediaForSlotInBed(slaveInBed As Boolean)
+        Dim indexInBed As Integer = SlotIndexInBed(slaveInBed)
+        If _hardDisks(indexInBed) IsNot Nothing Then _hardDisks(indexInBed).Dispose()
+        If _cdroms(indexInBed) IsNot Nothing Then _cdroms(indexInBed).Dispose()
+        _hardDisks(indexInBed) = Nothing
+        _cdroms(indexInBed) = Nothing
+    End Sub
 
     Private ReadOnly Property SlaveSelected As Boolean
         Get
@@ -272,40 +449,66 @@ Public Class IdeController
         End Get
     End Property
 
+
+    Private ReadOnly Property SelectedDeviceKind As IdeDeviceKind
+        Get
+            Return If(SlaveSelected, _slaveKind, _masterKind)
+        End Get
+    End Property
+
+    Private ReadOnly Property SelectedDeviceInstalled As Boolean
+        Get
+            Return SelectedDeviceKind <> IdeDeviceKind.Empty
+        End Get
+    End Property
+
     ' -------------------------------------------------------------------------
     ' I/O decode
     ' -------------------------------------------------------------------------
     Public Function HandlesPort(port As UInt16) As Boolean Implements IPortDevice.HandlesPort
-        Return (port >= &H1F0 AndAlso port <= &H1F7) OrElse port = &H3F6
+        Dim portValueInBed As Integer = CInt(port)
+        Dim baseInBed As Integer = CInt(_commandBase)
+        Return (portValueInBed >= baseInBed AndAlso portValueInBed <= baseInBed + 7) OrElse port = _controlPort
     End Function
 
     Public Function ReadPort(port As UInt16) As Byte Implements IPortDevice.ReadPort
+        Dim offsetInBed As Integer = CInt(port) - CInt(_commandBase)
         Dim state As IdeDeviceState = SelectedDevice
 
-        Select Case port
-            Case &H1F0
+        If port = _controlPort Then
+            If Not SelectedDeviceInstalled Then Return 0
+            Return state.Status
+        End If
+        If offsetInBed < 0 OrElse offsetInBed > 7 Then Return &HFF
+
+        If Not SelectedDeviceInstalled Then
+            If offsetInBed = 0 Then Return &HFF
+            If offsetInBed = 6 Then Return _driveHead
+            Return 0
+        End If
+
+        Select Case offsetInBed
+            Case 0
                 ' Byte accesses to the data port are unusual on an ATAPI device.
                 ' Preserve historical behavior by consuming one 16-bit word and
                 ' returning its low byte. Normal ATA/ATAPI data transfers use INSW.
                 Return CByte(ReadDataWord() And &HFFUS)
-            Case &H1F1
+            Case 1
                 Return state.ErrorRegister
-            Case &H1F2
+            Case 2
                 Return state.SectorCount
-            Case &H1F3
+            Case 3
                 Return state.LbaLow
-            Case &H1F4
+            Case 4
                 Return state.LbaMid
-            Case &H1F5
+            Case 5
                 Return state.LbaHigh
-            Case &H1F6
+            Case 6
                 Return _driveHead
-            Case &H1F7
+            Case 7
                 ' Reading regular Status acknowledges the channel IRQ. Reading
-                ' Alternate Status at 3F6h explicitly does NOT acknowledge it.
-                _pic.ClearIrq(6)
-                Return state.Status
-            Case &H3F6
+                ' Alternate Status explicitly does NOT acknowledge it.
+                _pic.ClearIrq(_picIrqLine)
                 Return state.Status
             Case Else
                 Return &HFF
@@ -313,40 +516,56 @@ Public Class IdeController
     End Function
 
     Public Sub WritePort(port As UInt16, value As Byte) Implements IPortDevice.WritePort
-        Dim state As IdeDeviceState = SelectedDevice
+        Dim offsetInBed As Integer = CInt(port) - CInt(_commandBase)
 
-        Select Case port
-            Case &H1F0
+        If port = _controlPort Then
+            WriteDeviceControl(value)
+            Return
+        End If
+        If offsetInBed < 0 OrElse offsetInBed > 7 Then Return
+
+        ' Device/Head is electrically shared by the channel and must remain
+        ' writable even when the newly selected socket is physically empty.
+        If offsetInBed = 6 Then
+            Dim oldSlaveInBed As Boolean = SlaveSelected
+            _driveHead = value
+            Dim newSlaveInBed As Boolean = SlaveSelected
+            If oldSlaveInBed <> newSlaveInBed Then
+                If RuntimeDiagnostics.Enabled Then
+                    TraceAtaInBed("SELECT " & If(newSlaveInBed, "slave", "master") &
+                                  " kind=" & DeviceKindTextInBed(SelectedDeviceKind))
+                End If
+            End If
+            Return
+        End If
+
+        If Not SelectedDeviceInstalled Then Return
+        Dim state As IdeDeviceState = SelectedDevice
+        Select Case offsetInBed
+            Case 0
                 WriteDataWord(value)
-            Case &H1F1
+            Case 1
                 state.Features = value
-            Case &H1F2
+            Case 2
                 state.SectorCount = value
-            Case &H1F3
+            Case 3
                 state.LbaLow = value
-            Case &H1F4
+            Case 4
                 state.LbaMid = value
-            Case &H1F5
+            Case 5
                 state.LbaHigh = value
-            Case &H1F6
-                ' Device selection is a channel operation. No task-file values are
-                ' copied here: selecting a device simply exposes THAT DEVICE'S task
-                ' file. This is the key to preserving distinct ATA/ATAPI signatures.
-                _driveHead = value
-            Case &H1F7
+            Case 7
                 ExecuteCommand(value)
-            Case &H3F6
-                WriteDeviceControl(value)
         End Select
     End Sub
 
     Public Function ReadPortWord(port As UInt16) As UInt16 Implements IWordPortDevice.ReadPortWord
-        If port = &H1F0 Then Return ReadDataWord()
+        If port = _commandBase Then Return ReadDataWord()
         Return CUShort(ReadPort(port) Or (CUShort(ReadPort(CUShort(port + 1))) << 8))
     End Function
 
     Public Sub WritePortWord(port As UInt16, value As UInt16) Implements IWordPortDevice.WritePortWord
-        If port = &H1F0 Then
+        If port = _commandBase Then
             WriteDataWord(value)
         Else
             WritePort(port, CByte(value And &HFFUS))
@@ -390,7 +609,7 @@ Public Class IdeController
                 state.Data = Nothing
                 state.DataIndex = 0
                 state.Transfer = TransferKind.None
-                ExecutePacket(packet)
+                ExecutePacket(state, packet)
 
             Case TransferKind.AtaWrite
                 CommitAtaWrite(state)
@@ -402,11 +621,12 @@ Public Class IdeController
     ' -------------------------------------------------------------------------
     Private Sub ExecuteCommand(command As Byte)
         Dim state As IdeDeviceState = SelectedDevice
+        If Not SelectedDeviceInstalled Then Return
 
-        If (SlaveSelected AndAlso _cdrom IsNot Nothing) OrElse
-           (Not SlaveSelected AndAlso _hardDisk IsNot Nothing) Then
-            RaiseEvent Activity()
-        End If
+        Dim mediaAttachedInBed As Boolean =
+            (SelectedDeviceKind = IdeDeviceKind.AtaHardDisk AndAlso HardDiskForStateInBed(state) IsNot Nothing) OrElse
+            (SelectedDeviceKind = IdeDeviceKind.AtapiCdRom AndAlso CdRomForStateInBed(state) IsNot Nothing)
+        If mediaAttachedInBed Then RaiseEvent Activity(SlaveSelected, SelectedDeviceKind)
 
         ' A new command replaces the selected device's previous transient transfer
         ' state. The other device's task file and transfer bookkeeping are untouched.
@@ -414,30 +634,44 @@ Public Class IdeController
         state.ErrorRegister = 0
         ClearTransfer(state)
 
-        If SlaveSelected Then
-            ExecuteAtapiCommand(state, command)
-        Else
-            ExecuteAtaCommand(state, command)
-        End If
+        Select Case SelectedDeviceKind
+            Case IdeDeviceKind.AtaHardDisk
+                ExecuteAtaCommand(state, command)
+            Case IdeDeviceKind.AtapiCdRom
+                ExecuteAtapiCommand(state, command)
+            Case Else
+                ' Empty sockets never reach this branch because SelectedDeviceInstalled
+                ' is checked above. Keep the electrically quiet behavior explicit.
+                Return
+        End Select
     End Sub
 
     Private Sub ExecuteAtaCommand(state As IdeDeviceState, command As Byte)
-        If _hardDisk Is Nothing Then
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If hardDiskInBed Is Nothing Then
             FailCommand(state, &H4)
             Return
         End If
 
         Select Case command
             Case &H20, &H21                   ' READ SECTORS / READ SECTORS NO RETRY
-                TraceAtaInBed("READ command count=" & EffectiveSectorCount(state).ToString())
+                If RuntimeDiagnostics.Enabled AndAlso TraceAtaHardDiskHotPathInBed Then
+                    If RuntimeDiagnostics.Enabled Then
+                        TraceAtaInBed("READ command count=" & EffectiveSectorCount(state).ToString())
+                    End If
+                End If
                 PrepareAtaRead(state)
 
             Case &H30, &H31                   ' WRITE SECTORS / WRITE SECTORS NO RETRY
                 state.PendingLba = CurrentLba(state)
                 state.PendingSectors = EffectiveSectorCount(state)
-                TraceAtaInBed("WRITE command lba=" & state.PendingLba.ToString() &
-                              " count=" & state.PendingSectors.ToString())
-                If state.PendingLba < 0 OrElse state.PendingLba + state.PendingSectors > _hardDisk.SectorCount Then
+                If RuntimeDiagnostics.Enabled AndAlso TraceAtaHardDiskHotPathInBed Then
+                    If RuntimeDiagnostics.Enabled Then
+                        TraceAtaInBed("WRITE command lba=" & state.PendingLba.ToString() &
+                                      " count=" & state.PendingSectors.ToString())
+                    End If
+                End If
+                If state.PendingLba < 0 OrElse state.PendingLba + state.PendingSectors > hardDiskInBed.SectorCount Then
                     FailCommand(state, &H10)
                     Return
                 End If
@@ -445,7 +679,7 @@ Public Class IdeController
                 StartNextAtaWriteSector(state)
 
             Case &HE7                         ' FLUSH CACHE
-                _hardDisk.Flush()
+                hardDiskInBed.Flush()
                 FinishAtaCommand(state)
 
             Case &HEC                         ' IDENTIFY DEVICE
@@ -460,9 +694,11 @@ Public Class IdeController
     End Sub
 
     Private Sub ExecuteAtapiCommand(state As IdeDeviceState, command As Byte)
-        TraceAtaInBed("ATAPI ATA command=" & command.ToString("X2") &
-                      " features=" & state.Features.ToString("X2") &
-                      " limit=" & state.LbaHigh.ToString("X2") & state.LbaMid.ToString("X2"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI ATA command=" & command.ToString("X2") &
+                          " features=" & state.Features.ToString("X2") &
+                          " limit=" & state.LbaHigh.ToString("X2") & state.LbaMid.ToString("X2"))
+        End If
         Select Case command
             Case &HA0                         ' PACKET
                 BeginPacketCommand(state)
@@ -470,19 +706,50 @@ Public Class IdeController
             Case &HA1                         ' IDENTIFY PACKET DEVICE
                 PrepareIdentify(state, True)
 
+            Case &HEC, &H20, &H21            ' ATA IDENTIFY / READ probes against packet device
+                ' Early ATAPI-aware DOS drivers commonly probe an IDE position with
+                ' ATA IDENTIFY (or READ) and then look for the packet signature after
+                ' the command aborts.  ATAPI requires these commands to return ABRT
+                ' while restoring 01h/01h/14h/EBh in the task file.
+                AbortAtaProbeAsAtapiInBed(state)
+
             Case Else
                 FailCommand(state, &H4)       ' ABRT unsupported ATA command
         End Select
+    End Sub
+
+    Private Sub AbortAtaProbeAsAtapiInBed(state As IdeDeviceState)
+        ClearTransfer(state)
+        state.ErrorRegister = &H4             ' ABRT
+        state.SectorCount = 1
+        state.LbaLow = 1
+        state.LbaMid = &H14
+        state.LbaHigh = &HEB
+        ' Preserve the legacy-ready status that the real DOS driver path already
+        ' proved it expects.  The pre-refactor controller completed unsupported
+        ' ATA probes with DRDY+DSC+ERR (51h) while leaving the ATAPI signature in
+        ' 1F2h-1F5h.  VU-CCD/VIDE-CDD-style polling waits for the 50h ready/seek-
+        ' complete baseline; returning only ERR (01h) makes the device look stuck.
+        state.Status = StatusReadyComplete Or StatusError
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI ATA probe aborted; signature=01/01/14/EB ST=" & state.Status.ToString("X2"))
+        End If
+        RaiseInterrupt()
     End Sub
 
     ' -------------------------------------------------------------------------
     ' ATA disk transfers
     ' -------------------------------------------------------------------------
     Private Sub PrepareAtaRead(state As IdeDeviceState)
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If hardDiskInBed Is Nothing Then
+            FailCommand(state, &H4)
+            Return
+        End If
         state.PendingLba = CurrentLba(state)
         state.PendingSectors = EffectiveSectorCount(state)
 
-        If state.PendingLba < 0 OrElse state.PendingLba + state.PendingSectors > _hardDisk.SectorCount Then
+        If state.PendingLba < 0 OrElse state.PendingLba + state.PendingSectors > hardDiskInBed.SectorCount Then
             FailCommand(state, &H10)
             Return
         End If
@@ -496,15 +763,24 @@ Public Class IdeController
     ' sector as a new DRQ/IRQ phase.  Keeping that electrical boundary matters
     ' to protected-mode disk code which deliberately waits between sectors.
     Private Sub StartNextAtaReadSector(state As IdeDeviceState)
-        Dim block As Byte() = _hardDisk.ReadSector(state.PendingLba)
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If hardDiskInBed Is Nothing Then
+            FailCommand(state, &H4)
+            Return
+        End If
+        Dim block As Byte() = hardDiskInBed.ReadSector(state.PendingLba)
         ReDim state.Data(511)
         Array.Copy(block, 0, state.Data, 0, 512)
         state.DataIndex = 0
         state.Transfer = TransferKind.AtaRead
         state.Status = StatusReadyComplete Or StatusDataRequest
-        _ataReadSectorPhasesInBed += 1UL
-        TraceAtaInBed("READ DRQ lba=" & state.PendingLba.ToString() &
-                      " remaining=" & state.PendingSectors.ToString())
+        If RuntimeDiagnostics.Enabled Then _ataReadSectorPhasesInBed += 1UL
+        If RuntimeDiagnostics.Enabled AndAlso TraceAtaHardDiskHotPathInBed Then
+            If RuntimeDiagnostics.Enabled Then
+                TraceAtaInBed("READ DRQ lba=" & state.PendingLba.ToString() &
+                              " remaining=" & state.PendingSectors.ToString())
+            End If
+        End If
         RaiseInterrupt()
     End Sub
 
@@ -513,9 +789,13 @@ Public Class IdeController
         state.DataIndex = 0
         state.Transfer = TransferKind.AtaWrite
         state.Status = StatusReadyComplete Or StatusDataRequest
-        _ataWriteSectorPhasesInBed += 1UL
-        TraceAtaInBed("WRITE DRQ lba=" & state.PendingLba.ToString() &
-                      " remaining=" & state.PendingSectors.ToString())
+        If RuntimeDiagnostics.Enabled Then _ataWriteSectorPhasesInBed += 1UL
+        If RuntimeDiagnostics.Enabled AndAlso TraceAtaHardDiskHotPathInBed Then
+            If RuntimeDiagnostics.Enabled Then
+                TraceAtaInBed("WRITE DRQ lba=" & state.PendingLba.ToString() &
+                              " remaining=" & state.PendingSectors.ToString())
+            End If
+        End If
     End Sub
 
     Private Function CompleteAtaSector(state As IdeDeviceState) As Boolean
@@ -535,7 +815,9 @@ Public Class IdeController
             Return
         End If
 
-        Dim identity As HardDiskIdentity = _hardDisk.Identity
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If hardDiskInBed Is Nothing Then Return
+        Dim identity As HardDiskIdentity = hardDiskInBed.Identity
         Dim sectorsPerCylinder As Long = CLng(identity.BiosHeads) * identity.BiosSectorsPerTrack
         Dim cylinder As Long = lba \ sectorsPerCylinder
         Dim withinCylinder As Long = lba Mod sectorsPerCylinder
@@ -548,13 +830,18 @@ Public Class IdeController
     End Sub
 
     Private Sub CommitAtaWrite(state As IdeDeviceState)
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If hardDiskInBed Is Nothing Then
+            FailCommand(state, &H4)
+            Return
+        End If
         Try
-            _hardDisk.WriteSector(state.PendingLba, state.Data)
+            hardDiskInBed.WriteSector(state.PendingLba, state.Data)
             If CompleteAtaSector(state) Then
                 StartNextAtaWriteSector(state)
                 RaiseInterrupt()
             Else
-                _hardDisk.Flush()
+                hardDiskInBed.Flush()
                 FinishAtaCommand(state)
             End If
         Catch
@@ -575,9 +862,10 @@ Public Class IdeController
         Dim head As Integer = _driveHead And &HF
         Dim cylinder As Integer = state.LbaMid Or (CInt(state.LbaHigh) << 8)
 
-        If sector = 0 OrElse _hardDisk Is Nothing Then Return -1
+        Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+        If sector = 0 OrElse hardDiskInBed Is Nothing Then Return -1
 
-        Dim identity As HardDiskIdentity = _hardDisk.Identity
+        Dim identity As HardDiskIdentity = hardDiskInBed.Identity
         If head >= identity.BiosHeads OrElse
            sector > identity.BiosSectorsPerTrack OrElse
            cylinder >= identity.BiosCylinders Then Return -1
@@ -613,11 +901,16 @@ Public Class IdeController
         Else
             PutWord(state.Data, 0, &H40US)
 
-            Dim identity As HardDiskIdentity = _hardDisk.Identity
+            Dim hardDiskInBed As HardDiskImage = HardDiskForStateInBed(state)
+            If hardDiskInBed Is Nothing Then
+                FailCommand(state, &H4)
+                Return
+            End If
+            Dim identity As HardDiskIdentity = hardDiskInBed.Identity
             Dim heads As Integer = identity.BiosHeads
             Dim sectorsPerTrack As Integer = identity.BiosSectorsPerTrack
             Dim cylinders As Integer = identity.BiosCylinders
-            Dim lbaSectors As UInteger = CUInt(Math.Min(_hardDisk.SectorCount, CLng(UInteger.MaxValue)))
+            Dim lbaSectors As UInteger = CUInt(Math.Min(hardDiskInBed.SectorCount, CLng(UInteger.MaxValue)))
             Dim chsSectors As UInteger = CUInt(cylinders * heads * sectorsPerTrack)
 
             ' Legacy translated geometry used by the executable BIOS INT 13h layer.
@@ -674,7 +967,9 @@ Public Class IdeController
         ' sized; an odd host limit is conservatively rounded down, never to zero.
         If requestedLimit > 1 AndAlso (requestedLimit And 1) <> 0 Then requestedLimit -= 1
         state.PacketByteLimit = Math.Max(2, Math.Min(AtapiMaximumPioPhase, requestedLimit))
-        TraceAtaInBed("ATAPI PACKET command-out DRQ limit=" & state.PacketByteLimit.ToString())
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI PACKET command-out DRQ limit=" & state.PacketByteLimit.ToString())
+        End If
 
         ReDim state.Data(AtapiPacketBytes - 1)
         state.DataIndex = 0
@@ -690,17 +985,18 @@ Public Class IdeController
         ' simply poll BSY/DRQ after writing A0h and then issue OUTSW.
     End Sub
 
-    Private Sub ExecutePacket(packet As Byte())
-        Dim state As IdeDeviceState = _slave
+    Private Sub ExecutePacket(state As IdeDeviceState, packet As Byte())
         Dim opcode As Byte = packet(0)
-        _atapiPacketCommandsInBed += 1UL
-        TraceAtaInBed("ATAPI CDB " & BitConverter.ToString(packet).Replace("-", " "))
+        If RuntimeDiagnostics.Enabled Then _atapiPacketCommandsInBed += 1UL
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI CDB " & BitConverter.ToString(packet).Replace("-", " "))
+        End If
 
         ' UNIT ATTENTION is reported on the next media-dependent/ordinary command.
         ' INQUIRY is allowed during discovery, and REQUEST SENSE must always be able
         ' to retrieve the pending condition. This prevents an endless sense loop.
         If state.UnitAttentionPending AndAlso opcode <> &H3 AndAlso opcode <> &H12 Then
-            SetSense(SenseUnitAttention, state.AdditionalSenseCode, state.AdditionalSenseQualifier)
+            SetSense(state, SenseUnitAttention, state.AdditionalSenseCode, state.AdditionalSenseQualifier)
             state.UnitAttentionPending = False
             FailPacket(state)
             Return
@@ -751,7 +1047,7 @@ Public Class IdeController
             Case &H25                         ' READ CAPACITY(10)
                 If Not RequireCdRom(state) Then Return
                 Dim response(7) As Byte
-                PutBigEndian32(response, 0, CUInt(_cdrom.SectorCount - 1))
+                PutBigEndian32(response, 0, CUInt(CdRomForStateInBed(state).SectorCount - 1))
                 PutBigEndian32(response, 4, 2048UI)
                 FinishPacket(state, response)
 
@@ -761,8 +1057,8 @@ Public Class IdeController
             Case &H2B                         ' SEEK(10)
                 If Not RequireCdRom(state) Then Return
                 Dim lba As UInteger = ReadBigEndian32(packet, 2)
-                If CLng(lba) >= _cdrom.SectorCount Then
-                    SetSense(SenseIllegalRequest, &H21)
+                If CLng(lba) >= CdRomForStateInBed(state).SectorCount Then
+                    SetSense(state, SenseIllegalRequest, &H21)
                     FailPacket(state)
                     Return
                 End If
@@ -781,7 +1077,7 @@ Public Class IdeController
                 ExecuteRead12(state, packet)
 
             Case Else
-                SetSense(SenseIllegalRequest, &H20) ' invalid command operation code
+                SetSense(state, SenseIllegalRequest, &H20) ' invalid command operation code
                 FailPacket(state)
         End Select
     End Sub
@@ -794,11 +1090,11 @@ Public Class IdeController
         If loadEject AndAlso Not start Then
             If state.MediumRemovalPrevented Then
                 ' 53/02 = medium removal prevented.
-                SetSense(SenseIllegalRequest, &H53, &H2)
+                SetSense(state, SenseIllegalRequest, &H53, &H2)
                 FailPacket(state)
                 Return
             End If
-            EjectCdRom()
+            EjectCdRom(Object.ReferenceEquals(state, _slave))
         End If
 
         ' START without a host-side medium insertion mechanism is a successful
@@ -823,30 +1119,32 @@ Public Class IdeController
     End Sub
 
     Private Sub PrepareCdRead(state As IdeDeviceState, lba As UInteger, count As Long)
-        TraceAtaInBed("ATAPI READ lba=" & lba.ToString() & " sectors=" & count.ToString())
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI READ lba=" & lba.ToString() & " sectors=" & count.ToString())
+        End If
         If count = 0 Then
             FinishPacket(state, Array.Empty(Of Byte)())
             Return
         End If
 
-        If CLng(lba) < 0 OrElse CLng(lba) + count > _cdrom.SectorCount Then
-            SetSense(SenseIllegalRequest, &H21) ' logical block address out of range
+        If CLng(lba) < 0 OrElse CLng(lba) + count > CdRomForStateInBed(state).SectorCount Then
+            SetSense(state, SenseIllegalRequest, &H21) ' logical block address out of range
             FailPacket(state)
             Return
         End If
 
         Dim byteCount As Long = count * 2048L
         If byteCount > Integer.MaxValue Then
-            SetSense(SenseIllegalRequest, &H24) ' invalid field in CDB / impractical request
+            SetSense(state, SenseIllegalRequest, &H24) ' invalid field in CDB / impractical request
             FailPacket(state)
             Return
         End If
 
         Dim response(CInt(byteCount) - 1) As Byte
         For index As Long = 0 To count - 1
-            Array.Copy(_cdrom.ReadSector(CLng(lba) + index), 0, response, CInt(index * 2048L), 2048)
+            Array.Copy(CdRomForStateInBed(state).ReadSector(CLng(lba) + index), 0, response, CInt(index * 2048L), 2048)
         Next
-        _atapiReadSectorsInBed += CULng(count)
+        If RuntimeDiagnostics.Enabled Then _atapiReadSectorsInBed += CULng(count)
         FinishPacket(state, response)
     End Sub
 
@@ -860,7 +1158,7 @@ Public Class IdeController
 
         ' OAKCDROM-era DOS software chiefly needs format 0: normal TOC.
         If format <> 0 Then
-            SetSense(SenseIllegalRequest, &H24)
+            SetSense(state, SenseIllegalRequest, &H24)
             FailPacket(state)
             Return
         End If
@@ -868,7 +1166,7 @@ Public Class IdeController
         Dim includeTrack As Boolean = (startingTrack = 0 OrElse startingTrack <= 1)
         Dim includeLeadOut As Boolean = (startingTrack = 0 OrElse startingTrack <= 1 OrElse startingTrack = &HAA)
         If Not includeTrack AndAlso Not includeLeadOut Then
-            SetSense(SenseIllegalRequest, &H24)
+            SetSense(state, SenseIllegalRequest, &H24)
             FailPacket(state)
             Return
         End If
@@ -885,7 +1183,7 @@ Public Class IdeController
             offset += 8
         End If
         If includeLeadOut Then
-            PutTocDescriptor(response, offset, &HAA, _cdrom.SectorCount, msf)
+            PutTocDescriptor(response, offset, &HAA, CdRomForStateInBed(state).SectorCount, msf)
         End If
 
         ' Data length excludes the two-byte length field itself.
@@ -923,7 +1221,7 @@ Public Class IdeController
         Dim allocationLength As Integer = packet(4)
         Dim page As Byte() = BuildModePage(pageCode)
         If page Is Nothing Then
-            SetSense(SenseIllegalRequest, &H24)
+            SetSense(state, SenseIllegalRequest, &H24)
             FailPacket(state)
             Return
         End If
@@ -942,7 +1240,7 @@ Public Class IdeController
         Dim allocationLength As Integer = (CInt(packet(7)) << 8) Or packet(8)
         Dim page As Byte() = BuildModePage(pageCode)
         If page Is Nothing Then
-            SetSense(SenseIllegalRequest, &H24)
+            SetSense(state, SenseIllegalRequest, &H24)
             FailPacket(state)
             Return
         End If
@@ -993,7 +1291,7 @@ Public Class IdeController
         End If
 
         If dataFormat <> 1 Then
-            SetSense(SenseIllegalRequest, &H24)
+            SetSense(state, SenseIllegalRequest, &H24)
             FailPacket(state)
             Return
         End If
@@ -1053,10 +1351,12 @@ Public Class IdeController
         state.LbaHigh = CByte((phaseLength >> 8) And &HFF)
         state.SectorCount = AtapiReasonDataIn
         state.Status = StatusReadyComplete Or StatusDataRequest
-        _atapiDataPhasesInBed += 1UL
-        TraceAtaInBed("ATAPI data-in DRQ bytes=" & phaseLength.ToString() &
-                      " response-offset=" & state.PacketResponseOffset.ToString() & "/" &
-                      state.PacketResponse.Length.ToString())
+        If RuntimeDiagnostics.Enabled Then _atapiDataPhasesInBed += 1UL
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI data-in DRQ bytes=" & phaseLength.ToString() &
+                          " response-offset=" & state.PacketResponseOffset.ToString() & "/" &
+                          state.PacketResponse.Length.ToString())
+        End If
         RaiseInterrupt()
     End Sub
 
@@ -1074,7 +1374,9 @@ Public Class IdeController
         state.LbaMid = 0
         state.LbaHigh = 0
         state.Status = StatusReadyComplete
-        TraceAtaInBed("ATAPI complete reason=03 ST=" & state.Status.ToString("X2"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI complete reason=03 ST=" & state.Status.ToString("X2"))
+        End If
         RaiseInterrupt()
     End Sub
 
@@ -1142,31 +1444,36 @@ Public Class IdeController
         state.LbaMid = 0
         state.LbaHigh = 0
         state.Status = StatusReadyComplete Or StatusError
-        TraceAtaInBed("ATAPI CHECK CONDITION sense=" & state.SenseKey.ToString("X2") & "/" &
-                      state.AdditionalSenseCode.ToString("X2") & "/" &
-                      state.AdditionalSenseQualifier.ToString("X2") &
-                      " ERR=" & state.ErrorRegister.ToString("X2"))
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI CHECK CONDITION sense=" & state.SenseKey.ToString("X2") & "/" &
+                          state.AdditionalSenseCode.ToString("X2") & "/" &
+                          state.AdditionalSenseQualifier.ToString("X2") &
+                          " ERR=" & state.ErrorRegister.ToString("X2"))
+        End If
         RaiseInterrupt()
     End Sub
 
     Private Function RequireCdRom(state As IdeDeviceState) As Boolean
-        If _cdrom IsNot Nothing Then Return True
-        SetSense(SenseNotReady, &H3A, &H0)      ' medium not present
+        If CdRomForStateInBed(state) IsNot Nothing Then Return True
+        SetSense(state, SenseNotReady, &H3A, &H0)      ' medium not present
         FailPacket(state)
         Return False
     End Function
 
-    Private Sub SetSense(key As Byte, code As Byte, Optional qualifier As Byte = 0)
-        _slave.SenseKey = key
-        _slave.AdditionalSenseCode = code
-        _slave.AdditionalSenseQualifier = qualifier
+    Private Shared Sub SetSense(state As IdeDeviceState,
+                                key As Byte,
+                                code As Byte,
+                                Optional qualifier As Byte = 0)
+        state.SenseKey = key
+        state.AdditionalSenseCode = code
+        state.AdditionalSenseQualifier = qualifier
     End Sub
 
-    Private Sub SetUnitAttention(code As Byte, qualifier As Byte)
-        _slave.SenseKey = SenseUnitAttention
-        _slave.AdditionalSenseCode = code
-        _slave.AdditionalSenseQualifier = qualifier
-        _slave.UnitAttentionPending = True
+    Private Shared Sub SetUnitAttention(state As IdeDeviceState, code As Byte, qualifier As Byte)
+        state.SenseKey = SenseUnitAttention
+        state.AdditionalSenseCode = code
+        state.AdditionalSenseQualifier = qualifier
+        state.UnitAttentionPending = True
     End Sub
 
     Private Shared Sub ClearSense(state As IdeDeviceState)
@@ -1186,10 +1493,11 @@ Public Class IdeController
     End Sub
 
     Private Sub RaiseInterrupt()
-        If (_deviceControl And DeviceControlDisableIrq) = 0 Then _pic.RaiseIrq(6)
+        If (_deviceControl And DeviceControlDisableIrq) = 0 Then _pic.RaiseIrq(_picIrqLine)
     End Sub
 
     Private Sub TraceAtaInBed(messageInBed As String)
+        If Not RuntimeDiagnostics.Enabled Then Return
         _ataDiagnosticSequenceInBed += 1UL
         While _ataDiagnosticInBed.Count >= AtaDiagnosticCapacityInBed
             _ataDiagnosticInBed.Dequeue()
@@ -1200,41 +1508,22 @@ Public Class IdeController
 
     Public Function DiagnosticText() As String
         Dim reportInBed As New StringBuilder()
-        reportInBed.AppendLine("Primary ISA ATA/ATAPI channel 1F0h-1F7h, 3F6h, IRQ14")
+        reportInBed.AppendLine(_channelName & " ISA ATA/ATAPI channel " &
+                               _commandBase.ToString("X3") & "h-" & (CInt(_commandBase) + 7).ToString("X3") &
+                               "h, " & _controlPort.ToString("X3") & "h, IRQ" & _systemIrq.ToString())
+        reportInBed.AppendLine("Installed devices         : master=" & DeviceKindTextInBed(_masterKind) &
+                               ", slave=" & DeviceKindTextInBed(_slaveKind))
+        AppendSlotDiagnosticInBed(reportInBed, False, _master)
+        AppendSlotDiagnosticInBed(reportInBed, True, _slave)
         reportInBed.AppendLine("ATA sector DRQ phases R/W : " &
                                _ataReadSectorPhasesInBed.ToString("N0") & " / " &
                                _ataWriteSectorPhasesInBed.ToString("N0"))
-        reportInBed.AppendLine("ATA task file SC/LBA      : " &
-                               _master.SectorCount.ToString("X2") & " / " &
-                               _master.LbaHigh.ToString("X2") & ":" &
-                               _master.LbaMid.ToString("X2") & ":" &
-                               _master.LbaLow.ToString("X2") &
-                               " DH=" & _driveHead.ToString("X2") &
-                               " ST=" & _master.Status.ToString("X2"))
         reportInBed.AppendLine("ATAPI packets/read sectors: " &
                                _atapiPacketCommandsInBed.ToString("N0") & " / " &
                                _atapiReadSectorsInBed.ToString("N0"))
-        reportInBed.AppendLine("ATAPI data-in DRQ phases : " & _atapiDataPhasesInBed.ToString("N0"))
-        reportInBed.AppendLine("ATAPI task file reason/BC : " &
-                               _slave.SectorCount.ToString("X2") & " / " &
-                               _slave.LbaHigh.ToString("X2") & _slave.LbaMid.ToString("X2") &
-                               " ERR=" & _slave.ErrorRegister.ToString("X2") &
-                               " ST=" & _slave.Status.ToString("X2"))
-        reportInBed.AppendLine("ATAPI transfer/index      : " & _slave.Transfer.ToString() & " / " &
-                               _slave.DataIndex.ToString() & "/" &
-                               If(_slave.Data Is Nothing, "0", _slave.Data.Length.ToString()))
-        reportInBed.AppendLine("ATAPI response offset     : " & _slave.PacketResponseOffset.ToString() & "/" &
-                               If(_slave.PacketResponse Is Nothing, "0", _slave.PacketResponse.Length.ToString()) &
-                               " limit=" & _slave.PacketByteLimit.ToString())
-        reportInBed.AppendLine("ATAPI media/UA/prevent    : " &
-                               If(_cdrom Is Nothing, "absent", "present") & " / " &
-                               If(_slave.UnitAttentionPending, "pending", "clear") & " / " &
-                               If(_slave.MediumRemovalPrevented, "yes", "no"))
-        reportInBed.AppendLine("ATAPI sense key/ASC/ASCQ  : " &
-                               _slave.SenseKey.ToString("X2") & "/" &
-                               _slave.AdditionalSenseCode.ToString("X2") & "/" &
-                               _slave.AdditionalSenseQualifier.ToString("X2"))
-        reportInBed.AppendLine("Recent ATA/ATAPI phases (oldest first):")
+        reportInBed.AppendLine("ATAPI data-in DRQ phases  : " & _atapiDataPhasesInBed.ToString("N0"))
+        reportInBed.AppendLine("ATA HDD hot-path text trace: " & If(TraceAtaHardDiskHotPathInBed, "enabled", "disabled"))
+        reportInBed.AppendLine("Recent ATAPI / low-frequency ATA events (oldest first):")
         If _ataDiagnosticInBed.Count = 0 Then
             reportInBed.AppendLine("  <none>")
         Else
@@ -1243,6 +1532,46 @@ Public Class IdeController
             Next
         End If
         Return reportInBed.ToString().TrimEnd()
+    End Function
+
+    Private Sub AppendSlotDiagnosticInBed(reportInBed As StringBuilder,
+                                          slaveInBed As Boolean,
+                                          stateInBed As IdeDeviceState)
+        Dim labelInBed As String = If(slaveInBed, "slave", "master")
+        Dim kindInBed As IdeDeviceKind = GetDeviceKind(slaveInBed)
+        reportInBed.AppendLine(labelInBed.PadRight(7) & " task file SC/LBA      : " &
+                               stateInBed.SectorCount.ToString("X2") & " / " &
+                               stateInBed.LbaHigh.ToString("X2") & ":" &
+                               stateInBed.LbaMid.ToString("X2") & ":" &
+                               stateInBed.LbaLow.ToString("X2") &
+                               " ST=" & stateInBed.Status.ToString("X2") &
+                               " kind=" & DeviceKindTextInBed(kindInBed))
+        Select Case kindInBed
+            Case IdeDeviceKind.AtaHardDisk
+                Dim diskInBed As HardDiskImage = HardDiskForSlotInBed(slaveInBed)
+                reportInBed.AppendLine(labelInBed.PadRight(7) & " ATA media/model       : " &
+                                       If(diskInBed Is Nothing,
+                                          "no image attached",
+                                          diskInBed.Identity.Model & " / " & diskInBed.SectorCount.ToString("N0") & " sectors"))
+            Case IdeDeviceKind.AtapiCdRom
+                Dim cdInBed As IsoImage = CdRomForSlotInBed(slaveInBed)
+                reportInBed.AppendLine(labelInBed.PadRight(7) & " ATAPI media/UA/prevent : " &
+                                       If(cdInBed Is Nothing, "tray empty", "media present") & " / " &
+                                       If(stateInBed.UnitAttentionPending, "pending", "clear") & " / " &
+                                       If(stateInBed.MediumRemovalPrevented, "yes", "no"))
+                reportInBed.AppendLine(labelInBed.PadRight(7) & " ATAPI sense key/ASC/Q  : " &
+                                       stateInBed.SenseKey.ToString("X2") & "/" &
+                                       stateInBed.AdditionalSenseCode.ToString("X2") & "/" &
+                                       stateInBed.AdditionalSenseQualifier.ToString("X2"))
+        End Select
+    End Sub
+
+    Private Shared Function DeviceKindTextInBed(kindInBed As IdeDeviceKind) As String
+        Select Case kindInBed
+            Case IdeDeviceKind.AtaHardDisk : Return "ATA hard disk"
+            Case IdeDeviceKind.AtapiCdRom : Return "ATAPI CD-ROM"
+            Case Else : Return "empty"
+        End Select
     End Function
 
     ' -------------------------------------------------------------------------
@@ -1256,11 +1585,15 @@ Public Class IdeController
         ' nIEN masks the physical interrupt output. If software masks IRQs while
         ' one is asserted, remove the channel request immediately; device command
         ' progress itself continues and can still be observed by polling status.
-        If (_deviceControl And DeviceControlDisableIrq) <> 0 Then _pic.ClearIrq(6)
+        If (_deviceControl And DeviceControlDisableIrq) <> 0 Then _pic.ClearIrq(_picIrqLine)
 
         If newReset Then
+            If RuntimeDiagnostics.Enabled AndAlso Not oldReset Then TraceAtaInBed("SRST assert")
             AssertSoftwareReset()
         ElseIf oldReset Then
+            If RuntimeDiagnostics.Enabled Then
+                TraceAtaInBed("SRST release")
+            End If
             ReleaseSoftwareReset()
         End If
     End Sub
@@ -1268,18 +1601,46 @@ Public Class IdeController
     Private Sub AssertSoftwareReset()
         ClearTransfer(_master)
         ClearTransfer(_slave)
-        _master.Status = StatusBusy
-        _slave.Status = StatusBusy
-        _pic.ClearIrq(6)
+        _master.Status = If(_masterKind <> IdeDeviceKind.Empty, StatusBusy, CByte(0))
+        _slave.Status = If(_slaveKind <> IdeDeviceKind.Empty, StatusBusy, CByte(0))
+        _pic.ClearIrq(_picIrqLine)
     End Sub
 
     Private Sub ReleaseSoftwareReset()
         ' BOTH devices receive reset signatures simultaneously. Device selection
         ' later decides which signature appears at 1F2-1F5; selection itself never
         ' fabricates or copies a signature.
-        ResetAtaDeviceState(_master)
-        ResetAtapiDeviceState(_slave, True)
-        _pic.ClearIrq(6)
+        ResetDeviceStateForKindInBed(_master, _masterKind, True)
+        ResetDeviceStateForKindInBed(_slave, _slaveKind, True)
+        _pic.ClearIrq(_picIrqLine)
+    End Sub
+
+    Private Sub ResetDeviceStateForKindInBed(stateInBed As IdeDeviceState,
+                                                kindInBed As IdeDeviceKind,
+                                                softwareResetInBed As Boolean)
+        Select Case kindInBed
+            Case IdeDeviceKind.AtaHardDisk
+                ResetAtaDeviceState(stateInBed)
+            Case IdeDeviceKind.AtapiCdRom
+                ResetAtapiDeviceState(stateInBed, softwareResetInBed)
+            Case Else
+                ResetAbsentDeviceState(stateInBed)
+        End Select
+    End Sub
+
+    Private Shared Sub ResetAbsentDeviceState(state As IdeDeviceState)
+        state.Features = 0
+        state.ErrorRegister = 0
+        state.SectorCount = 0
+        state.LbaLow = 0
+        state.LbaMid = 0
+        state.LbaHigh = 0
+        state.Status = 0
+        state.PacketByteLimit = 0
+        state.MediumRemovalPrevented = False
+        state.UnitAttentionPending = False
+        ClearSense(state)
+        ClearTransfer(state)
     End Sub
 
     Private Shared Sub ResetAtaDeviceState(state As IdeDeviceState)
@@ -1300,20 +1661,25 @@ Public Class IdeController
         state.LbaLow = 1
         state.LbaMid = &H14
         state.LbaHigh = &HEB
+
+        ' Keep the driver-proven legacy ready/seek-complete baseline.  The old
+        ' working ATAPI path exposed 50h here and VIDE-CDD/VU-CCD-class polling
+        ' was observed waiting for that exact idle state.
         state.Status = StatusReadyComplete
         state.PacketByteLimit = 2048
         state.MediumRemovalPrevented = False
         ClearTransfer(state)
 
-        ' A packet device may report reset as UNIT ATTENTION. Preserve an already
-        ' pending media-change event; otherwise SRST creates the standard reset UA.
-        If softwareReset AndAlso Not state.UnitAttentionPending Then
-            state.SenseKey = SenseUnitAttention
-            state.AdditionalSenseCode = &H29    ' power on, reset, or bus-device reset
-            state.AdditionalSenseQualifier = 0
-            state.UnitAttentionPending = True
-        ElseIf Not state.UnitAttentionPending Then
-            ClearSense(state)
+        ' Mount/eject owns real media-change UNIT ATTENTION (06/28/00).  Software
+        ' reset is a transport reset and must not manufacture a new 29/00 event
+        ' which can overwrite or prolong the one-shot media-change condition.
+        If Not state.UnitAttentionPending Then ClearSense(state)
+
+        If RuntimeDiagnostics.Enabled Then
+            TraceAtaInBed("ATAPI " & If(softwareReset, "SRST", "RESET") &
+                          " signature SC/LBA=01/01/14/EB ST=" &
+                          state.Status.ToString("X2") &
+                          " UA=" & If(state.UnitAttentionPending, "pending", "clear"))
         End If
     End Sub
 
@@ -1371,7 +1737,7 @@ Public Class IdeController
     End Function
 
     Public Sub Dispose() Implements IDisposable.Dispose
-        EjectHardDisk()
-        EjectCdRom()
+        DisposeMediaForSlotInBed(False)
+        DisposeMediaForSlotInBed(True)
     End Sub
 End Class

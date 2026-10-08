@@ -1,0 +1,33 @@
+{
+  "test": "DECODE_DOMAIN_FOLLOWS_SELECTOR_TOPOLOGY",
+  "mutation": "SW3 element 1 / IOS0 pull-up path removed; IOS0 falls to documented default 0",
+  "before_io_base_values": [
+    512,
+    544,
+    576,
+    608,
+    640,
+    672,
+    704,
+    736,
+    768,
+    800,
+    832,
+    864,
+    896,
+    928,
+    960,
+    992
+  ],
+  "after_io_base_values": [
+    512,
+    576,
+    640,
+    704,
+    768,
+    832,
+    896,
+    960
+  ],
+  "pass": true
+}

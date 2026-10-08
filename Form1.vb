@@ -1,20 +1,22 @@
-﻿Imports System.IO 'for loading the ROM files
+Imports System.IO 'for loading the ROM files
 Imports System.Collections.Generic
 Imports System.Math 'For advanced Math Functions
 Imports System.ComponentModel
 Imports System.Runtime.InteropServices
 Public Class Form1
     Public Shared Current As Form1
-    ' CROMWELL HOST REFIT BRICK 9C - the complete guest machine executes on one
-    ' dedicated thread. UI access crosses MachineRuntime286's ownership gate.
-    Private ReadOnly _machineRuntime As New MachineRuntime286(CPU0, SystemBus, MachineClock)
+    ' The configurator owns no execution worker. A MachineRuntime286 reference is
+    ' borrowed only after MachineMaterializer has constructed a MaterializedMachine.
+    Private _machineRuntime As MachineRuntime286
     Private ReadOnly _cpuPerfLockInBed As New Object()
     Private _videoPresentation As DiamondStealthPro928PresentationWorker
     Private _videoPresentationGenerationInBed As Long
     Private _displayedPresentationFrameInBed As Bitmap
+    Private _powerOffDisplayImageInBed As Image
     Private _closingInBed As Boolean
-    Private _machinePoweredInBed As Boolean = True
     Private _powerMenuItemInBed As ToolStripMenuItem
+    Private _runMenuItemInBed As ToolStripMenuItem
+    Private _lastBuildPlanInBed As MachineBuildPlan
     Private _resetMenuItemInBed As ToolStripMenuItem
     Private _chassisPanel As ChassisPanelForm
     Private _onScreenKeyboardInBed As On_Screen_Keyboard
@@ -46,17 +48,30 @@ Public Class Form1
     Private _ideDriveShelf As IdeDriveShelf
     Private ideDriveShelfMenu As ToolStripMenuItem
     Private _mountedIdeDriveId As Integer = -1
+    Private _mountedPrimarySlaveIdeDriveId As Integer = -1
+    Private _mountedSecondaryIdeDriveId As Integer = -1
+    Private _mountedSecondarySlaveIdeDriveId As Integer = -1
+    Private _sneakerNetIdeTargetInBed As Integer
+    Private _sneakerNetIdeTargetSlaveInBed As Boolean
+    Private _sneakerNetOpticalTargetInBed As Integer
+    Private _sneakerNetOpticalTargetSlaveInBed As Boolean
     ' CROMWELL TECHNOLOGIES SNEAKER NET / FLOPPY BOX BRICK 1
     Private _floppyBox As FloppyBox
     Private _sneakerNetForm As SneakerNetForm
     Private _driveBayPanelInBed As Panel
     Private _floppyBayAInBed As PictureBox
     Private _floppyBayBInBed As PictureBox
+    Private _cdRomBayInBed As PictureBox
+    Private _cdRomBaySecondaryInBed As PictureBox
+    Private _hardDiskBayInBed As PictureBox
+    Private _hardDiskBaySecondaryInBed As PictureBox
     Private _driveBayToolTipInBed As ToolTip
-    Private _floppyBayPopupInBed As ContextMenuStrip
+    Private _driveBayPopupInBed As ContextMenuStrip
     Private _threeAndHalfDriveFaceInBed As Bitmap
     Private _fiveAndQuarterDriveFaceInBed As Bitmap
     Private _emptyDriveFaceInBed As Bitmap
+    Private _cdRomDriveFaceInBed As Bitmap
+    Private _mfmHardDiskDriveFaceInBed As Bitmap
     Private floppyAMountMenu As ToolStripMenuItem
     Private floppyBMountMenu As ToolStripMenuItem
     ' CROMWELL KEYBOARD REALITY BRICK 3 FIELDS
@@ -69,7 +84,17 @@ Public Class Form1
     ' CROMWELL SYSTEM CONFIGURATION DRAWER BRICK 01
     Private _systemConfigurationDrawer As SystemConfigurationDrawer
     Private _pendingMemoryMb As Integer?
+    Private _pendingMotherboardClockOptionId As String
+    Private _pendingMotherboardCacheKb As Integer?
+    Private _ideHardwareConfiguration As IdeHardwareConfiguration
+    Private _pendingIdeHardwareConfiguration As IdeHardwareConfiguration
     Private _isaCardConfiguration As IsaExpansionCardConfiguration
+    Private _hardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
+    Private _pendingHardwarePopulationConfiguration As MachineHardwarePopulationConfiguration
+    ' Form1 is the configurator/presentation host. The materialized machine owns
+    ' motherboard runtime, processor/cards, execution, and chassis lifecycle.
+    Private _materializedMachineInBed As MaterializedMachine
+    Private _motherboardRuntimeInBed As MotherboardRuntimeManager
     Private _pendingSoundBlaster16Jumpers As SoundBlaster16JumperSettings
     Private _pendingNe2000Jumpers As Ne2000JumperSettings
 
@@ -160,12 +185,29 @@ Public Class Form1
     Friend Event KeyboardVisualStateChanged(key As AtPhysicalKey, pressed As Boolean)
 
     Private Sub WithMachineInBed(actionInBed As Action)
-        _machineRuntime.Execute(actionInBed)
+        If actionInBed Is Nothing Then Throw New ArgumentNullException(NameOf(actionInBed))
+        Dim runtimeInBed As MachineRuntime286 = _machineRuntime
+        If runtimeInBed Is Nothing Then
+            ' Before Run, no guest worker exists, so configurator-side access to
+            ' host configuration objects is already single-threaded.
+            actionInBed.Invoke()
+            Return
+        End If
+        runtimeInBed.Execute(actionInBed)
     End Sub
 
     Private Function ReadMachineInBed(Of TResult)(readerInBed As Func(Of TResult)) As TResult
-        Return _machineRuntime.Query(readerInBed)
+        If readerInBed Is Nothing Then Throw New ArgumentNullException(NameOf(readerInBed))
+        Dim runtimeInBed As MachineRuntime286 = _machineRuntime
+        If runtimeInBed Is Nothing Then Return readerInBed.Invoke()
+        Return runtimeInBed.Query(readerInBed)
     End Function
+
+    Private ReadOnly Property MachinePoweredInBed As Boolean
+        Get
+            Return _materializedMachineInBed IsNot Nothing AndAlso _materializedMachineInBed.IsPowered
+        End Get
+    End Property
 
     ' The host frontend reports physical key positions only.  Windows' raw
     ' message scan field and E0/extended bit are used to distinguish main Enter
@@ -211,7 +253,7 @@ Public Class Form1
     End Sub
 
     Private Sub RouteRawSerialMouseInputInBed(rawInputHandleInBed As IntPtr)
-        If Not _serialMouseCapturedInBed OrElse _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If Not _serialMouseCapturedInBed OrElse _closingInBed OrElse Not MachinePoweredInBed Then Return
 
         Dim rawInBed As New RawInputInBed()
         Dim rawSizeInBed As UInteger = CUInt(Marshal.SizeOf(Of RawInputInBed)())
@@ -252,7 +294,7 @@ Public Class Form1
     End Function
 
     Friend Function RoutePhysicalKeyboardMessage(ByRef m As Message, pressed As Boolean) As Boolean
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return False
+        If _closingInBed OrElse Not MachinePoweredInBed Then Return False
         Dim lp As Long = m.LParam.ToInt64()
         Dim scan As Byte = CByte((lp >> 16) And &HFF)
         Dim extended As Boolean = (lp And &H1000000L) <> 0
@@ -291,13 +333,13 @@ Public Class Form1
     ' from bypassing keyboard firmware, scan-set selection, typematic behavior,
     ' the serial wire, 8042 translation, IRQ1, or the guest's LED commands.
     Friend Sub SetHostPhysicalKey(key As AtPhysicalKey, pressed As Boolean)
-        If key = AtPhysicalKey.None OrElse _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If key = AtPhysicalKey.None OrElse _closingInBed OrElse Not MachinePoweredInBed Then Return
         WithMachineInBed(Sub() AtKeyboard.SetPhysicalKey(key, pressed))
         RaiseEvent KeyboardVisualStateChanged(key, pressed)
     End Sub
 
     Friend Sub ReleaseAllHostPhysicalKeys()
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _closingInBed OrElse Not MachinePoweredInBed Then Return
         WithMachineInBed(Sub() AtKeyboard.ReleaseAllPhysicalKeys())
     End Sub
 
@@ -306,13 +348,13 @@ Public Class Form1
         ' physical releases which the emulator can no longer observe. During
         ' FormClosing, however, Deactivate is a host lifecycle event after guest
         ' input has been shut down; never call a disposed MachineRuntime from it.
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _closingInBed OrElse Not MachinePoweredInBed Then Return
         WithMachineInBed(Sub() AtKeyboard.ReleaseAllPhysicalKeys())
         ReleaseSerialMouseCaptureInBed()
     End Sub
 
     Private Sub PictureBox1_MouseDown(sender As Object, e As MouseEventArgs) Handles PictureBox1.MouseDown
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _closingInBed OrElse Not MachinePoweredInBed Then Return
         If Not _serialMouseCapturedInBed Then
             If e.Button = MouseButtons.Left Then CaptureSerialMouseInBed()
             Return
@@ -357,7 +399,7 @@ Public Class Form1
 
     Private Sub PictureBox1_MouseCaptureChanged(sender As Object, e As EventArgs) Handles PictureBox1.MouseCaptureChanged
         If Not _serialMouseCapturedInBed OrElse PictureBox1.Capture OrElse
-           _closingInBed OrElse Not _machinePoweredInBed OrElse Not ContainsFocus Then Return
+           _closingInBed OrElse Not MachinePoweredInBed OrElse Not ContainsFocus Then Return
 
         ' WinForms may release a control's native mouse capture as part of the
         ' ordinary left/right button-up lifecycle.  That is not an operator
@@ -367,14 +409,14 @@ Public Class Form1
             New Action(
                 Sub()
                     If _serialMouseCapturedInBed AndAlso Not _closingInBed AndAlso
-                       _machinePoweredInBed AndAlso ContainsFocus Then
+                       MachinePoweredInBed AndAlso ContainsFocus Then
                         PictureBox1.Capture = True
                     End If
                 End Sub))
     End Sub
 
     Private Sub CaptureSerialMouseInBed()
-        If _serialMouseCapturedInBed OrElse _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _serialMouseCapturedInBed OrElse _closingInBed OrElse Not MachinePoweredInBed Then Return
         ' The display is not a keyboard-bearing child control.  Clear any menu or
         ' button focus before taking Win32 mouse capture so WM_KEY messages keep
         ' arriving at this form's raw AT-keyboard scan-code router.
@@ -423,7 +465,7 @@ Public Class Form1
             _serialMouseMenuItemInBed.Checked = False
             _serialMouseMenuItemInBed.Text = "Capture COM1 serial mouse"
         End If
-        If Not _closingInBed AndAlso _machinePoweredInBed Then
+        If Not _closingInBed AndAlso MachinePoweredInBed Then
             ActiveControl = Nothing
             Activate()
             Focus()
@@ -441,14 +483,16 @@ Public Class Form1
     End Sub
 
     Private Sub RouteSerialMouseButtonsInBed()
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _closingInBed OrElse Not MachinePoweredInBed Then Return
         Dim leftInBed As Boolean = _serialMouseLeftInBed
         Dim rightInBed As Boolean = _serialMouseRightInBed
         WithMachineInBed(Sub() SerialMouse.SetHostButtons(leftInBed, rightInBed))
     End Sub
 
     Private Sub QueueSerialMouseHostMovementInBed(deltaXInBed As Integer, deltaYInBed As Integer)
-        Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        If RuntimeDiagnostics.Enabled Then
+            Threading.Interlocked.Increment(_serialMouseHostMoveMessagesInBed)
+        End If
         Dim accumulatedXInBed As Integer = _serialMouseHostRemainderXInBed + deltaXInBed
         Dim accumulatedYInBed As Integer = _serialMouseHostRemainderYInBed + deltaYInBed
         Dim mouseCountXInBed As Integer = accumulatedXInBed \ SerialMouseHostPixelsPerCountInBed
@@ -479,7 +523,9 @@ Public Class Form1
         Dim boundedXInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaXInBed)))
         Dim boundedYInBed As Integer = CInt(Math.Max(-MaximumTransferInBed, Math.Min(MaximumTransferInBed, deltaYInBed)))
         SerialMouse.AddHostMovement(boundedXInBed, boundedYInBed)
-        Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
+        If RuntimeDiagnostics.Enabled Then
+            Threading.Interlocked.Increment(_serialMouseBoundaryTransfersInBed)
+        End If
     End Sub
 
     Friend Shared Function HostPhysicalKey(scan As Byte, extended As Boolean, virtualKey As Keys) As AtPhysicalKey
@@ -608,34 +654,17 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As System.Object, e As System.EventArgs) Handles MyBase.Load
         Current = Me
+        ' Form1 is now the configurator/front panel. Loading the window loads host
+        ' configuration only; it does not construct or start a guest computer.
+        _powerOffDisplayImageInBed = PictureBox1.Image
         RegisterRawSerialMouseInputInBed()
         SystemLoop.Enabled = False
-        ' Preserve the emulated CRT face geometry when the host window is resized.
         PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
 
-        ' Load the physical ISA card straps before the devices are registered on
-        ' the motherboard bus.  This is host chassis state, not guest CMOS.
+        InitializeHardwarePopulationConfigurationInBed()
         InitializeIsaExpansionCardConfigurationInBed()
-
-        ' Bring only the real motherboard/device fabric up before the reset vector.
-        ' The historical CGA host renderer/resources remain compiled archaeology,
-        ' but they are no longer initialized in the normal machine path.
-        InitializeHardware()
-
-
         InitializeRamBanks()
-        Dim romPath As String = Path.Combine(AppContext.BaseDirectory, "Firmware", "atbios.rom")
-        CPU0.MirrorLegacyMemory = False
-        CPU0.MirrorLegacyTextCells = False
-        CPU0.HostFirmwareInterrupts = False
-        CPU0.LoadSystemRom(File.ReadAllBytes(romPath))
-
-        Dim videoRomPath As String = Path.Combine(AppContext.BaseDirectory, "Firmware", "stealthpro.rom")
-        VideoCard.LoadOptionRom(File.ReadAllBytes(videoRomPath))
-
-        ' JP-DIAG is a host service jumper, not guest-visible VGA hardware.
-        ' Normal power-on state is OPEN: no forensic overlay.
-        VideoCard.DiagnosticOverlayJumperClosed = False
+        InitializeIdeHardwareConfigurationInBed()
         InitializeIdeDriveShelf()
         InitializeFloppyBox()
         CreateMediaMenu()
@@ -643,54 +672,134 @@ Public Class Form1
         InitializeSystemConfigurationInBed()
         BeginInvoke(New Action(AddressOf InitializeChassisPanel))
 
-        ' Host CRT presentation is deliberately capped at 20 Hz. The S3 worker
-        ' currently needs about 23 ms to rasterize a Windows frame; requesting
-        ' one every 16 ms wastes host time on frames the UI cannot consume and
-        ' starves the substantially more valuable guest CPU. Scan-out state and
-        ' all guest-visible VGA timing remain on the emulated card.
+        ' The CRT timer is presentation only and stays dormant until Run has
+        ' materialized a video card and powered the chassis.
         GPU.Interval = 50
         GPU.Enabled = False
-
-        CPU0.Reset()
-        ApplyFirmwareResetVectorSafetyGuardInBed()
+        FrontPanel.SetPower(False)
+        FrontPanel.SetCpuStateByte(0)
         MachineClock.Reset()
         RestoreHostExecutionRateInBed()
-
-        AddHandler _machineRuntime.SliceCompleted, AddressOf MachineRuntimeSliceCompletedInBed
-        AddHandler _machineRuntime.RuntimeFaulted, AddressOf MachineRuntimeFaultedInBed
-
-        ' Presentation requests are serviced by the machine thread at a slice
-        ' boundary while it already owns the guest. The raster worker never races
-        ' the machine gate and therefore cannot starve for seconds under timing debt.
-        _videoPresentation = New DiamondStealthPro928PresentationWorker()
-        AddHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
-        _videoPresentation.Start()
-        _machineRuntime.SetBoundaryService(
-            Sub()
-                DrainSerialMouseHostMovementAtBoundaryInBed()
-                Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-                If presentationInBed IsNot Nothing Then
-                    presentationInBed.ServiceCaptureAtMachineBoundary(VideoCard)
-                End If
-            End Sub)
-
-        _machineRuntime.Start()
-        GPU.Enabled = True
+        ShowPowerOffArtworkInBed()
+        UpdatePowerControlsInBed()
     End Sub
 
-    ' Host reset-vector guard retained intentionally.  If firmware is blank at
-    ' FFFF:0000 after any host-initiated reset/power-on, do not let uninitialized
-    ' bytes execute as guest code. Architectural HLT behavior remains untouched.
-    Private Sub ApplyFirmwareResetVectorSafetyGuardInBed()
-        If CPU0.ReadWord(&HFFFF0UI) = 0 AndAlso CPU0.ReadWord(&HFFFF2UI) = 0 Then
-            CPU0.Halted = True
+    Private Sub RunConfiguredMachineInBed()
+        If _closingInBed Then Return
+
+        If _materializedMachineInBed IsNot Nothing Then
+            If Not _materializedMachineInBed.IsPowered Then SetMachinePowerInBed(True)
+            Return
         End If
+
+        Try
+            ' Any staged drawer edits become physical host configuration before
+            ' the Build Script is captured. No guest exists yet, so this remains
+            ' a configurator operation rather than a live-hardware mutation.
+            ApplyPendingSystemConfigurationAndPowerCycleInBed()
+
+            Dim buildPlanInBed As MachineBuildPlan =
+                MachineBuildScriptEngine.CaptureConfiguredMachine(AppContext.BaseDirectory,
+                                                                  _hardwarePopulationConfiguration,
+                                                                  _isaCardConfiguration)
+            Dim buildScriptPathInBed As String =
+                Path.Combine(AppContext.BaseDirectory, MachineBuildScriptEngine.DefaultBuildScriptFileName)
+            MachineBuildScriptEngine.SaveCanonical(buildScriptPathInBed, buildPlanInBed)
+
+            Dim machineInBed As MaterializedMachine = MachineMaterializer.Materialize(buildPlanInBed)
+            _lastBuildPlanInBed = buildPlanInBed
+            _materializedMachineInBed = machineInBed
+            _motherboardRuntimeInBed = machineInBed.MotherboardRuntime
+            _machineRuntime = machineInBed.ExecutionRuntime
+
+            ' The materializer has already populated processor sockets, IDE mechanism
+            ' kinds, ISA boards/jumpers and firmware. Form1 only reconnects the
+            ' operator's persisted host media shelf to the now-real IDE sockets.
+            For channelInBed As Integer = 0 To 1
+                AttachConfiguredIdeDiskInBed(channelInBed, False, silent:=True)
+                AttachConfiguredIdeDiskInBed(channelInBed, True, silent:=True)
+            Next
+
+            AddHandler _machineRuntime.SliceCompleted, AddressOf MachineRuntimeSliceCompletedInBed
+            AddHandler _machineRuntime.RuntimeFaulted, AddressOf MachineRuntimeFaultedInBed
+            _machineRuntime.SetBoundaryService(
+                Sub()
+                    DrainSerialMouseHostMovementAtBoundaryInBed()
+                    Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+                    Dim videoInBed As DiamondStealthPro928 = VideoCard
+                    If presentationInBed IsNot Nothing AndAlso videoInBed IsNot Nothing Then
+                        presentationInBed.ServiceCaptureAtMachineBoundary(videoInBed)
+                    End If
+                End Sub)
+
+            ConfigureVideoPresentationForInstalledAdapterInBed()
+            machineInBed.PowerOn()
+            GPU.Enabled = (VideoCard IsNot Nothing)
+            Dim presentationAfterPowerInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+            If presentationAfterPowerInBed IsNot Nothing Then presentationAfterPowerInBed.RequestFrame()
+            UpdatePowerControlsInBed()
+            If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+        Catch
+            If _materializedMachineInBed IsNot Nothing Then
+                Try
+                    ReleaseMaterializedMachineInBed()
+                Catch
+                    _materializedMachineInBed = Nothing
+                    _motherboardRuntimeInBed = Nothing
+                    _machineRuntime = Nothing
+                    FrontPanel.SetPower(False)
+                    ShowPowerOffArtworkInBed()
+                    UpdatePowerControlsInBed()
+                End Try
+            Else
+                GPU.Enabled = False
+                FrontPanel.SetPower(False)
+                ShowPowerOffArtworkInBed()
+                UpdatePowerControlsInBed()
+            End If
+            Throw
+        End Try
+    End Sub
+
+
+    Private Sub ReleaseMaterializedMachineInBed()
+        GPU.Enabled = False
+        ReleaseSerialMouseCaptureInBed()
+
+        Dim runtimeInBed As MachineRuntime286 = _machineRuntime
+        If runtimeInBed IsNot Nothing Then
+            Try
+                runtimeInBed.SetBoundaryService(Nothing)
+            Catch ex As ObjectDisposedException
+            End Try
+            RemoveHandler runtimeInBed.SliceCompleted, AddressOf MachineRuntimeSliceCompletedInBed
+            RemoveHandler runtimeInBed.RuntimeFaulted, AddressOf MachineRuntimeFaultedInBed
+        End If
+
+        If _materializedMachineInBed IsNot Nothing Then
+            _materializedMachineInBed.PowerOff()
+        End If
+
+        If _materializedMachineInBed IsNot Nothing Then
+            _materializedMachineInBed.Dispose()
+        End If
+        ConfigureVideoPresentationForInstalledAdapterInBed()
+        _materializedMachineInBed = Nothing
+        _motherboardRuntimeInBed = Nothing
+        _machineRuntime = Nothing
+        FrontPanel.SetCpuStateByte(0)
+        FrontPanel.SetPower(False)
+        ShowPowerOffArtworkInBed()
+        UpdatePowerControlsInBed()
     End Sub
 
     Private Sub MachineRuntimeSliceCompletedInBed(consumedTStatesInBed As Long,
                                                    elapsedHostTicksInBed As Long,
                                                    executionHostTicksInBed As Long,
                                                    targetClockHzInBed As Long)
+        ' Empty-socket board time is not CPU execution. Do not turn the clock
+        ' accounting quantum into bogus MIPS/performance telemetry.
+        If CPU0 Is Nothing Then Return
         RecordCpuPerformanceInBed(consumedTStatesInBed,
                                   elapsedHostTicksInBed,
                                   executionHostTicksInBed,
@@ -738,22 +847,14 @@ Public Class Form1
 
 
     Private Sub Form1_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
-        ' WinForms can deliver Deactivate and other focus/input callbacks during
-        ' teardown. Mark shutdown before disposing any machine-owned object.
         _closingInBed = True
-        If _floppyBayPopupInBed IsNot Nothing Then
-            _floppyBayPopupInBed.Dispose()
-            _floppyBayPopupInBed = Nothing
-        End If
+        DisposeDriveBayPopupInBed()
         ReleaseSerialMouseCaptureInBed()
         GPU.Enabled = False
 
-        ' Remove the machine-boundary presentation callback while both objects are
-        ' still alive. SetBoundaryService crosses the same ownership gate, so when
-        ' it returns no in-flight boundary capture can still reference the worker.
-        _machineRuntime.SetBoundaryService(Nothing)
-
-        If _videoPresentation IsNot Nothing Then
+        If _materializedMachineInBed IsNot Nothing Then
+            ReleaseMaterializedMachineInBed()
+        ElseIf _videoPresentation IsNot Nothing Then
             If _displayedPresentationFrameInBed IsNot Nothing Then
                 PictureBox1.Image = Nothing
                 _videoPresentation.RecycleFrame(_displayedPresentationFrameInBed)
@@ -763,14 +864,10 @@ Public Class Form1
             _videoPresentation = Nothing
         End If
 
-        _machineRuntime.Stop()
-        ' The printers sit outside the motherboard reset domain, but they do own
-        ' host spool files.  Closing the emulator therefore ejects and finalizes
-        ' any sheet still under the virtual print head before process teardown.
+        ' Printers remain outside the current materialized-machine boundary and
+        ' own host spool files, so finalize them during host shutdown.
         Lpt1Printer.Dispose()
         Lpt2Printer.Dispose()
-        SoundBlaster16.Dispose()
-        Ne2000.Dispose()
         RealTimeClock.Save()
         If _systemConfigurationDrawer IsNot Nothing AndAlso Not _systemConfigurationDrawer.IsDisposed Then
             _systemConfigurationDrawer.Close()
@@ -778,10 +875,12 @@ Public Class Form1
         If _chassisPanel IsNot Nothing Then _chassisPanel.Close()
         If _sneakerNetForm IsNot Nothing AndAlso Not _sneakerNetForm.IsDisposed Then _sneakerNetForm.Close()
         If _onScreenKeyboardInBed IsNot Nothing AndAlso Not _onScreenKeyboardInBed.IsDisposed Then
-            '_onScreenKeyboardInBed.AllowPermanentClose()
             _onScreenKeyboardInBed.Close()
         End If
-        _machineRuntime.Dispose()
+
+        _materializedMachineInBed = Nothing
+        _motherboardRuntimeInBed = Nothing
+        _machineRuntime = Nothing
     End Sub
 
     Private Sub CreateMediaMenu()
@@ -799,7 +898,13 @@ Public Class Form1
             Sub() RebuildFloppyBoxMountMenu(floppyAMountMenu, 0)
         AddHandler floppyBMountMenu.DropDownOpening,
             Sub() RebuildFloppyBoxMountMenu(floppyBMountMenu, 1)
-        _powerMenuItemInBed = New ToolStripMenuItem("Power Off")
+        _runMenuItemInBed = New ToolStripMenuItem("Run configured machine") With {
+            .ShortcutKeys = Keys.F5,
+            .ShowShortcutKeys = True
+        }
+        AddHandler _runMenuItemInBed.Click, Sub() ToggleMachinePowerInBed()
+
+        _powerMenuItemInBed = New ToolStripMenuItem("Power On")
         AddHandler _powerMenuItemInBed.Click, Sub() ToggleMachinePowerInBed()
 
         _resetMenuItemInBed = New ToolStripMenuItem("Reset") With {
@@ -817,6 +922,7 @@ Public Class Form1
                 Text = "Virtual Computer - " & MachineProfile286.ProcessorModel &
                        If(turboItem.Checked, " @ 25 MHz", " @ 20 MHz")
             End Sub
+        machine.DropDownItems.Add(_runMenuItemInBed)
         machine.DropDownItems.Add(_powerMenuItemInBed)
         machine.DropDownItems.Add(_resetMenuItemInBed)
         machine.DropDownItems.Add(turboItem)
@@ -849,8 +955,11 @@ Public Class Form1
         configurationMenuInBed.DropDownItems.Add(systemMenuInBed)
         Dim storageMenuInBed As New ToolStripMenuItem("Storage")
         storageMenuInBed.DropDownItems.Add("Floppy Drives", Nothing, Sub() OpenSystemConfigurationInBed("floppy"))
-        storageMenuInBed.DropDownItems.Add("Hard Drives", Nothing, Sub() OpenSystemConfigurationInBed("harddisk"))
-        storageMenuInBed.DropDownItems.Add("Optical Drives", Nothing, Sub() OpenSystemConfigurationInBed("optical"))
+        storageMenuInBed.DropDownItems.Add("IDE Controller", Nothing, Sub() OpenSystemConfigurationInBed("ide"))
+        storageMenuInBed.DropDownItems.Add("Channel 1 Drive 0", Nothing, Sub() OpenSystemConfigurationInBed("ide-c1d0"))
+        storageMenuInBed.DropDownItems.Add("Channel 1 Drive 1", Nothing, Sub() OpenSystemConfigurationInBed("ide-c1d1"))
+        storageMenuInBed.DropDownItems.Add("Channel 2 Drive 0", Nothing, Sub() OpenSystemConfigurationInBed("ide-c2d0"))
+        storageMenuInBed.DropDownItems.Add("Channel 2 Drive 1", Nothing, Sub() OpenSystemConfigurationInBed("ide-c2d1"))
         configurationMenuInBed.DropDownItems.Add(storageMenuInBed)
         Dim expansionMenuInBed As New ToolStripMenuItem("Expansion")
         expansionMenuInBed.DropDownItems.Add("Video", Nothing, Sub() OpenSystemConfigurationInBed("video"))
@@ -870,11 +979,13 @@ Public Class Form1
         Dim serviceJumpers As New ToolStripMenuItem("Service Jumpers")
         Dim vgaDiagnosticJumper As New ToolStripMenuItem("JP-DIAG: VGA Diagnostic Overlay") With {
             .CheckOnClick = True,
-            .Checked = ReadMachineInBed(Function() VideoCard.DiagnosticOverlayJumperClosed),
+            .Checked = ReadMachineInBed(Function() VideoCard IsNot Nothing AndAlso VideoCard.DiagnosticOverlayJumperClosed),
             .ToolTipText = "Checked = jumper CLOSED/installed; unchecked = OPEN/off"
         }
         AddHandler vgaDiagnosticJumper.CheckedChanged,
-            Sub() WithMachineInBed(Sub() VideoCard.DiagnosticOverlayJumperClosed = vgaDiagnosticJumper.Checked)
+            Sub() WithMachineInBed(Sub()
+                                        If VideoCard IsNot Nothing Then VideoCard.DiagnosticOverlayJumperClosed = vgaDiagnosticJumper.Checked
+                                    End Sub)
         serviceJumpers.DropDownItems.Add(vgaDiagnosticJumper)
         machine.DropDownItems.Add(New ToolStripSeparator())
         machine.DropDownItems.Add(serviceJumpers)
@@ -884,31 +995,46 @@ Public Class Form1
             Sub() DumpAllDiagnosticsInBed(dumpAllDiagnosticsMenuInBed)
         diagnosticsMenu.DropDownItems.Add(dumpAllDiagnosticsMenuInBed)
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
+        diagnosticsMenu.DropDownItems.Add("80286 hardware single-step tests...", Nothing, Sub() ShowSingleStep80286TestsInBed())
         diagnosticsMenu.DropDownItems.Add("CPU performance...", Nothing, Sub() ShowCpuPerformanceDiagnosticsInBed())
         diagnosticsMenu.DropDownItems.Add("CPU / PIC / PIT live state...", Nothing, Sub() ShowCpuInterruptLiveStateInBed())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
         diagnosticsMenu.DropDownItems.Add("Keyboard live state...", Nothing, Sub() ShowKeyboardLiveState())
         diagnosticsMenu.DropDownItems.Add("Show raw keyboard wire trace...", Nothing, Sub() ShowKeyboardWireTrace())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.BeginDiagnosticBiosKeyboardTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.EndDiagnosticBiosKeyboardTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                              If CPU0 IsNot Nothing Then CPU0.BeginDiagnosticBiosKeyboardTrace()
+                                                          End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop BIOS keyboard-ring trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                             If CPU0 IsNot Nothing Then CPU0.EndDiagnosticBiosKeyboardTrace()
+                                                         End Sub))
         diagnosticsMenu.DropDownItems.Add("Show BIOS keyboard-ring trace...", Nothing, Sub() ShowBiosKeyboardRingTrace())
         diagnosticsMenu.DropDownItems.Add("BIOS keyboard-ring live state...", Nothing, Sub() ShowBiosKeyboardRingState())
         diagnosticsMenu.DropDownItems.Add("Clear raw keyboard wire trace", Nothing, Sub() WithMachineInBed(Sub() KeyboardController.ClearDiagnosticTrace()))
         diagnosticsMenu.DropDownItems.Add("Run keyboard hardware self-test...", Nothing, Sub() RunKeyboardHardwareSelfTest())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear VGA mode trace", Nothing, Sub() WithMachineInBed(Sub() VideoCard.BeginDiagnosticVgaTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop VGA mode trace", Nothing, Sub() WithMachineInBed(Sub() VideoCard.EndDiagnosticVgaTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear VGA mode trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                        If VideoCard IsNot Nothing Then VideoCard.BeginDiagnosticVgaTrace()
+                                                    End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop VGA mode trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                       If VideoCard IsNot Nothing Then VideoCard.EndDiagnosticVgaTrace()
+                                                   End Sub))
         diagnosticsMenu.DropDownItems.Add("Show VGA mode trace...", Nothing, Sub() ShowVgaModeTrace())
         diagnosticsMenu.DropDownItems.Add("VGA live state...", Nothing, Sub() ShowVgaStateSnapshot())
         diagnosticsMenu.DropDownItems.Add("80287 flight recorder...", Nothing, Sub() ShowNumericCoprocessorFlightRecorderInBed())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
-        diagnosticsMenu.DropDownItems.Add("Begin/clear important INTn trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.BeginDiagnosticImportantIntTrace()))
-        diagnosticsMenu.DropDownItems.Add("Stop important INTn trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.EndDiagnosticImportantIntTrace()))
+        diagnosticsMenu.DropDownItems.Add("Begin/clear important INTn trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                           If CPU0 IsNot Nothing Then CPU0.BeginDiagnosticImportantIntTrace()
+                                                       End Sub))
+        diagnosticsMenu.DropDownItems.Add("Stop important INTn trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                          If CPU0 IsNot Nothing Then CPU0.EndDiagnosticImportantIntTrace()
+                                                      End Sub))
         diagnosticsMenu.DropDownItems.Add("Show important INTn trace...", Nothing, Sub() ShowImportantIntTrace())
         diagnosticsMenu.DropDownItems.Add(New ToolStripSeparator())
         diagnosticsMenu.DropDownItems.Add("Show QB EXEC forensic trace...", Nothing, Sub() ShowQbExecForensicTraceInBed())
-        diagnosticsMenu.DropDownItems.Add("Clear/disarm QB EXEC forensic trace", Nothing, Sub() WithMachineInBed(Sub() CPU0.ClearDiagnosticQbExecTrace()))
+        diagnosticsMenu.DropDownItems.Add("Clear/disarm QB EXEC forensic trace", Nothing, Sub() WithMachineInBed(Sub()
+                                                        If CPU0 IsNot Nothing Then CPU0.ClearDiagnosticQbExecTrace()
+                                                    End Sub))
         machine.DropDownItems.Add(diagnosticsMenu)
         ramBanksMenu = BuildRamBanksMenu()
         machine.DropDownItems.Add(ramBanksMenu)
@@ -927,7 +1053,7 @@ Public Class Form1
         media.DropDownItems.Add("Boot floppy A", Nothing, Sub() BootFloppyA())
         media.DropDownItems.Add(New ToolStripSeparator())
         media.DropDownItems.Add(ideDriveShelfMenu)
-        media.DropDownItems.Add("Create 64 MB IDE shelf drive...", Nothing, Sub() CreateHardDisk())
+        media.DropDownItems.Add("Create selected-model IDE shelf drive...", Nothing, Sub() CreateHardDisk())
         media.DropDownItems.Add("Eject hard disk", Nothing, Sub() EjectHardDisk())
         media.DropDownItems.Add("Boot hard disk", Nothing, Sub() BootHardDisk())
         media.DropDownItems.Add(New ToolStripSeparator())
@@ -954,12 +1080,12 @@ Public Class Form1
 
         rootInBed.DropDownItems.Add("Sound Blaster 16 diagnostics", Nothing,
             Sub()
-                Dim textInBed As String = ReadMachineInBed(Function() SoundBlaster16.DiagnosticText())
+                Dim textInBed As String = ReadMachineInBed(Function() If(SoundBlaster16 Is Nothing, "No Sound Blaster 16 installed.", SoundBlaster16.DiagnosticText()))
                 ShowDumpableDiagnosticInBed("Sound Blaster 16", textInBed, "soundblaster16-diagnostic.txt", 980, 700)
             End Sub)
         rootInBed.DropDownItems.Add("NE2000 diagnostics", Nothing,
             Sub()
-                Dim textInBed As String = ReadMachineInBed(Function() Ne2000.DiagnosticText())
+                Dim textInBed As String = ReadMachineInBed(Function() If(Ne2000 Is Nothing, "No NE2000 installed.", Ne2000.DiagnosticText()))
                 ShowDumpableDiagnosticInBed("NE2000", textInBed, "ne2000-diagnostic.txt", 980, 700)
             End Sub)
 
@@ -988,13 +1114,18 @@ Public Class Form1
                     If Not Integer.TryParse(peerTextInBed, peerPortInBed) OrElse peerPortInBed < 1 OrElse peerPortInBed > 65535 Then
                         Throw New ArgumentException("Peer UDP port must be 1 through 65535.")
                     End If
-                    WithMachineInBed(Sub() Ne2000.ConfigureUdpTunnel(localPortInBed, peerHostInBed, peerPortInBed))
+                    WithMachineInBed(Sub()
+                                         If Ne2000 Is Nothing Then Throw New InvalidOperationException("No NE2000 is installed.")
+                                         Ne2000.ConfigureUdpTunnel(localPortInBed, peerHostInBed, peerPortInBed)
+                                     End Sub)
                 Catch ex As Exception
                     MessageBox.Show(Me, ex.Message, "NE2000 cable", MessageBoxButtons.OK, MessageBoxIcon.Error)
                 End Try
             End Sub)
         rootInBed.DropDownItems.Add("Disconnect NE2000 cable", Nothing,
-            Sub() WithMachineInBed(Sub() Ne2000.DisconnectUdpTunnel()))
+            Sub() WithMachineInBed(Sub()
+                                          If Ne2000 IsNot Nothing Then Ne2000.DisconnectUdpTunnel()
+                                      End Sub))
         rootInBed.DropDownItems.Add("Start NE2000 PCAP capture...", Nothing,
             Sub()
                 Using dialogInBed As New SaveFileDialog()
@@ -1005,20 +1136,33 @@ Public Class Form1
                     dialogInBed.FileName = "ne2000-capture.pcap"
                     If dialogInBed.ShowDialog(Me) <> DialogResult.OK Then Return
                     Try
-                        WithMachineInBed(Sub() Ne2000.SetPcapCapture(dialogInBed.FileName))
+                        WithMachineInBed(Sub()
+                                             If Ne2000 Is Nothing Then Throw New InvalidOperationException("No NE2000 is installed.")
+                                             Ne2000.SetPcapCapture(dialogInBed.FileName)
+                                         End Sub)
                     Catch ex As Exception
                         MessageBox.Show(Me, ex.Message, "NE2000 capture", MessageBoxButtons.OK, MessageBoxIcon.Error)
                     End Try
                 End Using
             End Sub)
         rootInBed.DropDownItems.Add("Stop NE2000 PCAP capture", Nothing,
-            Sub() WithMachineInBed(Sub() Ne2000.SetPcapCapture(Nothing)))
+            Sub() WithMachineInBed(Sub()
+                                          If Ne2000 IsNot Nothing Then Ne2000.SetPcapCapture(Nothing)
+                                      End Sub))
 
         AddHandler rootInBed.DropDownOpening,
             Sub()
-                sbStatusInBed.Text = "SB16: " & SoundBlaster16.BasePort.ToString("X3") & "h / IRQ" & SoundBlaster16.Irq.ToString() &
-                                     " / DMA" & SoundBlaster16.Dma8Channel.ToString() & "/" & SoundBlaster16.Dma16Channel.ToString()
-                neStatusInBed.Text = "NE2000: " & Ne2000.BasePort.ToString("X3") & "h / IRQ" & Ne2000.Irq.ToString() & " / " & Ne2000.MacAddressText
+                If SoundBlaster16 Is Nothing Then
+                    sbStatusInBed.Text = "SB16: None — ISA slot empty"
+                Else
+                    sbStatusInBed.Text = "SB16: " & SoundBlaster16.BasePort.ToString("X3") & "h / IRQ" & SoundBlaster16.Irq.ToString() &
+                                         " / DMA" & SoundBlaster16.Dma8Channel.ToString() & "/" & SoundBlaster16.Dma16Channel.ToString()
+                End If
+                If Ne2000 Is Nothing Then
+                    neStatusInBed.Text = "NE2000: None — ISA slot empty"
+                Else
+                    neStatusInBed.Text = "NE2000: " & Ne2000.BasePort.ToString("X3") & "h / IRQ" & Ne2000.Irq.ToString() & " / " & Ne2000.MacAddressText
+                End If
             End Sub
 
         Return rootInBed
@@ -1173,35 +1317,163 @@ Public Class Form1
         Return ReadMachineInBed(AddressOf GetSystemConfigurationSnapshotUnlockedInBed)
     End Function
 
+    Private Function DescribeIdeSlotInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+        Dim kindInBed As IdeDeviceKind = controllerInBed.GetDeviceKind(slaveInBed)
+
+        Select Case kindInBed
+            Case IdeDeviceKind.Empty
+                Return slotNameInBed & " — empty IDE socket"
+
+            Case IdeDeviceKind.AtapiCdRom
+                Return slotNameInBed & " — ATAPI CD-ROM — " &
+                       If(controllerInBed.IsCdRomMounted(slaveInBed), "ISO media inserted", "tray empty")
+
+            Case IdeDeviceKind.AtaHardDisk
+                If _ideDriveShelf Is Nothing Then Return slotNameInBed & " — ATA hard disk — IDE shelf unavailable"
+                Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                Dim identityInBed As HardDiskIdentity = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                Dim modelTextInBed As String = If(identityInBed Is Nothing, String.Empty, " — " & identityInBed.Model)
+                If configuredInBed < 0 Then
+                    Return slotNameInBed & " — ATA hard disk — no shelf image attached" & modelTextInBed
+                End If
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing Then
+                        Return slotNameInBed & ": shelf #" & configuredInBed.ToString() & " unavailable"
+                    End If
+                    Return slotNameInBed & ": shelf #" & entryInBed.Id.ToString() & " — " & entryInBed.Label &
+                           modelTextInBed &
+                           If(MountedIdeDriveIdInBed(channelInBed, slaveInBed) = entryInBed.Id,
+                              " — attached",
+                              " — configured, unavailable")
+                Catch ex As Exception
+                    Return slotNameInBed & " status unavailable — " & ex.Message
+                End Try
+
+            Case Else
+                Return slotNameInBed & " — unknown IDE device"
+        End Select
+    End Function
+
     Private Function GetSystemConfigurationSnapshotUnlockedInBed() As SystemConfigurationSnapshot
         Dim snapshotInBed As New SystemConfigurationSnapshot()
+        Dim currentPopulationInBed As MachineHardwarePopulationConfiguration =
+            If(_hardwarePopulationConfiguration, New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory))
+        Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+
+        Dim motherboardProfileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationInBed.MotherboardId)
         snapshotInBed.Chassis = "AT chassis profile not yet modeled"
         snapshotInBed.PowerSupply = "Power-supply profile not yet modeled"
-        snapshotInBed.Motherboard = "C&T CS8221 NEAT-class AT motherboard"
-        snapshotInBed.Chipset = "Chips & Technologies CS8221 NEAT chipset (" & Chipset.GetType().Name & ")"
-        snapshotInBed.ChipsetCpuBus = "82C211 CPU / AT-bus controller"
-        snapshotInBed.ChipsetMemory = "82C212 memory / shadow / EMS controller"
-        snapshotInBed.ChipsetPeripheral = "82C206 integrated peripheral controller — DMA, PIC, PIT, RTC/CMOS support"
-        snapshotInBed.ChipsetBuffer = "82C215 data / address buffer role — represented by motherboard decode and routing"
-        snapshotInBed.ChipsetConfigurationPorts = "NEAT indexed configuration interface — 22h index / 23h data"
-        snapshotInBed.ChipsetTiming = Chipset.TimingDiagnosticText()
-        snapshotInBed.Bios = "Cromwell AT BIOS — Firmware\atbios.rom"
-        snapshotInBed.Cpu = MachineProfile286.ProcessorVendor & " " & MachineProfile286.ProcessorModel
-        snapshotInBed.CpuClock = (MachineClock.CpuClockHz \ 1000000L).ToString() & " MHz" & If(MachineClock.TurboEnabled, " — Turbo", " — Normal")
+        snapshotInBed.MotherboardHardwareId = motherboardProfileInBed.Id
+        snapshotInBed.Motherboard = motherboardProfileInBed.DisplayName
+        Dim selectedRuntimeInBed As IMotherboardRuntimeBackplane = MotherboardRuntimeFactory.Create(motherboardProfileInBed.Id)
+        snapshotInBed.MotherboardRuntimeStatus = If(selectedRuntimeInBed.FixedFabricAvailable,
+                                                    selectedRuntimeInBed.RuntimeDisplayName,
+                                                    selectedRuntimeInBed.RuntimeDisplayName & " — activation gated; no substitute chipset will be fabricated")
+        snapshotInBed.CpuSocket = motherboardProfileInBed.CpuSocketDisplayName
+        snapshotInBed.ClockGenerator = motherboardProfileInBed.ClockGeneratorDisplayName
+        snapshotInBed.MemoryTopology = motherboardProfileInBed.MemoryTopologyDisplayName
+        snapshotInBed.CacheTopology = motherboardProfileInBed.CacheTopologyDisplayName
+        Dim expansionTextInBed As New List(Of String)()
+        For Each slotInBed As MotherboardExpansionSlotProfile In motherboardProfileInBed.ExpansionSlots()
+            expansionTextInBed.Add(slotInBed.DisplayName & If(slotInBed.BusMasterCapable, " — bus-master capable", String.Empty))
+        Next
+        snapshotInBed.ExpansionTopology = String.Join(Environment.NewLine, expansionTextInBed)
+        Dim boardContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(motherboardProfileInBed.Id)
+        Dim effectiveClockIdInBed As String = If(String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId), boardContextInBed.ClockOptionId, _pendingMotherboardClockOptionId)
+        Dim effectiveClockInBed As MotherboardClockOption = motherboardProfileInBed.FindClockOption(effectiveClockIdInBed)
+        If effectiveClockInBed Is Nothing Then effectiveClockInBed = motherboardProfileInBed.FindClockOption(motherboardProfileInBed.DefaultClockOptionId)
+        snapshotInBed.MotherboardClockOptionId = If(effectiveClockInBed Is Nothing, String.Empty, effectiveClockInBed.Id)
+        snapshotInBed.MotherboardClockSetting = If(effectiveClockInBed Is Nothing, "No clock option defined", effectiveClockInBed.DisplayName)
+        snapshotInBed.MotherboardCacheKilobytes = If(_pendingMotherboardCacheKb.HasValue, _pendingMotherboardCacheKb.Value, boardContextInBed.CacheKilobytes)
+        snapshotInBed.MotherboardCmos = motherboardProfileInBed.CmosStorageBytes.ToString() & " bytes battery-backed CMOS — " & motherboardProfileInBed.CmosNvramRelativePath
+        Dim firmwareFullPathInBed As String = Path.Combine(AppContext.BaseDirectory, motherboardProfileInBed.FirmwareImageRelativePath.Replace("\"c, Path.DirectorySeparatorChar))
+        snapshotInBed.MotherboardFirmwareImage = motherboardProfileInBed.FirmwareImageRelativePath & If(File.Exists(firmwareFullPathInBed), " — present", " — image required / not present in this checkpoint")
+        Dim installedIsa16CountInBed As Integer = CountInstalledIsa16CardsInBed(effectivePopulationInBed)
+        Dim isaFitReasonInBed As String = String.Empty
+        If motherboardProfileInBed.ValidateIsa16CardCount(installedIsa16CountInBed, isaFitReasonInBed) Then
+            snapshotInBed.ExpansionCompatibility = installedIsa16CountInBed.ToString() & " installed 16-bit ISA card(s); " & motherboardProfileInBed.CompatibleIsaSlotCount(16).ToString() & " compatible 16-bit connector(s)"
+        Else
+            snapshotInBed.ExpansionCompatibility = "CONFLICT — " & isaFitReasonInBed
+        End If
+        Dim currentMotherboardProfileInBed As MotherboardProfile = MotherboardCatalog.Require(currentPopulationInBed.MotherboardId)
+        Dim liveRuntimeInBed As IMotherboardRuntimeBackplane =
+            If(_motherboardRuntimeInBed Is Nothing, Nothing, _motherboardRuntimeInBed.Current)
+        Dim liveChipsetSuffixInBed As String
+        Dim liveTimingInBed As String
+        If _motherboardRuntimeInBed Is Nothing Then
+            liveChipsetSuffixInBed = " — configured; machine not materialized"
+            liveTimingInBed = "Machine not materialized. Run compiles the Machine Build Script and activates this motherboard runtime."
+        ElseIf String.Equals(currentMotherboardProfileInBed.Id, motherboardProfileInBed.Id, StringComparison.OrdinalIgnoreCase) Then
+            liveChipsetSuffixInBed = " (" & If(liveRuntimeInBed Is Nothing, Chipset.GetType().Name, liveRuntimeInBed.RuntimeDisplayName) & ")"
+            liveTimingInBed = If(liveRuntimeInBed Is Nothing, Chipset.TimingDiagnosticText(), liveRuntimeInBed.DiagnosticText())
+        Else
+            liveChipsetSuffixInBed = " — pending selection; live board remains " & currentMotherboardProfileInBed.DisplayName
+            liveTimingInBed = "Pending motherboard selection — live board remains asserted until the cold replacement is committed" & Environment.NewLine & _motherboardRuntimeInBed.DiagnosticText()
+        End If
+        snapshotInBed.Chipset = motherboardProfileInBed.ChipsetDisplayName & liveChipsetSuffixInBed
+        snapshotInBed.ChipsetCpuBus = motherboardProfileInBed.ChipsetCpuBus
+        snapshotInBed.ChipsetMemory = motherboardProfileInBed.ChipsetMemory
+        snapshotInBed.ChipsetPeripheral = motherboardProfileInBed.ChipsetPeripheral
+        snapshotInBed.ChipsetBuffer = motherboardProfileInBed.ChipsetBuffer
+        snapshotInBed.ChipsetConfigurationPorts = motherboardProfileInBed.ChipsetConfigurationPorts
+        snapshotInBed.ChipsetTiming = liveTimingInBed
+        snapshotInBed.Bios = motherboardProfileInBed.BiosDisplayName
+
+        snapshotInBed.CpuHardwareId = effectivePopulationInBed.CpuId
+        snapshotInBed.NumericCoprocessorHardwareId = effectivePopulationInBed.NumericCoprocessorId
+        snapshotInBed.VideoHardwareId = effectivePopulationInBed.VideoCardId
+        snapshotInBed.AudioHardwareId = effectivePopulationInBed.AudioCardId
+        snapshotInBed.NetworkHardwareId = effectivePopulationInBed.NetworkCardId
+
+        Dim machineExistsInBed As Boolean = (_materializedMachineInBed IsNot Nothing)
+        snapshotInBed.Cpu = ProcessorPackageCatalog.DisplayName(effectivePopulationInBed.CpuId) &
+                            If(machineExistsInBed, "", " — configured")
+        snapshotInBed.CpuClock = If(machineExistsInBed AndAlso CPU0 IsNot Nothing,
+                                    (MachineClock.CpuClockHz \ 1000000L).ToString() & " MHz" & If(MachineClock.TurboEnabled, " — Turbo", " — Normal"),
+                                    snapshotInBed.MotherboardClockSetting & " — applied on Run")
         snapshotInBed.HostExecutionRatePercent = MachineClock.HostExecutionRatePercent
         snapshotInBed.HostExecutionRate = If(MachineClock.HostExecutionRatePercent = 0,
                                                 "Unlimited — host limited",
                                                 (CDbl(MachineClock.HostExecutionRatePercent) / 100.0R).ToString("0.##") & "× real time")
-        snapshotInBed.NumericCoprocessor = "Intel 80287"
-        snapshotInBed.InstalledMemoryMb = If(_ramBanks Is Nothing, 0, _ramBanks.InstalledMemoryMb)
-        snapshotInBed.Memory = snapshotInBed.InstalledMemoryMb.ToString() & " MB"
+        snapshotInBed.NumericCoprocessor = NumericCoprocessorPackageCatalog.DisplayName(effectivePopulationInBed.NumericCoprocessorId) &
+                                          If(machineExistsInBed, "", " — configured")
+        snapshotInBed.InstalledMemoryMb = If(_pendingMemoryMb.HasValue,
+                                             _pendingMemoryMb.Value,
+                                             boardContextInBed.MemoryMegabytes)
+        snapshotInBed.Memory = snapshotInBed.InstalledMemoryMb.ToString() & " MB" & If(machineExistsInBed, "", " — configured")
         snapshotInBed.PendingMemoryMb = _pendingMemoryMb
-        snapshotInBed.Video = "Diamond Stealth Pro ISA — S3 86C928 — 2 MiB VRAM"
-        snapshotInBed.VideoRom = "Diamond Stealth Pro option ROM — Firmware\stealthpro.rom"
-        snapshotInBed.ExpansionAudio = "Creative Sound Blaster 16 — " & SoundBlaster16.BasePort.ToString("X3") & "h — IRQ" & SoundBlaster16.Irq.ToString() &
-                                       " — DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & " — OPL3"
+        snapshotInBed.Video = IsaCardCatalog286.VideoDisplayName(effectivePopulationInBed.VideoCardId) &
+                              If(machineExistsInBed, "", " — configured")
+        snapshotInBed.VideoRom = If(String.Equals(effectivePopulationInBed.VideoCardId,
+                                                  MachineHardwarePopulationConfiguration.NoneId,
+                                                  StringComparison.OrdinalIgnoreCase),
+                                    "None — no video option ROM configured",
+                                    "Diamond Stealth Pro option ROM — Firmware\stealthpro.rom" & If(machineExistsInBed, "", " — loads on Run"))
+        Dim effectiveSbInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
+        If String.Equals(effectivePopulationInBed.AudioCardId,
+                         MachineHardwarePopulationConfiguration.NoneId,
+                         StringComparison.OrdinalIgnoreCase) Then
+            snapshotInBed.ExpansionAudio = IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.NoneId)
+        ElseIf SoundBlaster16 IsNot Nothing Then
+            snapshotInBed.ExpansionAudio = "Creative Sound Blaster 16 — " & SoundBlaster16.BasePort.ToString("X3") & "h — IRQ" & SoundBlaster16.Irq.ToString() &
+                                           " — DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & " — OPL3"
+        Else
+            snapshotInBed.ExpansionAudio = IsaCardCatalog286.AudioDisplayName(effectivePopulationInBed.AudioCardId) & " — " & effectiveSbInBed.Summary() & " — configured"
+        End If
         snapshotInBed.Speaker = "Motherboard PC speaker — PIT channel 2 / port 61h"
-        snapshotInBed.Network = "Novell NE2000-compatible — " & Ne2000.BasePort.ToString("X3") & "h — IRQ" & Ne2000.Irq.ToString() & " — " & Ne2000.MacAddressText
+        Dim effectiveNeInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
+        If String.Equals(effectivePopulationInBed.NetworkCardId,
+                         MachineHardwarePopulationConfiguration.NoneId,
+                         StringComparison.OrdinalIgnoreCase) Then
+            snapshotInBed.Network = IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.NoneId)
+        ElseIf Ne2000 IsNot Nothing Then
+            snapshotInBed.Network = "Novell NE2000-compatible — " & Ne2000.BasePort.ToString("X3") & "h — IRQ" & Ne2000.Irq.ToString() & " — " & Ne2000.MacAddressText
+        Else
+            snapshotInBed.Network = IsaCardCatalog286.NetworkDisplayName(effectivePopulationInBed.NetworkCardId) & " — " & effectiveNeInBed.Summary() & " — configured"
+        End If
         snapshotInBed.FloppyController = "NEC uPD765A / Intel 8272-compatible FDC"
         snapshotInBed.FloppyDriveA = "AT floppy drive unit A — swappable drive profile"
         snapshotInBed.FloppyDriveB = "AT floppy drive unit B — swappable drive profile"
@@ -1209,49 +1481,64 @@ Public Class Form1
         snapshotInBed.FloppyMediaB = FloppyController.GetAttachmentStatus(1)
         snapshotInBed.FloppyMediaSourceIdA = If(String.IsNullOrWhiteSpace(FloppyController.GetMediaSourceId(0)), "empty", FloppyController.GetMediaSourceId(0))
         snapshotInBed.FloppyMediaSourceIdB = If(String.IsNullOrWhiteSpace(FloppyController.GetMediaSourceId(1)), "empty", FloppyController.GetMediaSourceId(1))
-        snapshotInBed.HardDiskController = "Primary ATA/IDE controller — 1F0h-1F7h, 3F6h"
-        If _ideDriveShelf Is Nothing OrElse _ideDriveShelf.PrimaryMasterId < 0 Then
-            snapshotInBed.HardDisk0 = "Primary master disconnected"
-        Else
-            Try
-                Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(_ideDriveShelf.PrimaryMasterId)
-                If entryInBed Is Nothing Then
-                    snapshotInBed.HardDisk0 = "Primary master: shelf #" & _ideDriveShelf.PrimaryMasterId.ToString() & " unavailable"
-                Else
-                    snapshotInBed.HardDisk0 = "Primary master: shelf #" & entryInBed.Id.ToString() & " — " & entryInBed.Label & If(_mountedIdeDriveId = entryInBed.Id, " — attached", " — configured, unavailable")
-                End If
-            Catch ex As Exception
-                snapshotInBed.HardDisk0 = "Primary master status unavailable — " & ex.Message
-            End Try
-        End If
-        snapshotInBed.Optical = If(Declares.IdeController.CdRomMounted,
-                                   "IDE/ATAPI CD-ROM — ISO media inserted",
-                                   "IDE/ATAPI CD-ROM — no media inserted")
+        snapshotInBed.HardDiskController =
+            "Dual-channel ISA ATA/IDE — primary 1F0h-1F7h + 3F6h, IRQ14; secondary 170h-177h + 376h, IRQ15"
+        Dim effectiveIdeInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        snapshotInBed.IdePrimaryMasterHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.PrimaryMasterKind)
+        snapshotInBed.IdePrimarySlaveHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.PrimarySlaveKind)
+        snapshotInBed.IdeSecondaryMasterHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.SecondaryMasterKind)
+        snapshotInBed.IdeSecondarySlaveHardwareId = IdeHardwareConfiguration.KindId(effectiveIdeInBed.SecondarySlaveKind)
+        snapshotInBed.IdePrimaryMasterModelId = effectiveIdeInBed.PrimaryMasterModelId
+        snapshotInBed.IdePrimarySlaveModelId = effectiveIdeInBed.PrimarySlaveModelId
+        snapshotInBed.IdeSecondaryMasterModelId = effectiveIdeInBed.SecondaryMasterModelId
+        snapshotInBed.IdeSecondarySlaveModelId = effectiveIdeInBed.SecondarySlaveModelId
+        snapshotInBed.HardDisk0 = DescribeIdeSlotInBed(0, False)
+        snapshotInBed.HardDisk1 = DescribeIdeSlotInBed(1, False)
+        snapshotInBed.Optical = DescribeIdeSlotInBed(0, True)
+        snapshotInBed.Optical1 = DescribeIdeSlotInBed(1, True)
         snapshotInBed.Keyboard = "IBM AT 101-key keyboard + 8042 controller"
         snapshotInBed.Com1 = "NS16550A-compatible UART — 3F8h — IRQ4 — Microsoft serial mouse attached"
         snapshotInBed.Com2 = "NS16550A-compatible UART — 2F8h — IRQ3 — DB-9 connector"
         snapshotInBed.Lpt1 = "IBM-compatible SPP / Centronics — 378h — IRQ7"
         snapshotInBed.Lpt2 = "IBM-compatible SPP / Centronics — 278h — IRQ5"
-        snapshotInBed.GamePort = If(SoundBlaster16.GamePortEnabled,
+        If String.Equals(effectivePopulationInBed.AudioCardId,
+                         MachineHardwarePopulationConfiguration.NoneId,
+                         StringComparison.OrdinalIgnoreCase) Then
+            snapshotInBed.GamePort = "None — no expansion game port configured"
+            snapshotInBed.Midi = "None — no MPU-401 interface configured"
+        ElseIf SoundBlaster16 IsNot Nothing Then
+            snapshotInBed.GamePort = If(SoundBlaster16.GamePortEnabled,
                                         "Sound Blaster 16 game port — 201h — no joystick attached",
                                         "Sound Blaster 16 game port — disabled by card jumper")
-        snapshotInBed.Midi = "MPU-401 UART-compatible — " & SoundBlaster16.MpuBasePort.ToString("X3") & "h (Sound Blaster 16)"
+            snapshotInBed.Midi = "MPU-401 UART-compatible — " & SoundBlaster16.MpuBasePort.ToString("X3") & "h (Sound Blaster 16)"
+        Else
+            snapshotInBed.GamePort = If(effectiveSbInBed.GamePortEnabled,
+                                        "Sound Blaster 16 game port — 201h — configured",
+                                        "Sound Blaster 16 game port — disabled by configured jumper")
+            snapshotInBed.Midi = "MPU-401 UART-compatible — " & effectiveSbInBed.MpuPort.ToString("X3") & "h — configured"
+        End If
         snapshotInBed.PendingHardwareSummary = GetPendingHardwareSummaryInBed()
-        snapshotInBed.ResourceSummary =
-            "NEAT config: 22h/23h" & Environment.NewLine &
-            "DMA: 00h-0Fh, 80h-8Fh, C0h-DEh" & Environment.NewLine &
-            "PIC: 20h/21h + A0h/A1h" & Environment.NewLine &
-            "PIT / speaker gate: 40h-43h + 61h" & Environment.NewLine &
-            "RTC / CMOS: 70h/71h, IRQ8" & Environment.NewLine &
-            "Keyboard: 60h/64h, IRQ1" & Environment.NewLine &
-            "Floppy: 3F2h-3F7h, IRQ6, DMA2" & Environment.NewLine &
-            "Primary IDE: 1F0h-1F7h + 3F6h, IRQ14" & Environment.NewLine &
-            "VGA/S3: legacy VGA I/O + A0000h-BFFFFh, option ROM C0000h-C7FFFh" & Environment.NewLine &
-            "COM1: 3F8h-3FFh, IRQ4; COM2: 2F8h-2FFh, IRQ3" & Environment.NewLine &
-            "LPT1: 378h-37Ah, IRQ7; LPT2: 278h-27Ah, IRQ5" & Environment.NewLine &
-            "Sound Blaster 16: " & SoundBlaster16.BasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.BasePort) + &HF).ToString("X3") & "h + 388h-38Bh, IRQ" & SoundBlaster16.Irq.ToString() & ", DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString() & Environment.NewLine &
-            "MPU-401 UART: " & SoundBlaster16.MpuBasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.MpuBasePort) + 1).ToString("X3") & "h (SB16); game port: " & If(SoundBlaster16.GamePortEnabled, "201h", "disabled") & Environment.NewLine &
-            "NE2000: " & Ne2000.BasePort.ToString("X3") & "h-" & (CInt(Ne2000.BasePort) + &H1F).ToString("X3") & "h, IRQ" & Ne2000.Irq.ToString() & ", 16 KiB packet RAM"
+
+        Dim resourcesInBed As New System.Text.StringBuilder()
+        resourcesInBed.AppendLine("NEAT config: 22h/23h")
+        resourcesInBed.AppendLine("DMA: 00h-0Fh, 80h-8Fh, C0h-DEh")
+        resourcesInBed.AppendLine("PIC: 20h/21h + A0h/A1h")
+        resourcesInBed.AppendLine("PIT / speaker gate: 40h-43h + 61h")
+        resourcesInBed.AppendLine("RTC / CMOS: 70h/71h, IRQ8")
+        resourcesInBed.AppendLine("Keyboard: 60h/64h, IRQ1")
+        resourcesInBed.AppendLine("Floppy: 3F2h-3F5h + 3F7h, IRQ6, DMA2")
+        resourcesInBed.AppendLine("Primary IDE: 1F0h-1F7h + 3F6h, IRQ14")
+        resourcesInBed.AppendLine("Secondary IDE: 170h-177h + 376h, IRQ15")
+        If NumericCoprocessor0 IsNot Nothing Then resourcesInBed.AppendLine("80287 numeric processor extension: IRQ13 error path")
+        If VideoCard IsNot Nothing Then resourcesInBed.AppendLine("VGA/S3: legacy VGA I/O + A0000h-BFFFFh, option ROM C0000h-C7FFFh")
+        resourcesInBed.AppendLine("COM1: 3F8h-3FFh, IRQ4; COM2: 2F8h-2FFh, IRQ3")
+        resourcesInBed.AppendLine("LPT1: 378h-37Ah, IRQ7; LPT2: 278h-27Ah, IRQ5")
+        If SoundBlaster16 IsNot Nothing Then
+            resourcesInBed.AppendLine("Sound Blaster 16: " & SoundBlaster16.BasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.BasePort) + &HF).ToString("X3") & "h + 388h-38Bh, IRQ" & SoundBlaster16.Irq.ToString() & ", DMA" & SoundBlaster16.Dma8Channel.ToString() & "/DMA" & SoundBlaster16.Dma16Channel.ToString())
+            resourcesInBed.AppendLine("MPU-401 UART: " & SoundBlaster16.MpuBasePort.ToString("X3") & "h-" & (CInt(SoundBlaster16.MpuBasePort) + 1).ToString("X3") & "h (SB16); game port: " & If(SoundBlaster16.GamePortEnabled, "201h", "disabled"))
+        End If
+        If Ne2000 IsNot Nothing Then resourcesInBed.Append("NE2000: " & Ne2000.BasePort.ToString("X3") & "h-" & (CInt(Ne2000.BasePort) + &H1F).ToString("X3") & "h, IRQ" & Ne2000.Irq.ToString() & ", 16 KiB packet RAM")
+        snapshotInBed.ResourceSummary = resourcesInBed.ToString().TrimEnd()
         Return snapshotInBed
     End Function
 
@@ -1370,8 +1657,19 @@ Public Class Form1
     End Sub
 
     Friend Sub StageMemoryConfigurationInBed(megabytesInBed As Integer)
-        If _ramBanks Is Nothing OrElse Not RamBankConfiguration.IsSupported(megabytesInBed) Then Return
-        If megabytesInBed = _ramBanks.InstalledMemoryMb Then
+        If _ramBanks Is Nothing Then Return
+        Dim effectivePopulationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationInBed.MotherboardId)
+        If Not profileInBed.SupportsMemoryMegabytes(megabytesInBed) Then Return
+
+        Dim currentBoardIdInBed As String = If(_hardwarePopulationConfiguration Is Nothing,
+                                                MotherboardCatalog.CtCs8221NeatAt286Id,
+                                                _hardwarePopulationConfiguration.MotherboardId)
+        If Not String.Equals(effectivePopulationInBed.MotherboardId, currentBoardIdInBed, StringComparison.OrdinalIgnoreCase) Then
+            ' A motherboard on the service bench owns its own SIMMs even if the
+            ' selected capacity happens to equal the live board's capacity.
+            _pendingMemoryMb = megabytesInBed
+        ElseIf megabytesInBed = _ramBanks.InstalledMemoryMb Then
             _pendingMemoryMb = Nothing
         Else
             _pendingMemoryMb = megabytesInBed
@@ -1381,6 +1679,10 @@ Public Class Form1
 
     Friend Sub RevertPendingSystemConfigurationInBed()
         _pendingMemoryMb = Nothing
+        _pendingMotherboardClockOptionId = Nothing
+        _pendingMotherboardCacheKb = Nothing
+        _pendingIdeHardwareConfiguration = Nothing
+        _pendingHardwarePopulationConfiguration = Nothing
         _pendingSoundBlaster16Jumpers = Nothing
         _pendingNe2000Jumpers = Nothing
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
@@ -1390,7 +1692,12 @@ Public Class Form1
         If _isaCardConfiguration Is Nothing Then Return
         Dim sbInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
         Dim neInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
-        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.SoundBlaster16, sbInBed, neInBed)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.SoundBlaster16,
+                                                    sbInBed,
+                                                    neInBed,
+                                                    soundBlasterInstalledInBed:=Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                    ne2000InstalledInBed:=Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
             If panelInBed.ShowDialog(Me) = DialogResult.OK Then
                 StageSoundBlaster16JumpersInBed(panelInBed.SoundBlasterSettings)
             End If
@@ -1401,16 +1708,32 @@ Public Class Form1
         If _isaCardConfiguration Is Nothing Then Return
         Dim sbInBed As SoundBlaster16JumperSettings = EffectiveSoundBlaster16JumpersInBed()
         Dim neInBed As Ne2000JumperSettings = EffectiveNe2000JumpersInBed()
-        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.Ne2000, sbInBed, neInBed)
-            If panelInBed.ShowDialog(Me) = DialogResult.OK Then
-                StageNe2000JumpersInBed(panelInBed.Ne2000Settings)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        If populationInBed.NetworkCardId.StartsWith("vcb:", StringComparison.OrdinalIgnoreCase) Then
+            Dim packageInBed As VmbCompiledCardPackage = VmbCompiledCardStore.FindById(populationInBed.NetworkCardId.Substring(4))
+            If packageInBed Is Nothing Then
+                MessageBox.Show(Me, "The selected VCB is no longer present in the VCB Store.", "VCB missing", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+                Return
             End If
+            Using panelInBed As New CompiledCardConfigurationDialog(packageInBed, neInBed)
+                If panelInBed.ShowDialog(Me) = DialogResult.OK Then StageNe2000JumpersInBed(panelInBed.Ne2000Settings, packageInBed)
+            End Using
+            Return
+        End If
+        Using panelInBed As New IsaCardJumperDialog(IsaJumperCardKind.Ne2000, sbInBed, neInBed,
+                                                    soundBlasterInstalledInBed:=Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                    ne2000InstalledInBed:=Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
+            If panelInBed.ShowDialog(Me) = DialogResult.OK Then StageNe2000JumpersInBed(panelInBed.Ne2000Settings)
         End Using
     End Sub
 
     Private Sub StageSoundBlaster16JumpersInBed(settingsInBed As SoundBlaster16JumperSettings)
         If settingsInBed Is Nothing OrElse _isaCardConfiguration Is Nothing Then Return
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(settingsInBed, EffectiveNe2000JumpersInBed())
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(settingsInBed, EffectiveNe2000JumpersInBed(),
+                                                                                   Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
         If conflictsInBed.Count > 0 Then
             MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
@@ -1423,9 +1746,22 @@ Public Class Form1
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
     End Sub
 
-    Private Sub StageNe2000JumpersInBed(settingsInBed As Ne2000JumperSettings)
+    Private Sub StageNe2000JumpersInBed(settingsInBed As Ne2000JumperSettings, Optional compiledPackageInBed As VmbCompiledCardPackage = Nothing)
         If settingsInBed Is Nothing OrElse _isaCardConfiguration Is Nothing Then Return
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(), settingsInBed)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim compiledPortsInBed As UInt16() = Nothing
+        Dim compiledIrqsInBed As Integer() = Nothing
+        If compiledPackageInBed IsNot Nothing Then
+            For Each pInBed As VmbCompiledCardProperty In compiledPackageInBed.Header.Properties
+                If String.Equals(pInBed.Name, "IO_BASE", StringComparison.OrdinalIgnoreCase) Then compiledPortsInBed = pInBed.AllowedValues.ConvertAll(Function(v) CUShort(Integer.Parse(v))).ToArray()
+                If String.Equals(pInBed.Name, "IRQ", StringComparison.OrdinalIgnoreCase) Then compiledIrqsInBed = pInBed.AllowedValues.ConvertAll(Function(v) Integer.Parse(v)).ToArray()
+            Next
+        End If
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(), settingsInBed,
+                                                                                   Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                   compiledPortsInBed, compiledIrqsInBed)
         If conflictsInBed.Count > 0 Then
             MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
             Return
@@ -1452,9 +1788,12 @@ Public Class Form1
 
     Private Shared Function SameSoundBlaster16JumpersInBed(aInBed As SoundBlaster16JumperSettings, bInBed As SoundBlaster16JumperSettings) As Boolean
         If aInBed Is Nothing OrElse bInBed Is Nothing Then Return False
+        Dim aWavetableInBed As WavetableAttachmentSettings = If(aInBed.Wavetable, New WavetableAttachmentSettings())
+        Dim bWavetableInBed As WavetableAttachmentSettings = If(bInBed.Wavetable, New WavetableAttachmentSettings())
         Return aInBed.BasePort = bInBed.BasePort AndAlso aInBed.Irq = bInBed.Irq AndAlso
                aInBed.Dma8 = bInBed.Dma8 AndAlso aInBed.Dma16 = bInBed.Dma16 AndAlso
-               aInBed.MpuPort = bInBed.MpuPort AndAlso aInBed.GamePortEnabled = bInBed.GamePortEnabled
+               aInBed.MpuPort = bInBed.MpuPort AndAlso aInBed.GamePortEnabled = bInBed.GamePortEnabled AndAlso
+               aWavetableInBed.SameAs(bWavetableInBed)
     End Function
 
     Private Shared Function SameNe2000JumpersInBed(aInBed As Ne2000JumperSettings, bInBed As Ne2000JumperSettings) As Boolean
@@ -1465,25 +1804,133 @@ Public Class Form1
     Private Function GetPendingHardwareSummaryInBed() As String
         Dim pendingInBed As New List(Of String)()
         If _pendingMemoryMb.HasValue Then pendingInBed.Add("memory " & _pendingMemoryMb.Value.ToString() & " MB")
+        If Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) Then pendingInBed.Add("board clock " & _pendingMotherboardClockOptionId)
+        If _pendingMotherboardCacheKb.HasValue Then pendingInBed.Add("L2 cache " & _pendingMotherboardCacheKb.Value.ToString() & " KB")
+        If _pendingIdeHardwareConfiguration IsNot Nothing Then pendingInBed.Add("IDE " & _pendingIdeHardwareConfiguration.Summary())
+        If _pendingHardwarePopulationConfiguration IsNot Nothing Then pendingInBed.Add("population " & _pendingHardwarePopulationConfiguration.Summary())
         If _pendingSoundBlaster16Jumpers IsNot Nothing Then pendingInBed.Add("SB16 " & _pendingSoundBlaster16Jumpers.Summary())
         If _pendingNe2000Jumpers IsNot Nothing Then pendingInBed.Add("NE2000 " & _pendingNe2000Jumpers.Summary())
         Return String.Join("; ", pendingInBed)
     End Function
 
     Friend Sub ApplyPendingSystemConfigurationAndPowerCycleInBed()
-        Dim cardChangesInBed As Boolean = _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
-        If Not _pendingMemoryMb.HasValue AndAlso Not cardChangesInBed Then Return
+        Dim effectivePopulationForFitInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim fitProfileInBed As MotherboardProfile = MotherboardCatalog.Require(effectivePopulationForFitInBed.MotherboardId)
+        Dim fitReasonInBed As String = String.Empty
+        If Not fitProfileInBed.ValidateIsa16CardCount(CountInstalledIsa16CardsInBed(effectivePopulationForFitInBed), fitReasonInBed) Then
+            MessageBox.Show(Me, fitReasonInBed & " The running machine has not been altered.", "Motherboard slot conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+        If _pendingHardwarePopulationConfiguration IsNot Nothing Then
+            Dim runtimeReasonInBed As String = String.Empty
+            Dim activationProbeInBed As MotherboardRuntimeManager = If(_motherboardRuntimeInBed, New MotherboardRuntimeManager())
+            If Not activationProbeInBed.CanActivate(_pendingHardwarePopulationConfiguration.MotherboardId,
+                                                    _pendingHardwarePopulationConfiguration.CpuId,
+                                                    runtimeReasonInBed) Then
+                MessageBox.Show(Me,
+                                runtimeReasonInBed & " The running machine has not been altered.",
+                                "Motherboard runtime pending",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information)
+                Return
+            End If
+        End If
+        Dim cardChangesInBed As Boolean =
+            _pendingSoundBlaster16Jumpers IsNot Nothing OrElse _pendingNe2000Jumpers IsNot Nothing
+        Dim ideChangesInBed As Boolean = _pendingIdeHardwareConfiguration IsNot Nothing
+        Dim populationChangesInBed As Boolean = _pendingHardwarePopulationConfiguration IsNot Nothing
+        Dim motherboardSettingChangesInBed As Boolean = Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) OrElse _pendingMotherboardCacheKb.HasValue
+        If Not _pendingMemoryMb.HasValue AndAlso Not motherboardSettingChangesInBed AndAlso Not cardChangesInBed AndAlso Not ideChangesInBed AndAlso Not populationChangesInBed Then Return
 
-        Dim wasPoweredInBed As Boolean = _machinePoweredInBed
+        Dim wasPoweredInBed As Boolean = MachinePoweredInBed
+        Dim hadMaterializedMachineInBed As Boolean = (_materializedMachineInBed IsNot Nothing)
         If wasPoweredInBed Then SetMachinePowerInBed(False)
+        If hadMaterializedMachineInBed Then ReleaseMaterializedMachineInBed()
 
         If _pendingMemoryMb.HasValue Then
             Dim memoryMbInBed As Integer = _pendingMemoryMb.Value
             _pendingMemoryMb = Nothing
-            If _ramBanks IsNot Nothing AndAlso RamBankConfiguration.IsSupported(memoryMbInBed) Then
-                _ramBanks.InstalledMemoryMb = memoryMbInBed
-                _ramBanks.SaveConfiguration()
+            Dim boardForMemoryInBed As String = EffectiveHardwarePopulationInBed().MotherboardId
+            Dim memoryProfileInBed As MotherboardProfile = MotherboardCatalog.Require(boardForMemoryInBed)
+            If memoryProfileInBed.SupportsMemoryMegabytes(memoryMbInBed) Then
+                Dim boardContextForMemoryInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(boardForMemoryInBed)
+                boardContextForMemoryInBed.MemoryMegabytes = memoryMbInBed
+                boardContextForMemoryInBed.SaveConfiguration()
+                If String.Equals(boardForMemoryInBed, MotherboardCatalog.CtCs8221NeatAt286Id, StringComparison.OrdinalIgnoreCase) AndAlso _ramBanks IsNot Nothing AndAlso RamBankConfiguration.IsSupported(memoryMbInBed) Then
+                    _ramBanks.InstalledMemoryMb = memoryMbInBed
+                    _ramBanks.SaveConfiguration()
+                End If
             End If
+        End If
+
+        If motherboardSettingChangesInBed Then
+            Dim boardForSettingsInBed As String = EffectiveHardwarePopulationInBed().MotherboardId
+            Dim settingsProfileInBed As MotherboardProfile = MotherboardCatalog.Require(boardForSettingsInBed)
+            Dim boardContextForSettingsInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(boardForSettingsInBed)
+            If Not String.IsNullOrWhiteSpace(_pendingMotherboardClockOptionId) AndAlso settingsProfileInBed.FindClockOption(_pendingMotherboardClockOptionId) IsNot Nothing Then
+                boardContextForSettingsInBed.ClockOptionId = _pendingMotherboardClockOptionId
+            End If
+            If _pendingMotherboardCacheKb.HasValue AndAlso settingsProfileInBed.SupportsCacheKilobytes(_pendingMotherboardCacheKb.Value) Then
+                boardContextForSettingsInBed.CacheKilobytes = _pendingMotherboardCacheKb.Value
+            End If
+            boardContextForSettingsInBed.SaveConfiguration()
+            _pendingMotherboardClockOptionId = Nothing
+            _pendingMotherboardCacheKb = Nothing
+        End If
+
+        If ideChangesInBed Then
+            Dim previousIdeInBed As IdeHardwareConfiguration =
+                If(_ideHardwareConfiguration Is Nothing,
+                   New IdeHardwareConfiguration(AppContext.BaseDirectory),
+                   _ideHardwareConfiguration.CloneConfiguration())
+            Dim nextIdeInBed As IdeHardwareConfiguration =
+                _pendingIdeHardwareConfiguration.CloneConfiguration()
+            _ideHardwareConfiguration = nextIdeInBed
+            _pendingIdeHardwareConfiguration = Nothing
+            _ideHardwareConfiguration.SaveConfiguration()
+
+            ' ATA model selection is real physical drive identity, not a cosmetic
+            ' label.  When the model changes, rewrite only the adjacent .meta sidecar
+            ' if the platter image has exactly the profile's capacity, then reattach
+            ' so IDENTIFY DEVICE observes the new hardware.  An incompatible image
+            ' is disconnected intact rather than resized or truncated.
+            For channelInBed As Integer = 0 To 1
+                For Each slaveInBed As Boolean In New Boolean() {False, True}
+                    Dim slotKeyInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+                    Dim oldKindInBed As IdeDeviceKind = previousIdeInBed.GetKind(slotKeyInBed)
+                    Dim newKindInBed As IdeDeviceKind = nextIdeInBed.GetKind(slotKeyInBed)
+                    Dim oldModelInBed As String = previousIdeInBed.GetModelId(slotKeyInBed)
+                    Dim newModelInBed As String = nextIdeInBed.GetModelId(slotKeyInBed)
+                    Dim modelChangedInBed As Boolean =
+                        Not String.Equals(oldModelInBed, newModelInBed, StringComparison.OrdinalIgnoreCase)
+
+                    If newKindInBed <> IdeDeviceKind.AtaHardDisk Then
+                        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+                        Continue For
+                    End If
+
+                    If oldKindInBed = IdeDeviceKind.AtaHardDisk AndAlso Not modelChangedInBed Then Continue For
+                    SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+                    If _ideDriveShelf Is Nothing Then Continue For
+
+                    Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                    If configuredInBed < 0 Then Continue For
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing Then Continue For
+                    Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(newModelInBed)
+                    If profileInBed Is Nothing Then Continue For
+
+                    If entryInBed.Identity Is Nothing OrElse entryInBed.Identity.TotalSectors <> profileInBed.TotalSectors Then
+                        _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
+                        _ideDriveShelf.SaveConfiguration()
+                        Continue For
+                    End If
+
+                    Dim updatedIdentityInBed As HardDiskIdentity = HardDiskIdentity.LoadOrCreate(entryInBed.FullPath, entryInBed.Identity.TotalSectors)
+                    updatedIdentityInBed.ApplyProfile(profileInBed, preserveSerialInBed:=True)
+                    updatedIdentityInBed.Save(entryInBed.FullPath)
+                Next
+            Next
         End If
 
         If _isaCardConfiguration IsNot Nothing Then
@@ -1497,45 +1944,287 @@ Public Class Form1
             End If
             If cardChangesInBed Then
                 _isaCardConfiguration.SaveConfiguration()
-                ApplyIsaExpansionCardConfigurationToDevicesInBed()
             End If
         End If
 
-        If wasPoweredInBed Then SetMachinePowerInBed(True)
+        If populationChangesInBed Then
+            _hardwarePopulationConfiguration = _pendingHardwarePopulationConfiguration.CloneConfiguration()
+            _pendingHardwarePopulationConfiguration = Nothing
+            _hardwarePopulationConfiguration.SaveConfiguration()
+        End If
+
+        ' A MachineDefinition is immutable. If the discarded chassis had been
+        ' running, build a replacement from the newly emitted script and cold-start it.
+        If wasPoweredInBed Then RunConfiguredMachineInBed()
 
         RebuildRamBanksMenu()
+        UpdateMediaStatus()
         If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Private Sub InitializeHardwarePopulationConfigurationInBed()
+        _hardwarePopulationConfiguration = New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory)
+        _hardwarePopulationConfiguration.LoadConfiguration()
+        _hardwarePopulationConfiguration.SaveConfiguration()
+    End Sub
+
+    Private Function EffectiveHardwarePopulationInBed() As MachineHardwarePopulationConfiguration
+        If _pendingHardwarePopulationConfiguration IsNot Nothing Then Return _pendingHardwarePopulationConfiguration.CloneConfiguration()
+        If _hardwarePopulationConfiguration Is Nothing Then
+            Return New MachineHardwarePopulationConfiguration(AppContext.BaseDirectory)
+        End If
+        Return _hardwarePopulationConfiguration.CloneConfiguration()
+    End Function
+
+    Private Shared Function SameHardwarePopulationInBed(aInBed As MachineHardwarePopulationConfiguration,
+                                                         bInBed As MachineHardwarePopulationConfiguration) As Boolean
+        If aInBed Is Nothing OrElse bInBed Is Nothing Then Return False
+        Return String.Equals(aInBed.MotherboardId, bInBed.MotherboardId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.CpuId, bInBed.CpuId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.NumericCoprocessorId, bInBed.NumericCoprocessorId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.VideoCardId, bInBed.VideoCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.AudioCardId, bInBed.AudioCardId, StringComparison.OrdinalIgnoreCase) AndAlso
+               String.Equals(aInBed.NetworkCardId, bInBed.NetworkCardId, StringComparison.OrdinalIgnoreCase)
+    End Function
+
+    Private Sub StageHardwarePopulationInBed(kindInBed As String, idInBed As String)
+        If _hardwarePopulationConfiguration Is Nothing Then Return
+        Dim nextInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Select Case kindInBed
+            Case "motherboard"
+                nextInBed.MotherboardId = MotherboardCatalog.NormalizeId(idInBed)
+                Dim selectedBoardInBed As MotherboardProfile = MotherboardCatalog.Require(nextInBed.MotherboardId)
+                If Not selectedBoardInBed.SupportsCpu(nextInBed.CpuId) Then nextInBed.CpuId = selectedBoardInBed.DefaultCpuId
+                If Not selectedBoardInBed.SupportsNumericCoprocessor(nextInBed.NumericCoprocessorId) Then nextInBed.NumericCoprocessorId = selectedBoardInBed.DefaultNumericCoprocessorId
+                Dim selectedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(selectedBoardInBed.Id)
+                Dim currentBoardIdInBed As String = _hardwarePopulationConfiguration.MotherboardId
+                If Not String.Equals(selectedBoardInBed.Id, currentBoardIdInBed, StringComparison.OrdinalIgnoreCase) Then
+                    _pendingMemoryMb = selectedContextInBed.MemoryMegabytes
+                    _pendingMotherboardClockOptionId = selectedContextInBed.ClockOptionId
+                    _pendingMotherboardCacheKb = selectedContextInBed.CacheKilobytes
+                Else
+                    _pendingMotherboardClockOptionId = Nothing
+                    _pendingMotherboardCacheKb = Nothing
+                    If _ramBanks IsNot Nothing AndAlso selectedBoardInBed.SupportsMemoryMegabytes(_ramBanks.InstalledMemoryMb) Then
+                        _pendingMemoryMb = Nothing
+                    End If
+                End If
+            Case "cpu"
+                nextInBed.CpuId = MotherboardCatalog.NormalizeCpuIdForBoard(nextInBed.MotherboardId, idInBed)
+            Case "npx"
+                nextInBed.NumericCoprocessorId = MotherboardCatalog.NormalizeNumericCoprocessorIdForBoard(nextInBed.MotherboardId, idInBed)
+            Case "video"
+                nextInBed.VideoCardId = MachineHardwarePopulationConfiguration.NormalizeVideoCardId(idInBed)
+            Case "audio"
+                nextInBed.AudioCardId = MachineHardwarePopulationConfiguration.NormalizeAudioCardId(idInBed)
+            Case "network"
+                nextInBed.NetworkCardId = MachineHardwarePopulationConfiguration.NormalizeNetworkCardId(idInBed)
+            Case Else
+                Return
+        End Select
+
+        Dim sbInstalledInBed As Boolean = Not String.Equals(nextInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim neInstalledInBed As Boolean = Not String.Equals(nextInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim npxInstalledInBed As Boolean = Not String.Equals(nextInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase)
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(EffectiveSoundBlaster16JumpersInBed(),
+                                                                                   EffectiveNe2000JumpersInBed(),
+                                                                                   sbInstalledInBed,
+                                                                                   neInstalledInBed,
+                                                                                   npxInstalledInBed)
+        If conflictsInBed.Count > 0 Then
+            MessageBox.Show(Me, String.Join(Environment.NewLine, conflictsInBed), "ISA resource conflict", MessageBoxButtons.OK, MessageBoxIcon.Warning)
+            Return
+        End If
+
+        If SameHardwarePopulationInBed(nextInBed, _hardwarePopulationConfiguration) Then
+            _pendingHardwarePopulationConfiguration = Nothing
+        Else
+            _pendingHardwarePopulationConfiguration = nextInBed
+        End If
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Sub StageMotherboardSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("motherboard", idInBed)
+    End Sub
+
+    Friend Sub StageCpuSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("cpu", idInBed)
+    End Sub
+
+    Friend Sub StageNumericCoprocessorSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("npx", idInBed)
+    End Sub
+
+    Friend Sub StageVideoSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("video", idInBed)
+    End Sub
+
+    Friend Sub StageAudioSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("audio", idInBed)
+    End Sub
+
+    Friend Sub StageNetworkSelectionInBed(idInBed As String)
+        StageHardwarePopulationInBed("network", idInBed)
+    End Sub
+
+    Friend Sub StageMotherboardClockSelectionInBed(idInBed As String)
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
+        Dim optionInBed As MotherboardClockOption = profileInBed.FindClockOption(idInBed)
+        If optionInBed Is Nothing Then Return
+        Dim savedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(profileInBed.Id)
+        _pendingMotherboardClockOptionId = If(String.Equals(optionInBed.Id, savedContextInBed.ClockOptionId, StringComparison.OrdinalIgnoreCase), Nothing, optionInBed.Id)
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Sub StageMotherboardCacheSelectionInBed(kilobytesInBed As Integer)
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
+        If Not profileInBed.SupportsCacheKilobytes(kilobytesInBed) Then Return
+        Dim savedContextInBed As MotherboardContextConfiguration = LoadMotherboardContextInBed(profileInBed.Id)
+        _pendingMotherboardCacheKb = If(kilobytesInBed = savedContextInBed.CacheKilobytes, CType(Nothing, Integer?), CType(kilobytesInBed, Integer?))
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Function GetMotherboardClockChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each optionInBed As MotherboardClockOption In profileInBed.ClockOptions()
+            choicesInBed.Add(New HardwareProfileChoice(optionInBed.Id, optionInBed.DisplayName))
+        Next
+        Return choicesInBed
+    End Function
+
+    Friend Function GetMotherboardCacheChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(EffectiveHardwarePopulationInBed().MotherboardId)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each cacheKbInBed As Integer In profileInBed.SupportedCacheKilobytes()
+            choicesInBed.Add(New HardwareProfileChoice(cacheKbInBed.ToString(), If(cacheKbInBed = 0, "None / board has no separately populated L2 cache", cacheKbInBed.ToString() & " KB L2 cache")))
+        Next
+        Return choicesInBed
+    End Function
+
+    Private Function LoadMotherboardContextInBed(motherboardIdInBed As String) As MotherboardContextConfiguration
+        Dim contextInBed As New MotherboardContextConfiguration(AppContext.BaseDirectory, motherboardIdInBed)
+        contextInBed.LoadConfiguration()
+        Return contextInBed
+    End Function
+
+    Private Shared Function CountInstalledIsa16CardsInBed(populationInBed As MachineHardwarePopulationConfiguration) As Integer
+        If populationInBed Is Nothing Then Return 0
+        Dim countInBed As Integer = 0
+        If Not String.Equals(populationInBed.VideoCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
+        If Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
+        If Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase) Then countInBed += 1
+        Return countInBed
+    End Function
+
+    Friend Function GetMotherboardChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each profileInBed As MotherboardProfile In MotherboardCatalog.Profiles()
+            choicesInBed.Add(New HardwareProfileChoice(profileInBed.Id, profileInBed.DisplayName))
+        Next
+        Return choicesInBed
+    End Function
+
+    Friend Function GetProcessorChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(populationInBed.MotherboardId)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each cpuIdInBed As String In profileInBed.SupportedCpuIds()
+            choicesInBed.Add(New HardwareProfileChoice(cpuIdInBed, ProcessorPackageCatalog.DisplayName(cpuIdInBed)))
+        Next
+        Return choicesInBed
+    End Function
+
+    Friend Function GetNumericCoprocessorChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(populationInBed.MotherboardId)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each npxIdInBed As String In profileInBed.SupportedNumericCoprocessorIds()
+            choicesInBed.Add(New HardwareProfileChoice(npxIdInBed, NumericCoprocessorPackageCatalog.DisplayName(npxIdInBed)))
+        Next
+        Return choicesInBed
+    End Function
+
+    Friend Function GetMemoryChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim profileInBed As MotherboardProfile = MotherboardCatalog.Require(populationInBed.MotherboardId)
+        Dim choicesInBed As New List(Of HardwareProfileChoice)()
+        For Each megabytesInBed As Integer In profileInBed.SupportedMemoryMegabytes()
+            choicesInBed.Add(New HardwareProfileChoice(megabytesInBed.ToString(), megabytesInBed.ToString() & " MB installed"))
+        Next
+        Return choicesInBed
+    End Function
+
+    Friend Function GetVideoCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.VideoDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.DiamondStealthPro928Id, IsaCardCatalog286.VideoDisplayName(MachineHardwarePopulationConfiguration.DiamondStealthPro928Id))
+        }
+    End Function
+
+    Friend Function GetAudioCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Return New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.SoundBlaster16Id, IsaCardCatalog286.AudioDisplayName(MachineHardwarePopulationConfiguration.SoundBlaster16Id))
+        }
+    End Function
+
+    Friend Function GetNetworkCardChoicesInBed() As List(Of HardwareProfileChoice)
+        Dim resultInBed As New List(Of HardwareProfileChoice) From {
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.NoneId, IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.NoneId)),
+            New HardwareProfileChoice(MachineHardwarePopulationConfiguration.Ne2000Id, IsaCardCatalog286.NetworkDisplayName(MachineHardwarePopulationConfiguration.Ne2000Id) & " — legacy built-in")
+        }
+        For Each packageInBed As VmbCompiledCardPackage In VmbCompiledCardStore.EnumerateCards("NETWORK")
+            resultInBed.Add(New HardwareProfileChoice("vcb:" & packageInBed.Header.CardId, packageInBed.Header.DisplayName))
+        Next
+        Return resultInBed
+    End Function
+
+    Private Sub ConfigureVideoPresentationForInstalledAdapterInBed()
+        If VideoCard Is Nothing Then
+            GPU.Enabled = False
+            If _videoPresentation IsNot Nothing Then
+                RemoveHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
+                _videoPresentation.Dispose()
+                _videoPresentation = Nothing
+            End If
+            If MachinePoweredInBed Then ShowPowerOffArtworkInBed()
+            Return
+        End If
+
+        If _videoPresentation Is Nothing Then
+            _videoPresentation = New DiamondStealthPro928PresentationWorker()
+            AddHandler _videoPresentation.PresentationFaulted, AddressOf VideoPresentationFaultedInBed
+            _videoPresentation.Start()
+        End If
+        GPU.Enabled = MachinePoweredInBed
     End Sub
 
     Private Sub InitializeIsaExpansionCardConfigurationInBed()
         _isaCardConfiguration = New IsaExpansionCardConfiguration(AppContext.BaseDirectory)
         _isaCardConfiguration.LoadConfiguration()
-        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(_isaCardConfiguration.SoundBlaster16, _isaCardConfiguration.Ne2000)
+        Dim populationInBed As MachineHardwarePopulationConfiguration = EffectiveHardwarePopulationInBed()
+        Dim conflictsInBed As List(Of String) = IsaResourceConflictDetector.Validate(_isaCardConfiguration.SoundBlaster16,
+                                                                                    _isaCardConfiguration.Ne2000,
+                                                                                    Not String.Equals(populationInBed.AudioCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                    Not String.Equals(populationInBed.NetworkCardId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase),
+                                                                                    Not String.Equals(populationInBed.NumericCoprocessorId, MachineHardwarePopulationConfiguration.NoneId, StringComparison.OrdinalIgnoreCase))
         If conflictsInBed.Count > 0 Then
-            ' An externally edited INI may describe an impossible build.  Refuse
-            ' to wire a conflicted ISA backplane at startup and recover to the
-            ' known-clean factory strap set instead.
+            ' Preserve the installed-card population but recover impossible strap
+            ' values to the clean factory positions before the backplane is wired.
             _isaCardConfiguration.SoundBlaster16 = New SoundBlaster16JumperSettings()
             _isaCardConfiguration.Ne2000 = New Ne2000JumperSettings()
         End If
         _isaCardConfiguration.SaveConfiguration()
-        ApplyIsaExpansionCardConfigurationToDevicesInBed()
     End Sub
 
-    Private Sub ApplyIsaExpansionCardConfigurationToDevicesInBed()
-        If _isaCardConfiguration Is Nothing Then Return
-        Dim sbInBed As SoundBlaster16JumperSettings = _isaCardConfiguration.SoundBlaster16
-        Dim neInBed As Ne2000JumperSettings = _isaCardConfiguration.Ne2000
-        SoundBlaster16.ConfigureHardware(sbInBed.BasePort, sbInBed.Irq, sbInBed.Dma8, sbInBed.Dma16, sbInBed.MpuPort, sbInBed.GamePortEnabled)
-        Ne2000.ConfigureHardware(neInBed.BasePort, neInBed.Irq)
-    End Sub
 
     Private Sub InitializeRamBanks()
         _ramBanks = New RamBankConfiguration(AppContext.BaseDirectory)
         _ramBanks.LoadConfiguration()
         ' Persist the default too, so the chassis configuration is explicit.
         _ramBanks.SaveConfiguration()
-        CPU0.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb, clearRam:=True)
     End Sub
 
     Private Function BuildRamBanksMenu() As ToolStripMenuItem
@@ -1577,30 +2266,274 @@ Public Class Form1
         StageMemoryConfigurationInBed(megabytes)
         ApplyPendingSystemConfigurationAndPowerCycleInBed()
     End Sub
+    Private Sub InitializeIdeHardwareConfigurationInBed()
+        _ideHardwareConfiguration = New IdeHardwareConfiguration(AppContext.BaseDirectory)
+        _ideHardwareConfiguration.LoadConfiguration()
+        _ideHardwareConfiguration.SaveConfiguration()
+    End Sub
+
+
+    Private Function EffectiveIdeHardwareConfigurationInBed() As IdeHardwareConfiguration
+        If _pendingIdeHardwareConfiguration IsNot Nothing Then Return _pendingIdeHardwareConfiguration.CloneConfiguration()
+        If _ideHardwareConfiguration Is Nothing Then
+            Dim fallbackInBed As New IdeHardwareConfiguration(AppContext.BaseDirectory)
+            Return fallbackInBed
+        End If
+        Return _ideHardwareConfiguration.CloneConfiguration()
+    End Function
+
+    Friend Sub StageIdeHardwareKindInBed(slotInBed As String, kindIdInBed As String)
+        If _ideHardwareConfiguration Is Nothing Then Return
+
+        Dim stagedInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        Dim currentKindInBed As IdeDeviceKind = stagedInBed.GetKind(slotInBed)
+        Dim nextKindInBed As IdeDeviceKind = IdeHardwareConfiguration.ParseKind(kindIdInBed, currentKindInBed)
+        stagedInBed.SetKind(slotInBed, nextKindInBed)
+
+        If stagedInBed.SamePopulation(_ideHardwareConfiguration) Then
+            _pendingIdeHardwareConfiguration = Nothing
+        Else
+            _pendingIdeHardwareConfiguration = stagedInBed
+        End If
+
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Sub StageIdeDriveModelInBed(slotInBed As String, modelIdInBed As String)
+        If _ideHardwareConfiguration Is Nothing Then Return
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(modelIdInBed)
+        If profileInBed Is Nothing Then Return
+
+        Dim stagedInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        If stagedInBed.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Return
+
+        Dim channelInBed As Integer = If(slotInBed.StartsWith("secondary-", StringComparison.OrdinalIgnoreCase), 1, 0)
+        Dim slaveInBed As Boolean = slotInBed.EndsWith("-slave", StringComparison.OrdinalIgnoreCase)
+        If _ideDriveShelf IsNot Nothing Then
+            Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+            If configuredInBed >= 0 Then
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed IsNot Nothing AndAlso entryInBed.Identity IsNot Nothing AndAlso
+                       entryInBed.Identity.TotalSectors <> profileInBed.TotalSectors Then
+                        Dim answerInBed As DialogResult = MessageBox.Show(
+                            Me,
+                            profileInBed.DisplayName & " requires " & profileInBed.TotalSectors.ToString() &
+                            " sectors (" & profileInBed.CapacityDescription & ")." & Environment.NewLine & Environment.NewLine &
+                            "The currently configured shelf drive #" & configuredInBed.ToString() & " contains " &
+                            entryInBed.Identity.TotalSectors.ToString() & " sectors and cannot physically become that model." &
+                            Environment.NewLine & Environment.NewLine &
+                            "Stage the model change and disconnect that incompatible drive at the next power cycle? The image will not be resized or deleted.",
+                            "IDE drive model capacity mismatch",
+                            MessageBoxButtons.YesNo,
+                            MessageBoxIcon.Warning)
+                        If answerInBed <> DialogResult.Yes Then Return
+                    End If
+                Catch ex As Exception
+                    MessageBox.Show(Me, ex.Message, "Unable to inspect IDE drive identity", MessageBoxButtons.OK, MessageBoxIcon.Error)
+                    Return
+                End Try
+            End If
+        End If
+
+        stagedInBed.SetModelId(slotInBed, profileInBed.Id)
+        If stagedInBed.SamePopulation(_ideHardwareConfiguration) Then
+            _pendingIdeHardwareConfiguration = Nothing
+        Else
+            _pendingIdeHardwareConfiguration = stagedInBed
+        End If
+        If _systemConfigurationDrawer IsNot Nothing Then _systemConfigurationDrawer.RefreshFromMachine()
+    End Sub
+
+    Friend Function GetIdeDriveModelDetailsInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Dim slotInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+        Dim effectiveInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        If effectiveInBed.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Return "Not an ATA hard-disk socket."
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(effectiveInBed.GetModelId(slotInBed))
+        Dim textInBed As String = IdeDriveModelCatalog.Describe(profileInBed)
+
+        If _ideDriveShelf Is Nothing Then Return textInBed & Environment.NewLine & "IDE Drive Shelf unavailable."
+        Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+        If configuredInBed < 0 Then Return textInBed & Environment.NewLine & "Backing drive: none attached."
+        Try
+            Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+            If entryInBed Is Nothing Then Return textInBed & Environment.NewLine & "Backing drive: shelf #" & configuredInBed.ToString() & " is unavailable."
+            Dim identityInBed As HardDiskIdentity = entryInBed.Identity
+            Dim matchTextInBed As String = String.Empty
+            If profileInBed IsNot Nothing AndAlso identityInBed IsNot Nothing Then
+                matchTextInBed = If(profileInBed.TotalSectors = identityInBed.TotalSectors,
+                                    "capacity compatible",
+                                    "CAPACITY MISMATCH — will detach on power cycle")
+            End If
+            Return textInBed & Environment.NewLine &
+                   "Backing drive: #" & entryInBed.Id.ToString() & " — " & entryInBed.Label & Environment.NewLine &
+                   "Sidecar identity: " & If(identityInBed Is Nothing, "unavailable", identityInBed.Manufacturer & " " & identityInBed.Model) &
+                   If(matchTextInBed.Length = 0, String.Empty, " — " & matchTextInBed)
+        Catch ex As Exception
+            Return textInBed & Environment.NewLine & "Backing drive status unavailable: " & ex.Message
+        End Try
+    End Function
+
+    ' Compatibility shim for the first population-only configurator implementation.
+    Friend Sub StageIdeHardwarePopulationInBed(slotInBed As String, installedInBed As Boolean)
+        Dim fallbackKindInBed As String =
+            If(slotInBed IsNot Nothing AndAlso slotInBed.EndsWith("slave", StringComparison.OrdinalIgnoreCase),
+               "atapi",
+               "ata")
+        StageIdeHardwareKindInBed(slotInBed, If(installedInBed, fallbackKindInBed, "empty"))
+    End Sub
+
+    Private Function IdeControllerForChannelInBed(channelInBed As Integer) As IdeController
+        Select Case channelInBed
+            Case 0
+                Return Declares.IdeController
+            Case 1
+                Return Declares.SecondaryIdeController
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Function IdeChannelDisplayNameInBed(channelInBed As Integer) As String
+        Select Case channelInBed
+            Case 0
+                Return "Primary"
+            Case 1
+                Return "Secondary"
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Function IdeSlotKeyInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        If channelInBed <> 0 AndAlso channelInBed <> 1 Then Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        Return If(channelInBed = 0, "primary-", "secondary-") & If(slaveInBed, "slave", "master")
+    End Function
+
+    Private Function IdeSlotDisplayNameInBed(channelInBed As Integer, slaveInBed As Boolean) As String
+        Return "Channel " & (channelInBed + 1).ToString() & " Drive " & If(slaveInBed, "1 (Slave)", "0 (Master)")
+    End Function
+
+    Private Function MountedIdeDriveIdInBed(channelInBed As Integer,
+                                               Optional slaveInBed As Boolean = False) As Integer
+        Select Case channelInBed
+            Case 0
+                Return If(slaveInBed, _mountedPrimarySlaveIdeDriveId, _mountedIdeDriveId)
+            Case 1
+                Return If(slaveInBed, _mountedSecondarySlaveIdeDriveId, _mountedSecondaryIdeDriveId)
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Sub SetMountedIdeDriveIdInBed(channelInBed As Integer,
+                                          driveIdInBed As Integer,
+                                          Optional slaveInBed As Boolean = False)
+        Select Case channelInBed
+            Case 0
+                If slaveInBed Then _mountedPrimarySlaveIdeDriveId = driveIdInBed Else _mountedIdeDriveId = driveIdInBed
+            Case 1
+                If slaveInBed Then _mountedSecondarySlaveIdeDriveId = driveIdInBed Else _mountedSecondaryIdeDriveId = driveIdInBed
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Sub
+
+    Private Function FindMountedIdeSlotForDriveInBed(driveIdInBed As Integer,
+                                                       excludeChannelInBed As Integer,
+                                                       excludeSlaveInBed As Boolean,
+                                                       ByRef foundChannelInBed As Integer,
+                                                       ByRef foundSlaveInBed As Boolean) As Boolean
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                If channelInBed = excludeChannelInBed AndAlso slaveInBed = excludeSlaveInBed Then Continue For
+                If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then
+                    foundChannelInBed = channelInBed
+                    foundSlaveInBed = slaveInBed
+                    Return True
+                End If
+            Next
+        Next
+        Return False
+    End Function
+
     Private Sub InitializeIdeDriveShelf()
         _ideDriveShelf = New IdeDriveShelf(AppContext.BaseDirectory)
         _ideDriveShelf.EnsureShelfExists()
         _ideDriveShelf.LoadConfiguration()
-        AttachConfiguredPrimaryMaster(silent:=True)
+        SynchronizeIdeModelConfigurationFromShelfInBed()
     End Sub
 
-    Private Sub AttachConfiguredPrimaryMaster(silent As Boolean)
-        _mountedIdeDriveId = -1
-        WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-        If _ideDriveShelf Is Nothing OrElse _ideDriveShelf.PrimaryMasterId < 0 Then Return
+    Private Sub SynchronizeIdeModelConfigurationFromShelfInBed()
+        If _ideHardwareConfiguration Is Nothing OrElse _ideDriveShelf Is Nothing Then Return
+        Dim changedInBed As Boolean = False
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim slotInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+                If _ideHardwareConfiguration.GetKind(slotInBed) <> IdeDeviceKind.AtaHardDisk Then Continue For
+                Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+                If configuredInBed < 0 Then Continue For
+                Try
+                    Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+                    If entryInBed Is Nothing OrElse entryInBed.Identity Is Nothing OrElse
+                       String.IsNullOrWhiteSpace(entryInBed.Identity.ProfileId) Then Continue For
+                    If IdeDriveModelCatalog.FindById(entryInBed.Identity.ProfileId) Is Nothing Then Continue For
+                    If Not String.Equals(_ideHardwareConfiguration.GetModelId(slotInBed), entryInBed.Identity.ProfileId, StringComparison.OrdinalIgnoreCase) Then
+                        _ideHardwareConfiguration.SetModelId(slotInBed, entryInBed.Identity.ProfileId)
+                        changedInBed = True
+                    End If
+                Catch
+                    ' Attachment/status reporting will surface malformed sidecars.
+                End Try
+            Next
+        Next
+        If changedInBed Then _ideHardwareConfiguration.SaveConfiguration()
+    End Sub
+
+    Private Sub AttachConfiguredIdeDiskInBed(channelInBed As Integer,
+                                              slaveInBed As Boolean,
+                                              silent As Boolean)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then Return
+        If _ideDriveShelf Is Nothing Then Return
+
+        Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+        If configuredInBed < 0 Then Return
+
+        Dim otherChannelInBed As Integer = -1
+        Dim otherSlaveInBed As Boolean = False
+        If FindMountedIdeSlotForDriveInBed(configuredInBed, channelInBed, slaveInBed, otherChannelInBed, otherSlaveInBed) Then
+            If Not silent Then
+                MessageBox.Show(
+                    Me,
+                    "Shelf drive #" & configuredInBed.ToString() &
+                    " is already attached to " &
+                    IdeSlotDisplayNameInBed(otherChannelInBed, otherSlaveInBed).ToLowerInvariant() &
+                    ". A writable disk image cannot be plugged into two IDE sockets at once.",
+                    "IDE drive already attached",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning)
+            End If
+            Return
+        End If
 
         Try
-            Dim entry As IdeDriveShelfEntry = _ideDriveShelf.FindById(_ideDriveShelf.PrimaryMasterId)
-            If entry Is Nothing Then Return
-            WithMachineInBed(Sub() MountHardDiskImage(entry.FullPath))
-            _mountedIdeDriveId = entry.Id
+            Dim entryInBed As IdeDriveShelfEntry = _ideDriveShelf.FindById(configuredInBed)
+            If entryInBed Is Nothing Then Return
+            WithMachineInBed(Sub() MountHardDiskImage(entryInBed.FullPath, False, channelInBed, slaveInBed))
+            SetMountedIdeDriveIdInBed(channelInBed, entryInBed.Id, slaveInBed)
         Catch ex As Exception
-            WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-            _mountedIdeDriveId = -1
+            WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+            SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
             If Not silent Then
-                MessageBox.Show(Me,
-                    "Shelf drive #" & _ideDriveShelf.PrimaryMasterId.ToString() & " could not be attached:" & Environment.NewLine & ex.Message,
-                    "IDE primary master",
+                MessageBox.Show(
+                    Me,
+                    "Shelf drive #" & configuredInBed.ToString() & " could not be attached:" &
+                    Environment.NewLine & ex.Message,
+                    IdeSlotDisplayNameInBed(channelInBed, slaveInBed),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error)
             End If
@@ -1611,58 +2544,115 @@ Public Class Form1
         If ideDriveShelfMenu Is Nothing Then Return
         ideDriveShelfMenu.DropDownItems.Clear()
 
+        For channelInBed As Integer = 0 To 1
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim slotMenuInBed As New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed))
+                PopulateIdeDriveShelfMenuInBed(slotMenuInBed, channelInBed, slaveInBed)
+                ideDriveShelfMenu.DropDownItems.Add(slotMenuInBed)
+            Next
+        Next
+    End Sub
+
+    Private Sub PopulateIdeDriveShelfMenuInBed(menuInBed As ToolStripMenuItem,
+                                               Optional channelInBed As Integer = 0,
+                                               Optional slaveInBed As Boolean = False)
+        If menuInBed Is Nothing Then Return
+        menuInBed.DropDownItems.Clear()
+
         If _ideDriveShelf Is Nothing Then
-            Dim unavailable As New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False}
-            ideDriveShelfMenu.DropDownItems.Add(unavailable)
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem("IDE shelf is not initialized") With {.Enabled = False})
+            Return
+        End If
+
+        Dim kindInBed As IdeDeviceKind =
+            ReadMachineInBed(Function() IdeControllerForChannelInBed(channelInBed).GetDeviceKind(slaveInBed))
+        If kindInBed <> IdeDeviceKind.AtaHardDisk Then
+            menuInBed.DropDownItems.Add(
+                New ToolStripMenuItem(
+                    IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " contains " &
+                    If(kindInBed = IdeDeviceKind.AtapiCdRom, "an ATAPI CD-ROM", "no device") &
+                    " — select ATA hard disk in System Configuration") With {.Enabled = False})
             Return
         End If
 
         Try
-            Dim entries As List(Of IdeDriveShelfEntry) = _ideDriveShelf.GetEntries()
-            Dim configured As Integer = _ideDriveShelf.PrimaryMasterId
-            Dim configuredText As String = If(configured < 0,
-                "Primary Master: disconnected",
-                "Primary Master: shelf #" & configured.ToString() & If(_mountedIdeDriveId = configured, " (attached)", " (not attached)"))
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem(configuredText) With {.Enabled = False})
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
+            Dim entriesInBed As List(Of IdeDriveShelfEntry) = _ideDriveShelf.GetEntries()
+            Dim configuredInBed As Integer = _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed)
+            Dim mountedInBed As Integer = MountedIdeDriveIdInBed(channelInBed, slaveInBed)
+            Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+            Dim configuredTextInBed As String =
+                If(configuredInBed < 0,
+                   slotNameInBed & ": disconnected",
+                   slotNameInBed & ": shelf #" & configuredInBed.ToString() &
+                   If(mountedInBed = configuredInBed, " (attached)", " (not attached)"))
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem(configuredTextInBed) With {.Enabled = False})
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
 
-            If entries.Count = 0 Then
-                ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
+            If entriesInBed.Count = 0 Then
+                menuInBed.DropDownItems.Add(New ToolStripMenuItem("No numbered .hdd/.img files found") With {.Enabled = False})
             Else
-                For Each entry As IdeDriveShelfEntry In entries
-                    Dim driveId As Integer = entry.Id
-                    Dim item As New ToolStripMenuItem(entry.Id.ToString() & " - " & entry.Label) With {
-                        .Checked = (entry.Id = _mountedIdeDriveId)
+                For Each entryInBed As IdeDriveShelfEntry In entriesInBed
+                    Dim driveIdInBed As Integer = entryInBed.Id
+                    Dim itemInBed As New ToolStripMenuItem(
+                        entryInBed.Id.ToString() & " - " & entryInBed.Label) With {
+                        .Checked = (entryInBed.Id = mountedInBed)
                     }
-                    item.ToolTipText = entry.FullPath
-                    AddHandler item.Click, Sub() SelectIdeShelfDrive(driveId)
-                    ideDriveShelfMenu.DropDownItems.Add(item)
+                    itemInBed.ToolTipText = entryInBed.FullPath
+                    AddHandler itemInBed.Click, Sub() SelectIdeShelfDrive(driveIdInBed, channelInBed, slaveInBed)
+                    menuInBed.DropDownItems.Add(itemInBed)
                 Next
             End If
 
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
-            ideDriveShelfMenu.DropDownItems.Add("Rescan IDE-Drives", Nothing, Sub() RebuildIdeDriveShelfMenu())
-            ideDriveShelfMenu.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
-            ideDriveShelfMenu.DropDownItems.Add("Disconnect Primary Master", Nothing, Sub() EjectHardDisk())
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
+            menuInBed.DropDownItems.Add("Rescan IDE-Drives", Nothing, Sub() PopulateIdeDriveShelfMenuInBed(menuInBed, channelInBed, slaveInBed))
+            menuInBed.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Add("Disconnect " & slotNameInBed, Nothing, Sub() EjectHardDisk(channelInBed, slaveInBed))
         Catch ex As Exception
-            ideDriveShelfMenu.DropDownItems.Clear()
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
-            ideDriveShelfMenu.DropDownItems.Add(New ToolStripSeparator())
-            ideDriveShelfMenu.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            menuInBed.DropDownItems.Clear()
+            menuInBed.DropDownItems.Add(New ToolStripMenuItem("Shelf error: " & ex.Message) With {.Enabled = False})
+            menuInBed.DropDownItems.Add(New ToolStripSeparator())
+            menuInBed.DropDownItems.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
         End Try
     End Sub
 
-    Private Sub SelectIdeShelfDrive(driveId As Integer)
+    Private Sub SelectIdeShelfDrive(driveIdInBed As Integer,
+                                    Optional channelInBed As Integer = 0,
+                                    Optional slaveInBed As Boolean = False)
         If _ideDriveShelf Is Nothing Then Return
-        _ideDriveShelf.PrimaryMasterId = driveId
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(
+                Me,
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                "ATA hard disk not installed",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information)
+            Return
+        End If
+
+        Dim otherChannelInBed As Integer = -1
+        Dim otherSlaveInBed As Boolean = False
+        If FindMountedIdeSlotForDriveInBed(driveIdInBed, channelInBed, slaveInBed, otherChannelInBed, otherSlaveInBed) Then
+            MessageBox.Show(
+                Me,
+                "Shelf drive #" & driveIdInBed.ToString() &
+                " is already attached to " &
+                IdeSlotDisplayNameInBed(otherChannelInBed, otherSlaveInBed).ToLowerInvariant() &
+                ". A writable disk image cannot be plugged into two IDE sockets at once.",
+                "IDE drive already attached",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning)
+            Return
+        End If
+
+        _ideDriveShelf.SetConfiguredDriveId(channelInBed, driveIdInBed, slaveInBed)
         _ideDriveShelf.SaveConfiguration()
-        AttachConfiguredPrimaryMaster(silent:=False)
+        AttachConfiguredIdeDiskInBed(channelInBed, slaveInBed, silent:=False)
         UpdateMediaStatus()
         RebuildIdeDriveShelfMenu()
 
-        If _mountedIdeDriveId = driveId Then
-            ' Treat changing the chassis attachment as a powered-reset event from
-            ' the guest's perspective.  The BIOS must rediscover the drive via ATA.
+        If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then
             ResetThroughFirmware()
         End If
     End Sub
@@ -1683,8 +2673,10 @@ Public Class Form1
         Dim floppyBTextInBed As String = String.Empty
         Dim floppyAGeometryInBed As Integer() = Nothing
         Dim floppyBGeometryInBed As Integer() = Nothing
-        Dim hardDiskPresentInBed As Boolean
-        Dim cdPresentInBed As Boolean
+        Dim attachedHardDisksInBed As Integer
+        Dim installedHardDisksInBed As Integer
+        Dim mountedCdMediaInBed As Integer
+        Dim installedCdDrivesInBed As Integer
 
         WithMachineInBed(
             Sub()
@@ -1694,8 +2686,19 @@ Public Class Form1
                 floppyBTextInBed = FloppyController.GetAttachmentStatus(1)
                 floppyAGeometryInBed = FloppyController.GetGeometry(0)
                 floppyBGeometryInBed = FloppyController.GetGeometry(1)
-                hardDiskPresentInBed = Declares.IdeController.HardDiskSectorCount > 0
-                cdPresentInBed = Declares.IdeController.CdRomMounted
+                For channelInBed As Integer = 0 To 1
+                    Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+                    For Each slaveInBed As Boolean In New Boolean() {False, True}
+                        Select Case controllerInBed.GetDeviceKind(slaveInBed)
+                            Case IdeDeviceKind.AtaHardDisk
+                                installedHardDisksInBed += 1
+                                If controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0 Then attachedHardDisksInBed += 1
+                            Case IdeDeviceKind.AtapiCdRom
+                                installedCdDrivesInBed += 1
+                                If controllerInBed.IsCdRomMounted(slaveInBed) Then mountedCdMediaInBed += 1
+                        End Select
+                    Next
+                Next
             End Sub)
 
         If floppyAStatus IsNot Nothing Then
@@ -1707,18 +2710,15 @@ Public Class Form1
             floppyBStatus.Text = floppyBTextInBed
         End If
         If hardDiskStatus IsNot Nothing Then
-            hardDiskStatus.Checked = hardDiskPresentInBed
-            If _ideDriveShelf IsNot Nothing Then
-                If _ideDriveShelf.PrimaryMasterId < 0 Then
-                    hardDiskStatus.Text = "Primary master disconnected"
-                ElseIf _mountedIdeDriveId = _ideDriveShelf.PrimaryMasterId Then
-                    hardDiskStatus.Text = "Primary master: shelf #" & _mountedIdeDriveId.ToString()
-                Else
-                    hardDiskStatus.Text = "Primary master: shelf #" & _ideDriveShelf.PrimaryMasterId.ToString() & " unavailable"
-                End If
-            End If
+            hardDiskStatus.Checked = attachedHardDisksInBed > 0
+            hardDiskStatus.Text = "IDE hard disks — " & attachedHardDisksInBed.ToString() &
+                                  "/" & installedHardDisksInBed.ToString() & " attached"
         End If
-        If cdRomStatus IsNot Nothing Then cdRomStatus.Checked = cdPresentInBed
+        If cdRomStatus IsNot Nothing Then
+            cdRomStatus.Checked = mountedCdMediaInBed > 0
+            cdRomStatus.Text = "ATAPI CD-ROMs — " & mountedCdMediaInBed.ToString() &
+                               "/" & installedCdDrivesInBed.ToString() & " with media"
+        End If
         UpdateDriveBayFacesInBed(floppyAGeometryInBed, floppyBGeometryInBed)
     End Sub
 
@@ -1727,19 +2727,23 @@ Public Class Form1
         UpdateMediaStatus()
     End Sub
 
-    Private Sub EjectHardDisk()
+    Private Sub EjectHardDisk(Optional channelInBed As Integer = 0,
+                              Optional slaveInBed As Boolean = False)
         If _ideDriveShelf IsNot Nothing Then
-            _ideDriveShelf.PrimaryMasterId = -1
+            _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
             _ideDriveShelf.SaveConfiguration()
         End If
-        WithMachineInBed(Sub() Declares.IdeController.EjectHardDisk())
-        _mountedIdeDriveId = -1
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectHardDisk(slaveInBed))
+        SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
         UpdateMediaStatus()
         If ideDriveShelfMenu IsNot Nothing Then RebuildIdeDriveShelfMenu()
     End Sub
 
-    Private Sub EjectCdRom()
-        WithMachineInBed(Sub() Declares.IdeController.EjectCdRom())
+    Private Sub EjectCdRom(Optional channelInBed As Integer = 0,
+                           Optional slaveInBed As Boolean = True)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        WithMachineInBed(Sub() controllerInBed.EjectCdRom(slaveInBed))
         UpdateMediaStatus()
     End Sub
 
@@ -1754,7 +2758,13 @@ Public Class Form1
 
     Private Sub BootHardDisk()
         Try
-            If ReadMachineInBed(Function() Declares.IdeController.HardDiskSectorCount) = 0 Then Throw New InvalidOperationException("Mount a hard-disk image first.")
+            Dim primaryKindInBed As IdeDeviceKind = ReadMachineInBed(Function() Declares.IdeController.GetDeviceKind(False))
+            If primaryKindInBed <> IdeDeviceKind.AtaHardDisk Then
+                Throw New InvalidOperationException("Primary master is not configured as an ATA hard disk.")
+            End If
+            If ReadMachineInBed(Function() Declares.IdeController.GetHardDiskSectorCount(False)) = 0 Then
+                Throw New InvalidOperationException("Mount a hard-disk image on primary master first.")
+            End If
             ResetThroughFirmware()
         Catch ex As Exception
             MessageBox.Show(Me, ex.Message, "Hard-disk boot failed", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -1762,39 +2772,21 @@ Public Class Form1
     End Sub
 
     Private Sub ResetThroughFirmware()
-        If _closingInBed OrElse Not _machinePoweredInBed Then Return
+        If _closingInBed OrElse Not MachinePoweredInBed OrElse _materializedMachineInBed Is Nothing Then Return
 
-        ' A front-panel reset must also recover the host execution worker if the
-        ' guest previously faulted it. Stop/join first, reset the physical AT reset
-        ' domain while no slice is active, reset host scheduler adaptation, then
-        ' restart the same machine. Mounted media and DRAM contents are preserved.
-        _machineRuntime.Stop()
-        Dim resetSucceededInBed As Boolean = False
-        Try
-            _machineRuntime.ExecuteWithHostTimeRebase(
-                Sub()
-                    CPU0.HostFirmwareInterrupts = False
-                    ResetHardwareMachine()
-                    ApplyFirmwareResetVectorSafetyGuardInBed()
-                    FrontPanel.SetCpuStateByte(0)
-                End Sub)
-            _machineRuntime.ResetHostSchedulingState()
-            resetSucceededInBed = True
-        Finally
-            If resetSucceededInBed AndAlso
-               Not _closingInBed AndAlso
-               _machinePoweredInBed Then
-                _machineRuntime.Start()
-                Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-                If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
-            End If
-        End Try
+        _materializedMachineInBed.ResetThroughHardware()
+        Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+        If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
     End Sub
 
     Private Sub ToggleMachinePowerInBed()
         If _closingInBed Then Return
         Try
-            SetMachinePowerInBed(Not _machinePoweredInBed)
+            If _materializedMachineInBed Is Nothing Then
+                RunConfiguredMachineInBed()
+            Else
+                SetMachinePowerInBed(Not MachinePoweredInBed)
+            End If
         Catch ex As Exception
             MessageBox.Show(Me,
                             ex.Message,
@@ -1806,67 +2798,59 @@ Public Class Form1
 
     Private Sub SetMachinePowerInBed(poweredInBed As Boolean)
         If _closingInBed Then Return
-        If poweredInBed = _machinePoweredInBed Then
+
+        If _materializedMachineInBed Is Nothing Then
+            If poweredInBed Then RunConfiguredMachineInBed()
             UpdatePowerControlsInBed()
             Return
         End If
 
-        If Not poweredInBed Then
-            ' AT chassis power-off is a host lifecycle transition, not HLT. Stop
-            ' the sole machine owner thread and leave mounted media/CMOS attached.
-            ReleaseSerialMouseCaptureInBed()
-            _machineRuntime.Stop()
-            _machinePoweredInBed = False
-            FrontPanel.SetCpuStateByte(0)
-            FrontPanel.SetPower(False)
-
-            Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-            If presentationInBed IsNot Nothing Then presentationInBed.RequestPowerOffFrame()
-
+        If poweredInBed = MachinePoweredInBed Then
             UpdatePowerControlsInBed()
             Return
         End If
 
-        ' Cold power-on discards volatile DRAM, asserts the motherboard/device
-        ' reset tree, starts at the 80286 reset vector, and then starts a fresh
-        ' runtime worker. CMOS and mounted removable/fixed media remain present.
         Try
-            _machineRuntime.ExecuteWithHostTimeRebase(
-                Sub()
-                    If _ramBanks IsNot Nothing AndAlso
-                       RamBankConfiguration.IsSupported(_ramBanks.InstalledMemoryMb) Then
-                        CPU0.ConfigureInstalledMemoryMegabytes(_ramBanks.InstalledMemoryMb,
-                                                               clearRam:=True)
-                    End If
-
-                    CPU0.HostFirmwareInterrupts = False
-                    PowerCycleHardwareMachine()
-                    ApplyFirmwareResetVectorSafetyGuardInBed()
-                    FrontPanel.SetCpuStateByte(0)
-                End Sub)
-            _machineRuntime.ResetHostSchedulingState()
-
-            _machinePoweredInBed = True
-            FrontPanel.SetPower(True)
-            _machineRuntime.Start()
-
-            Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-            If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
-        Catch
-            _machinePoweredInBed = False
-            FrontPanel.SetPower(False)
-            Throw
+            If poweredInBed Then
+                PictureBox1.SizeMode = PictureBoxSizeMode.Zoom
+                _materializedMachineInBed.PowerOn()
+                GPU.Enabled = (VideoCard IsNot Nothing)
+                Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+                If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
+            Else
+                ReleaseSerialMouseCaptureInBed()
+                GPU.Enabled = False
+                _materializedMachineInBed.PowerOff()
+                ShowPowerOffArtworkInBed()
+            End If
         Finally
             UpdatePowerControlsInBed()
         End Try
     End Sub
 
+    Private Sub ShowPowerOffArtworkInBed()
+        Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+        Dim previousFrameInBed As Bitmap = _displayedPresentationFrameInBed
+
+        _displayedPresentationFrameInBed = Nothing
+        PictureBox1.SizeMode = PictureBoxSizeMode.StretchImage
+        PictureBox1.Image = _powerOffDisplayImageInBed
+        PictureBox1.Invalidate()
+
+        If presentationInBed IsNot Nothing AndAlso previousFrameInBed IsNot Nothing Then
+            presentationInBed.RecycleFrame(previousFrameInBed)
+        End If
+    End Sub
+
     Private Sub UpdatePowerControlsInBed()
+        If _runMenuItemInBed IsNot Nothing Then
+            _runMenuItemInBed.Enabled = (_materializedMachineInBed Is Nothing)
+        End If
         If _powerMenuItemInBed IsNot Nothing Then
-            _powerMenuItemInBed.Text = If(_machinePoweredInBed, "Power Off", "Power On")
+            _powerMenuItemInBed.Text = If(MachinePoweredInBed, "Power Off", "Power On")
         End If
         If _resetMenuItemInBed IsNot Nothing Then
-            _resetMenuItemInBed.Enabled = _machinePoweredInBed
+            _resetMenuItemInBed.Enabled = MachinePoweredInBed
         End If
     End Sub
 
@@ -1887,8 +2871,19 @@ Public Class Form1
         _emptyDriveFaceInBed = LoadDriveFaceInBed(
             Path.Combine(artworkDirectoryInBed, "five and a quarter face plate.png"))
 
+        ' The fixed-disk and optical fronts are intentionally derived from the
+        ' supplied blank 5.25-inch plate.  That keeps the whole chassis in one
+        ' period-beige visual family without inventing extra guest-visible drives.
+        _cdRomDriveFaceInBed = BuildCdRomDriveFaceInBed(_emptyDriveFaceInBed)
+        _mfmHardDiskDriveFaceInBed = BuildMfmHardDiskDriveFaceInBed(_emptyDriveFaceInBed)
+
         Const bayRailWidthInBed As Integer = 210
         Const displayGapInBed As Integer = 10
+        Const firstBayTopInBed As Integer = 8
+        Const bayHeightInBed As Integer = 58
+        Const bayGapInBed As Integer = 4
+        Const bayPitchInBed As Integer = bayHeightInBed + bayGapInBed
+
         Dim originalDisplayLeftInBed As Integer = PictureBox1.Left
         _driveBayPanelInBed = New Panel() With {
             .Location = New Point(originalDisplayLeftInBed, PictureBox1.Top),
@@ -1898,10 +2893,44 @@ Public Class Form1
             .BorderStyle = BorderStyle.FixedSingle
         }
         _driveBayToolTipInBed = New ToolTip()
-        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, 8)
-        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, 76)
+
+        ' Physical chassis order.  The two standard IDE channels are now
+        ' represented honestly as four independent electrical positions. System
+        ' Configuration may fit ATA, ATAPI, or no device in any position; the
+        ' runtime facade is refreshed from that hardware choice after power cycle.
+        _floppyBayAInBed = CreateFloppyBayFaceInBed(0, firstBayTopInBed)
+        _floppyBayBInBed = CreateFloppyBayFaceInBed(1, firstBayTopInBed + bayPitchInBed)
+        _cdRomBayInBed = CreateFixedBayFaceInBed(
+            _cdRomDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 2),
+            Cursors.Hand,
+            "Channel 1 Drive 1 (Slave) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(0, True))
+        _cdRomBaySecondaryInBed = CreateFixedBayFaceInBed(
+            _cdRomDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 3),
+            Cursors.Hand,
+            "Channel 2 Drive 1 (Slave) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(1, True))
+        _hardDiskBayInBed = CreateFixedBayFaceInBed(
+            _mfmHardDiskDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 4),
+            Cursors.Hand,
+            "Channel 1 Drive 0 (Master) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(0, False))
+        _hardDiskBaySecondaryInBed = CreateFixedBayFaceInBed(
+            _mfmHardDiskDriveFaceInBed,
+            firstBayTopInBed + (bayPitchInBed * 5),
+            Cursors.Hand,
+            "Channel 2 Drive 0 (Master) — click for IDE device/media choices",
+            Sub() ShowIdeBayMenuInBed(1, False))
+
         _driveBayPanelInBed.Controls.Add(_floppyBayAInBed)
         _driveBayPanelInBed.Controls.Add(_floppyBayBInBed)
+        _driveBayPanelInBed.Controls.Add(_cdRomBayInBed)
+        _driveBayPanelInBed.Controls.Add(_cdRomBaySecondaryInBed)
+        _driveBayPanelInBed.Controls.Add(_hardDiskBayInBed)
+        _driveBayPanelInBed.Controls.Add(_hardDiskBaySecondaryInBed)
         Controls.Add(_driveBayPanelInBed)
         _driveBayPanelInBed.BringToFront()
 
@@ -1916,6 +2945,94 @@ Public Class Form1
                 Return New Bitmap(sourceInBed)
             End Using
         End Using
+    End Function
+
+    Private Shared Function BuildCdRomDriveFaceInBed(blankFaceInBed As Bitmap) As Bitmap
+        Dim resultInBed As New Bitmap(blankFaceInBed)
+        Using graphicsInBed As Graphics = Graphics.FromImage(resultInBed)
+            graphicsInBed.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias
+            graphicsInBed.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
+
+            Dim trayInBed As New Rectangle(78, 63, resultInBed.Width - 178, 138)
+            Using trayShadowInBed As New Pen(Color.FromArgb(105, 102, 90), 5.0F),
+                  trayLineInBed As New Pen(Color.FromArgb(73, 72, 65), 3.0F),
+                  trayFillInBed As New SolidBrush(Color.FromArgb(166, 165, 148))
+                graphicsInBed.FillRectangle(trayFillInBed, trayInBed)
+                graphicsInBed.DrawRectangle(trayShadowInBed, trayInBed)
+                graphicsInBed.DrawLine(trayLineInBed,
+                                       trayInBed.Left + 14,
+                                       trayInBed.Bottom - 22,
+                                       trayInBed.Right - 14,
+                                       trayInBed.Bottom - 22)
+            End Using
+
+            Using darkInBed As New SolidBrush(Color.FromArgb(62, 62, 57))
+                graphicsInBed.FillEllipse(darkInBed, resultInBed.Width - 142, 200, 18, 18)
+                graphicsInBed.FillRectangle(darkInBed, resultInBed.Width - 101, 198, 48, 21)
+            End Using
+            Using ledInBed As New SolidBrush(Color.FromArgb(72, 105, 49))
+                graphicsInBed.FillRectangle(ledInBed, resultInBed.Width - 187, 201, 23, 15)
+            End Using
+
+            Using labelFontInBed As New Font("Arial", 24.0F, FontStyle.Bold, GraphicsUnit.Pixel),
+                  detailFontInBed As New Font("Arial", 17.0F, FontStyle.Regular, GraphicsUnit.Pixel),
+                  labelBrushInBed As New SolidBrush(Color.FromArgb(112, 111, 99))
+                graphicsInBed.DrawString("ATAPI CD-ROM", labelFontInBed, labelBrushInBed, 91.0F, 215.0F)
+                graphicsInBed.DrawString("4X", detailFontInBed, labelBrushInBed, 91.0F, 247.0F)
+            End Using
+        End Using
+        Return resultInBed
+    End Function
+
+    Private Shared Function BuildMfmHardDiskDriveFaceInBed(blankFaceInBed As Bitmap) As Bitmap
+        Dim resultInBed As New Bitmap(blankFaceInBed)
+        Using graphicsInBed As Graphics = Graphics.FromImage(resultInBed)
+            graphicsInBed.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias
+            graphicsInBed.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
+
+            ' A deliberately chunky late-80s full-width fixed-disk facade:
+            ' vent field, recessed service plate, key/lock detail and red activity LED.
+            Dim recessInBed As New Rectangle(70, 58, resultInBed.Width - 140, 156)
+            Using recessFillInBed As New SolidBrush(Color.FromArgb(154, 153, 137)),
+                  recessEdgeInBed As New Pen(Color.FromArgb(105, 103, 91), 5.0F)
+                graphicsInBed.FillRectangle(recessFillInBed, recessInBed)
+                graphicsInBed.DrawRectangle(recessEdgeInBed, recessInBed)
+            End Using
+
+            Using ventBrushInBed As New SolidBrush(Color.FromArgb(83, 82, 74))
+                For ventInBed As Integer = 0 To 10
+                    Dim xInBed As Integer = 104 + (ventInBed * 39)
+                    graphicsInBed.FillRectangle(ventBrushInBed, xInBed, 90, 19, 86)
+                Next
+            End Using
+
+            Using plateFillInBed As New SolidBrush(Color.FromArgb(184, 182, 162)),
+                  plateEdgeInBed As New Pen(Color.FromArgb(108, 106, 94), 3.0F)
+                graphicsInBed.FillRectangle(plateFillInBed, 572, 84, 329, 98)
+                graphicsInBed.DrawRectangle(plateEdgeInBed, 572, 84, 329, 98)
+            End Using
+
+            Using labelFontInBed As New Font("Arial", 25.0F, FontStyle.Bold, GraphicsUnit.Pixel),
+                  detailFontInBed As New Font("Arial", 17.0F, FontStyle.Regular, GraphicsUnit.Pixel),
+                  labelBrushInBed As New SolidBrush(Color.FromArgb(89, 87, 76))
+                graphicsInBed.DrawString("FIXED DISK", labelFontInBed, labelBrushInBed, 603.0F, 98.0F)
+                graphicsInBed.DrawString("MFM / RLL", detailFontInBed, labelBrushInBed, 604.0F, 136.0F)
+            End Using
+
+            Using ledBezelInBed As New SolidBrush(Color.FromArgb(70, 62, 58)),
+                  ledInBed As New SolidBrush(Color.FromArgb(132, 28, 23))
+                graphicsInBed.FillRectangle(ledBezelInBed, 930, 92, 63, 44)
+                graphicsInBed.FillRectangle(ledInBed, 941, 103, 41, 22)
+            End Using
+
+            Using lockBezelInBed As New SolidBrush(Color.FromArgb(82, 81, 73)),
+                  lockFaceInBed As New SolidBrush(Color.FromArgb(197, 195, 174))
+                graphicsInBed.FillEllipse(lockBezelInBed, 928, 153, 48, 48)
+                graphicsInBed.FillEllipse(lockFaceInBed, 937, 162, 30, 30)
+                graphicsInBed.FillRectangle(lockBezelInBed, 950, 168, 4, 18)
+            End Using
+        End Using
+        Return resultInBed
     End Function
 
     Private Function CreateFloppyBayFaceInBed(driveInBed As Integer, topInBed As Integer) As PictureBox
@@ -1937,13 +3054,37 @@ Public Class Form1
         Return faceInBed
     End Function
 
+    Private Function CreateFixedBayFaceInBed(imageInBed As Image,
+                                             topInBed As Integer,
+                                             cursorInBed As Cursor,
+                                             toolTipInBed As String,
+                                             clickInBed As Action) As PictureBox
+        Dim faceInBed As New PictureBox() With {
+            .Location = New Point(7, topInBed),
+            .Size = New Size(194, 58),
+            .Anchor = AnchorStyles.Top Or AnchorStyles.Left Or AnchorStyles.Right,
+            .SizeMode = PictureBoxSizeMode.Zoom,
+            .BackColor = Color.FromArgb(178, 176, 158),
+            .Cursor = cursorInBed,
+            .Image = imageInBed,
+            .TabStop = False
+        }
+        _driveBayToolTipInBed.SetToolTip(faceInBed, toolTipInBed)
+        If clickInBed IsNot Nothing Then
+            AddHandler faceInBed.Click, Sub() clickInBed()
+        End If
+        Return faceInBed
+    End Function
+
+    Private Sub DisposeDriveBayPopupInBed()
+        If _driveBayPopupInBed Is Nothing Then Return
+        _driveBayPopupInBed.Dispose()
+        _driveBayPopupInBed = Nothing
+    End Sub
+
     Private Sub ShowFloppyBayMenuInBed(faceInBed As PictureBox, driveInBed As Integer)
         If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
-
-        If _floppyBayPopupInBed IsNot Nothing Then
-            _floppyBayPopupInBed.Dispose()
-            _floppyBayPopupInBed = Nothing
-        End If
+        DisposeDriveBayPopupInBed()
 
         ' Build from the same routine used by the Media menu, then transfer the
         ' live items (including their handlers) into a short-lived context menu.
@@ -1957,13 +3098,168 @@ Public Class Form1
             popupInBed.Items.Add(itemInBed)
         End While
         sourceInBed.Dispose()
-        _floppyBayPopupInBed = popupInBed
+        _driveBayPopupInBed = popupInBed
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
+
+    Private Function IdeBayForSlotInBed(channelInBed As Integer, slaveInBed As Boolean) As PictureBox
+        Select Case channelInBed
+            Case 0
+                Return If(slaveInBed, _cdRomBayInBed, _hardDiskBayInBed)
+            Case 1
+                Return If(slaveInBed, _cdRomBaySecondaryInBed, _hardDiskBaySecondaryInBed)
+            Case Else
+                Throw New ArgumentOutOfRangeException(NameOf(channelInBed))
+        End Select
+    End Function
+
+    Private Sub ShowIdeBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim kindInBed As IdeDeviceKind =
+            ReadMachineInBed(Function() IdeControllerForChannelInBed(channelInBed).GetDeviceKind(slaveInBed))
+        Select Case kindInBed
+            Case IdeDeviceKind.AtaHardDisk
+                ShowHardDiskBayMenuInBed(channelInBed, slaveInBed)
+            Case IdeDeviceKind.AtapiCdRom
+                ShowCdRomBayMenuInBed(channelInBed, slaveInBed)
+            Case Else
+                Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+                If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+                DisposeDriveBayPopupInBed()
+                Dim popupInBed As New ContextMenuStrip()
+                popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " — empty IDE socket") With {.Enabled = False})
+                popupInBed.Items.Add(New ToolStripMenuItem("Install ATA or ATAPI hardware from System Configuration, then power-cycle.") With {.Enabled = False})
+                _driveBayPopupInBed = popupInBed
+                popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+        End Select
+    End Sub
+
+    Private Sub ShowCdRomBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+        DisposeDriveBayPopupInBed()
+
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim kindInBed As IdeDeviceKind
+        Dim cdPresentInBed As Boolean
+        ReadMachineInBed(
+            Function()
+                kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                cdPresentInBed = controllerInBed.IsCdRomMounted(slaveInBed)
+                Return True
+            End Function)
+
+        Dim popupInBed As New ContextMenuStrip()
+        If kindInBed <> IdeDeviceKind.AtapiCdRom Then
+            popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " is not an ATAPI device") With {.Enabled = False})
+        Else
+            popupInBed.Items.Add(New ToolStripMenuItem(
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " ATAPI CD-ROM — " &
+                If(cdPresentInBed, "media inserted", "tray empty")) With {.Enabled = False})
+            popupInBed.Items.Add(New ToolStripSeparator())
+            popupInBed.Items.Add("Disc Box / Optical Utilities...", Nothing, Sub() RunSneakerNet("optical", channelInBed, slaveInBed))
+            popupInBed.Items.Add("Mount CD-ROM ISO...", Nothing, Sub() ChooseIso(channelInBed, slaveInBed))
+            Dim ejectInBed As ToolStripItem = popupInBed.Items.Add("Eject CD-ROM", Nothing, Sub() EjectCdRom(channelInBed, slaveInBed))
+            ejectInBed.Enabled = cdPresentInBed
+        End If
+
+        _driveBayPopupInBed = popupInBed
+        popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
+    End Sub
+
+    Private Sub ShowHardDiskBayMenuInBed(channelInBed As Integer, slaveInBed As Boolean)
+        Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+        If faceInBed Is Nothing OrElse faceInBed.IsDisposed Then Return
+        DisposeDriveBayPopupInBed()
+
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        Dim kindInBed As IdeDeviceKind
+        Dim hardDiskPresentInBed As Boolean
+        Dim identityInBed As HardDiskIdentity = Nothing
+        ReadMachineInBed(
+            Function()
+                kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                hardDiskPresentInBed = controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0
+                identityInBed = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                Return True
+            End Function)
+
+        Dim popupInBed As New ContextMenuStrip()
+        If kindInBed <> IdeDeviceKind.AtaHardDisk Then
+            popupInBed.Items.Add(New ToolStripMenuItem(IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " is not an ATA hard disk") With {.Enabled = False})
+        Else
+            Dim modelTextInBed As String = If(identityInBed Is Nothing, "ATA hard disk", identityInBed.Manufacturer & " " & identityInBed.Model)
+            popupInBed.Items.Add(New ToolStripMenuItem(
+                IdeSlotDisplayNameInBed(channelInBed, slaveInBed) & " — " & modelTextInBed & " — " &
+                If(hardDiskPresentInBed, "attached", "no disk image attached")) With {.Enabled = False})
+            popupInBed.Items.Add(New ToolStripSeparator())
+
+            Dim shelfInBed As New ToolStripMenuItem("IDE Drive Shelf")
+            PopulateIdeDriveShelfMenuInBed(shelfInBed, channelInBed, slaveInBed)
+            popupInBed.Items.Add(shelfInBed)
+            popupInBed.Items.Add("Hard Drive Utilities...", Nothing, Sub() RunSneakerNet("harddisk", channelInBed, slaveInBed))
+            popupInBed.Items.Add(New ToolStripSeparator())
+            popupInBed.Items.Add("Mount hard-disk image...", Nothing, Sub() ChooseHardDisk(channelInBed, slaveInBed))
+            popupInBed.Items.Add("Create selected-model IDE shelf drive...", Nothing, Sub() CreateHardDisk(channelInBed, slaveInBed))
+            popupInBed.Items.Add("Open IDE-Drives folder", Nothing, Sub() OpenIdeDriveShelfFolder())
+            popupInBed.Items.Add(New ToolStripSeparator())
+
+            If channelInBed = 0 AndAlso Not slaveInBed Then
+                Dim bootInBed As ToolStripItem = popupInBed.Items.Add("Boot hard disk", Nothing, Sub() BootHardDisk())
+                bootInBed.Enabled = hardDiskPresentInBed
+            Else
+                popupInBed.Items.Add(New ToolStripMenuItem("BIOS boot path — primary master only") With {.Enabled = False})
+            End If
+
+            Dim ejectInBed As ToolStripItem = popupInBed.Items.Add("Disconnect hard disk", Nothing, Sub() EjectHardDisk(channelInBed, slaveInBed))
+            ejectInBed.Enabled = hardDiskPresentInBed OrElse
+                                 (_ideDriveShelf IsNot Nothing AndAlso _ideDriveShelf.GetConfiguredDriveId(channelInBed, slaveInBed) >= 0)
+        End If
+
+        _driveBayPopupInBed = popupInBed
         popupInBed.Show(faceInBed, New Point(0, faceInBed.Height))
     End Sub
 
     Private Sub UpdateDriveBayFacesInBed(geometryAInBed As Integer(), geometryBInBed As Integer())
         UpdateDriveBayFaceInBed(_floppyBayAInBed, 0, geometryAInBed)
         UpdateDriveBayFaceInBed(_floppyBayBInBed, 1, geometryBInBed)
+
+        For channelInBed As Integer = 0 To 1
+            Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+            For Each slaveInBed As Boolean In New Boolean() {False, True}
+                Dim kindInBed As IdeDeviceKind
+                Dim hardDiskPresentInBed As Boolean
+                Dim cdPresentInBed As Boolean
+                Dim identityInBed As HardDiskIdentity = Nothing
+                ReadMachineInBed(
+                    Function()
+                        kindInBed = controllerInBed.GetDeviceKind(slaveInBed)
+                        hardDiskPresentInBed = controllerInBed.GetHardDiskSectorCount(slaveInBed) > 0
+                        cdPresentInBed = controllerInBed.IsCdRomMounted(slaveInBed)
+                        identityInBed = controllerInBed.GetHardDiskIdentity(slaveInBed)
+                        Return True
+                    End Function)
+
+                Dim faceInBed As PictureBox = IdeBayForSlotInBed(channelInBed, slaveInBed)
+                If faceInBed Is Nothing Then Continue For
+                Dim slotNameInBed As String = IdeSlotDisplayNameInBed(channelInBed, slaveInBed)
+
+                Select Case kindInBed
+                    Case IdeDeviceKind.AtaHardDisk
+                        faceInBed.Image = _mfmHardDiskDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        Dim modelTextInBed As String = If(identityInBed Is Nothing, "ATA hard disk", identityInBed.Model)
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — " & modelTextInBed & " — " & If(hardDiskPresentInBed, "attached", "no disk image attached") & "; click for drive shelf and utilities")
+                    Case IdeDeviceKind.AtapiCdRom
+                        faceInBed.Image = _cdRomDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — ATAPI CD-ROM — " & If(cdPresentInBed, "media inserted", "tray empty") & "; click for optical media choices")
+                    Case Else
+                        faceInBed.Image = _emptyDriveFaceInBed
+                        faceInBed.Cursor = Cursors.Hand
+                        _driveBayToolTipInBed.SetToolTip(faceInBed, slotNameInBed & " — empty IDE socket; click for configuration hint")
+                End Select
+            Next
+        Next
     End Sub
 
     Private Sub UpdateDriveBayFaceInBed(faceInBed As PictureBox,
@@ -2104,7 +3400,14 @@ Public Class Form1
         Process.Start(startInBed)
     End Sub
 
-    Private Sub RunSneakerNet()
+    Private Sub RunSneakerNet(Optional mediaPageInBed As String = Nothing,
+                              Optional ideChannelInBed As Integer = 0,
+                              Optional ideSlaveInBed As Boolean = False)
+        If ideChannelInBed < 0 OrElse ideChannelInBed > 1 Then Throw New ArgumentOutOfRangeException(NameOf(ideChannelInBed))
+        _sneakerNetIdeTargetInBed = ideChannelInBed
+        _sneakerNetIdeTargetSlaveInBed = ideSlaveInBed
+        _sneakerNetOpticalTargetInBed = ideChannelInBed
+        _sneakerNetOpticalTargetSlaveInBed = ideSlaveInBed
         If _floppyBox Is Nothing Then InitializeFloppyBox()
 
         If _sneakerNetForm Is Nothing OrElse _sneakerNetForm.IsDisposed Then
@@ -2124,20 +3427,20 @@ Public Class Form1
                 End Sub,
                 _ideDriveShelf,
                 Sub(driveIdInBed As Integer)
-                    SelectIdeShelfDrive(driveIdInBed)
+                    SelectIdeShelfDrive(driveIdInBed, _sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
                 Sub()
-                    EjectHardDisk()
+                    EjectHardDisk(_sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
-                Function() _mountedIdeDriveId,
+                Function() MountedIdeDriveIdInBed(_sneakerNetIdeTargetInBed, _sneakerNetIdeTargetSlaveInBed),
                 Sub(imagePathInBed As String)
-                    WithMachineInBed(Sub() MountIsoImage(imagePathInBed))
+                    WithMachineInBed(Sub() MountIsoImage(imagePathInBed, _sneakerNetOpticalTargetInBed, _sneakerNetOpticalTargetSlaveInBed))
                     UpdateMediaStatus()
                 End Sub,
                 Sub()
-                    EjectCdRom()
+                    EjectCdRom(_sneakerNetOpticalTargetInBed, _sneakerNetOpticalTargetSlaveInBed)
                     UpdateMediaStatus()
                 End Sub,
                 Function() AcquireMediaQuiesceLeaseInBed())
@@ -2151,20 +3454,17 @@ Public Class Form1
             _sneakerNetForm.BringToFront()
             _sneakerNetForm.Activate()
         End If
+
+        If Not String.IsNullOrWhiteSpace(mediaPageInBed) Then _sneakerNetForm.ShowMediaPageInBed(mediaPageInBed)
     End Sub
 
     Private Function AcquireMediaQuiesceLeaseInBed() As IDisposable
-        Dim resumeInBed As Boolean = _machineRuntime IsNot Nothing AndAlso _machineRuntime.IsRunning
-        If resumeInBed Then _machineRuntime.Stop()
-
-        Return New HostActionLease(
+        If _materializedMachineInBed Is Nothing Then Return New HostActionLease(Nothing)
+        Return _materializedMachineInBed.AcquireHostQuiesceLease(
             Sub()
-                If resumeInBed AndAlso Not _closingInBed AndAlso _machinePoweredInBed Then
-                    _machineRuntime.ResetHostSchedulingState()
-                    _machineRuntime.Start()
-                    Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
-                    If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
-                End If
+                If _closingInBed Then Return
+                Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
+                If presentationInBed IsNot Nothing Then presentationInBed.RequestFrame()
             End Sub)
     End Function
 
@@ -2182,60 +3482,97 @@ Public Class Form1
         End Using
     End Sub
 
-    Private Sub ChooseHardDisk()
+    Private Sub ChooseHardDisk(Optional channelInBed As Integer = 0,
+                               Optional slaveInBed As Boolean = False)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                            "ATA hard disk not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
         Using picker As New OpenFileDialog()
-            picker.Title = "Mount hard-disk image"
+            picker.Title = "Mount hard-disk image on " & IdeSlotDisplayNameInBed(channelInBed, slaveInBed).ToLowerInvariant()
             picker.Filter = "Raw disk images (*.img;*.hdd)|*.img;*.hdd|All files (*.*)|*.*"
             If picker.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
-                WithMachineInBed(Sub() MountHardDiskImage(picker.FileName))
+                WithMachineInBed(Sub() MountHardDiskImage(picker.FileName, False, channelInBed, slaveInBed))
+                If _ideDriveShelf IsNot Nothing Then
+                    _ideDriveShelf.SetConfiguredDriveId(channelInBed, -1, slaveInBed)
+                    _ideDriveShelf.SaveConfiguration()
+                End If
+                SetMountedIdeDriveIdInBed(channelInBed, -1, slaveInBed)
                 UpdateMediaStatus()
+                RebuildIdeDriveShelfMenu()
             Catch ex As Exception
                 MessageBox.Show(Me, ex.Message, "Unable to mount hard disk", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End Try
         End Using
     End Sub
 
-    Private Sub CreateHardDisk()
+    Private Sub CreateHardDisk(Optional channelInBed As Integer = 0,
+                               Optional slaveInBed As Boolean = False)
         If _ideDriveShelf Is Nothing Then Return
-        _ideDriveShelf.EnsureShelfExists()
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtaHardDisk Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATA hard disk. Select ATA hard disk in System Configuration first.",
+                            "ATA hard disk not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
 
-        Dim label As String = Microsoft.VisualBasic.Interaction.InputBox(
-            "Label for the new 64 MB IDE drive:",
+        _ideDriveShelf.EnsureShelfExists()
+        Dim effectiveIdeInBed As IdeHardwareConfiguration = EffectiveIdeHardwareConfigurationInBed()
+        Dim slotKeyInBed As String = IdeSlotKeyInBed(channelInBed, slaveInBed)
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(effectiveIdeInBed.GetModelId(slotKeyInBed))
+        If profileInBed Is Nothing Then profileInBed = IdeDriveModelCatalog.FindById(IdeDriveModelCatalog.Generic64MiBId)
+        Dim labelInBed As String = Microsoft.VisualBasic.Interaction.InputBox(
+            "Label for the new " & profileInBed.DisplayName & ":",
             "Create IDE Shelf Drive",
-            "New 64 MB Drive")
-        If String.IsNullOrWhiteSpace(label) Then Return
+            profileInBed.DisplayName)
+        If String.IsNullOrWhiteSpace(labelInBed) Then Return
 
         Try
-            Dim driveId As Integer = _ideDriveShelf.NextAvailableId()
-            Dim safeLabel As String = IdeDriveShelf.SanitizeLabel(label)
-            Dim imagePath As String = Path.Combine(_ideDriveShelf.RootPath, driveId.ToString() & " - " & safeLabel & ".hdd")
-            HardDiskImage.Create(imagePath, 64L * 1024L * 1024L \ 512L)
+            Dim driveIdInBed As Integer = _ideDriveShelf.NextAvailableId()
+            Dim safeLabelInBed As String = IdeDriveShelf.SanitizeLabel(labelInBed)
+            Dim imagePathInBed As String = Path.Combine(_ideDriveShelf.RootPath, driveIdInBed.ToString() & " - " & safeLabelInBed & ".hdd")
+            HardDiskImage.Create(imagePathInBed, profileInBed)
 
-            _ideDriveShelf.PrimaryMasterId = driveId
+            _ideDriveShelf.SetConfiguredDriveId(channelInBed, driveIdInBed, slaveInBed)
             _ideDriveShelf.SaveConfiguration()
-            AttachConfiguredPrimaryMaster(silent:=False)
+            AttachConfiguredIdeDiskInBed(channelInBed, slaveInBed, silent:=False)
             UpdateMediaStatus()
             RebuildIdeDriveShelfMenu()
-            If _mountedIdeDriveId = driveId Then ResetThroughFirmware()
+            If MountedIdeDriveIdInBed(channelInBed, slaveInBed) = driveIdInBed Then ResetThroughFirmware()
         Catch ex As Exception
             MessageBox.Show(Me, ex.Message, "Unable to create IDE shelf drive", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 
-    Private Sub ChooseIso()
+    Private Sub ChooseIso(Optional channelInBed As Integer = 0,
+                          Optional slaveInBed As Boolean = True)
+        Dim controllerInBed As IdeController = IdeControllerForChannelInBed(channelInBed)
+        If ReadMachineInBed(Function() controllerInBed.GetDeviceKind(slaveInBed)) <> IdeDeviceKind.AtapiCdRom Then
+            MessageBox.Show(Me, IdeSlotDisplayNameInBed(channelInBed, slaveInBed) &
+                            " is not configured as an ATAPI CD-ROM. Select ATAPI CD-ROM in System Configuration first.",
+                            "ATAPI drive not installed", MessageBoxButtons.OK, MessageBoxIcon.Information)
+            Return
+        End If
+
         Using picker As New OpenFileDialog()
-            picker.Title = "Mount CD-ROM image"
+            picker.Title = "Mount CD-ROM image on " & IdeSlotDisplayNameInBed(channelInBed, slaveInBed).ToLowerInvariant()
             picker.Filter = "ISO images (*.iso)|*.iso|All files (*.*)|*.*"
             If picker.ShowDialog(Me) <> DialogResult.OK Then Return
             Try
-                WithMachineInBed(Sub() MountIsoImage(picker.FileName))
+                WithMachineInBed(Sub() MountIsoImage(picker.FileName, channelInBed, slaveInBed))
                 UpdateMediaStatus()
             Catch ex As Exception
                 MessageBox.Show(Me, ex.Message, "Unable to mount CD-ROM", MessageBoxButtons.OK, MessageBoxIcon.Error)
             End Try
         End Using
     End Sub
+
     Private Sub SystemLoop_Tick(sender As System.Object, e As System.EventArgs) Handles SystemLoop.Tick
         ' Deliberately inert. MachineRuntime286 owns CPU/motherboard execution.
         ' Keeping the designer timer stub avoids destructive form-designer churn.
@@ -2315,7 +3652,9 @@ Public Class Form1
             Return
         End If
 
-        WithMachineInBed(Sub() CPU0.ResetHotPathProfiler())
+        WithMachineInBed(Sub()
+                             If CPU0 IsNot Nothing Then CPU0.ResetHotPathProfiler()
+                         End Sub)
         SyncLock _cpuPerfLockInBed
             _cpuPerfAccumulatedTStates = 0
             _cpuPerfAccumulatedHostTicks = 0
@@ -2369,6 +3708,77 @@ Public Class Form1
     Private Sub UpdateCpuPerformanceWindowInBed()
         If _cpuPerfText Is Nothing OrElse _cpuPerfText.IsDisposed Then Return
 
+        ' Performance-baseline mode deliberately keeps only the rate meter.
+        ' The full diagnostic window used to format bus/CPU/chipset reports AND
+        ' assign the WinForms label while owning the machine gate.  That makes
+        ' the observer part of the workload we are trying to measure.
+        If Not RuntimeDiagnostics.Enabled Then
+            Dim targetHzInBed As Long
+            Dim debtTStatesInBed As Long
+            Dim sliceCeilingInBed As Long
+            WithMachineInBed(
+                Sub()
+                    targetHzInBed = MachineClock.CpuClockHz
+                    debtTStatesInBed = MachineClock.PendingTStates
+                    sliceCeilingInBed = If(_machineRuntime Is Nothing, 0L, _machineRuntime.CurrentMaximumTStatesPerSlice)
+                End Sub)
+
+            Dim effectiveHzInBed As Double
+            Dim samplesReadyInBed As Boolean
+            Dim lastSliceMsInBed As Double
+            Dim averageSliceMsInBed As Double
+            Dim minimumSliceMsInBed As Double
+            Dim maximumSliceMsInBed As Double
+            Dim sliceCountInBed As Long
+            SyncLock _cpuPerfLockInBed
+                effectiveHzInBed = _cpuPerfEffectiveTStatesPerSecond
+                samplesReadyInBed = _cpuPerfSamplesReady
+                lastSliceMsInBed = _cpuPerfLastSliceMilliseconds
+                averageSliceMsInBed = _cpuPerfAverageSliceMillisecondsInBed
+                minimumSliceMsInBed = _cpuPerfMinimumSliceMillisecondsInBed
+                maximumSliceMsInBed = _cpuPerfMaximumSliceMillisecondsInBed
+                sliceCountInBed = _cpuPerfLastWindowSliceCountInBed
+            End SyncLock
+
+            Dim ratioInBed As Double =
+                If(targetHzInBed > 0, effectiveHzInBed / CDbl(targetHzInBed), 0.0)
+            Dim debtMillisecondsInBed As Double =
+                If(targetHzInBed > 0,
+                   CDbl(debtTStatesInBed) * 1000.0 / CDbl(targetHzInBed),
+                   0.0)
+            Dim effectiveTextInBed As String =
+                If(samplesReadyInBed,
+                   (effectiveHzInBed / 1000000.0).ToString("0.000") & " MT-states/s",
+                   "measuring...")
+            Dim ratioTextInBed As String =
+                If(samplesReadyInBed,
+                   (ratioInBed * 100.0).ToString("0.0") & " %",
+                   "measuring...")
+            Dim statusInBed As String =
+                If(Not samplesReadyInBed,
+                   "MEASURING",
+                   If(ratioInBed >= 0.95 AndAlso debtMillisecondsInBed < 100.0,
+                      "KEEPING UP",
+                      "FALLING BEHIND"))
+
+            _cpuPerfText.Text =
+                "Harris CS80C286 performance — DIAGNOSTICS OFF" & Environment.NewLine & Environment.NewLine &
+                "Target clock           : " & (CDbl(targetHzInBed) / 1000000.0).ToString("0.000") & " MHz" & Environment.NewLine &
+                "Effective T-state rate : " & effectiveTextInBed & Environment.NewLine &
+                "Real-time ratio        : " & ratioTextInBed & Environment.NewLine &
+                "Pending scheduler debt : " & debtTStatesInBed.ToString("N0") & " T-states" & Environment.NewLine &
+                "Debt as guest time     : " & debtMillisecondsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "Last RunSlice host cost: " & lastSliceMsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "RunSlice avg/min/max    : " & averageSliceMsInBed.ToString("0.0") & " / " &
+                                                minimumSliceMsInBed.ToString("0.0") & " / " &
+                                                maximumSliceMsInBed.ToString("0.0") & " ms" & Environment.NewLine &
+                "Slices in rate window  : " & sliceCountInBed.ToString("N0") & Environment.NewLine &
+                "Slice ceiling          : " & sliceCeilingInBed.ToString("N0") & " T-states" & Environment.NewLine &
+                "Runtime trace collectors: COMPILED OUT" & Environment.NewLine & Environment.NewLine &
+                "Status                 : " & statusInBed
+            Return
+        End If
+
         WithMachineInBed(
             Sub()
                 SyncLock _cpuPerfLockInBed
@@ -2418,7 +3828,7 @@ Public Class Form1
             "RunSlice avg/min/max    : " & _cpuPerfAverageSliceMillisecondsInBed.ToString("0.0") & " / " & _cpuPerfMinimumSliceMillisecondsInBed.ToString("0.0") & " / " & _cpuPerfMaximumSliceMillisecondsInBed.ToString("0.0") & " ms" & Environment.NewLine &
             "Slices in rate window  : " & _cpuPerfLastWindowSliceCountInBed.ToString("N0") & Environment.NewLine &
             "Rate measurement basis : aligned end-to-end wall" & Environment.NewLine &
-            "Slice ceiling          : " & _machineRuntime.CurrentMaximumTStatesPerSlice.ToString("N0") & " T-states adaptive (hard max " & MachineRuntime286.MaximumTStatesPerSlice.ToString("N0") & ")" & Environment.NewLine &
+            "Slice ceiling          : " & If(_machineRuntime Is Nothing, "not materialized", _machineRuntime.CurrentMaximumTStatesPerSlice.ToString("N0") & " T-states adaptive (hard max " & MachineRuntime286.MaximumTStatesPerSlice.ToString("N0") & ")") & Environment.NewLine &
             "Execution owner        : dedicated single machine thread" & Environment.NewLine &
             "Clock batch ceiling    : " & batchCeilingInBed.ToString("N0") & " T-states" & Environment.NewLine &
             "Unclassified clocks    : " & unclassifiedClocksInBed & Environment.NewLine &
@@ -2428,7 +3838,7 @@ Public Class Form1
             "Flushes port / MMIO    : " & batchPortInBed.ToString("N0") & " / " & batchMemoryInBed.ToString("N0") & Environment.NewLine &
             "Flushes wake / ceiling : " & batchWakeInBed.ToString("N0") & " / " & batchCeilingFlushInBed.ToString("N0") & Environment.NewLine &
             "Flushes end / other    : " & batchEndInBed.ToString("N0") & " / " & batchOtherInBed.ToString("N0") & Environment.NewLine & Environment.NewLine &
-            CPU0.HotPathDiagnosticText() & Environment.NewLine & Environment.NewLine &
+            If(CPU0 Is Nothing, "No CPU installed.", CPU0.HotPathDiagnosticText()) & Environment.NewLine & Environment.NewLine &
             CpuBus.DiagnosticText() & Environment.NewLine &
             MotherboardBridge.DiagnosticText() & Environment.NewLine & Environment.NewLine &
             MotherboardMemory.DiagnosticText() & Environment.NewLine & Environment.NewLine &
@@ -2441,8 +3851,9 @@ Public Class Form1
         ' worker. WinForms only swaps in a completed frame when a new generation exists.
         Dim presentationInBed As DiamondStealthPro928PresentationWorker = _videoPresentation
         If presentationInBed Is Nothing Then Return
+        If Not MachinePoweredInBed Then Return
 
-        If _machinePoweredInBed Then presentationInBed.RequestFrame()
+        presentationInBed.RequestFrame()
         Dim nextFrameInBed As Bitmap =
             presentationInBed.TakeLatestFrame(_videoPresentationGenerationInBed)
         If nextFrameInBed Is Nothing Then Return
@@ -2464,6 +3875,11 @@ Public Class Form1
             If bytesRead = 0 Then Throw New EndOfStreamException("Unexpected end of file.")
             offset += bytesRead
         End While
+    End Sub
+
+    Private Sub ShowSingleStep80286TestsInBed()
+        Dim formInBed As New SingleStep80286TestHostForm()
+        formInBed.Show(Me)
     End Sub
 End Class
 'keyboard buffer address &h0:0100-&h0:01ff (tentative)

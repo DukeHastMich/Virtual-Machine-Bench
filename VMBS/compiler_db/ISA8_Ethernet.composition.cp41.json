@@ -1,0 +1,13 @@
+{
+  "format": "VMB-CHIMERA-CONTRACT-VALIDATION-1",
+  "used_module_instances": 3,
+  "diagnostics": [
+    {
+      "severity": "error",
+      "code": "COMPOSITION_CONTRACT_MISSING",
+      "ref": "U1",
+      "module_id": "VMB.NET.RTL8019AS"
+    }
+  ],
+  "ready": false
+}

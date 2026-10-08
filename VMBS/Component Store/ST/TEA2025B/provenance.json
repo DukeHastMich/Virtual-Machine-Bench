@@ -1,0 +1,16 @@
+{
+  "format": "VMBS-COMPONENT-IMAGE-PROVENANCE-1",
+  "specimen": "CT2960",
+  "crop": "Images/CT2960_TEA2025B_top.png",
+  "crop_sha256": "ccd4f5b386676068dae7c78dfcfbb92a47e1a89d29a1251eaa6a1f772c285238",
+  "source": "Library/CT2960/Images/front_full.jpg",
+  "source_sha256": "4f70e5fec5751f9763da817a46cf7b4b3286b7b28eb193a8adca0b586e76625c",
+  "crop_bounds_xyxy": [
+    930,
+    250,
+    1180,
+    620
+  ],
+  "identity_note": "observed marking: ST TEA2025B; identity corroborated by ST primary datasheet",
+  "policy": "Crop is derived evidence; immutable full-card source remains in project Library."
+}

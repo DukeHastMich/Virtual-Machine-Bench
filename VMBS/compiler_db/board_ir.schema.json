@@ -1,0 +1,9 @@
+{
+  "format": "VMBS-BOARD-IR-SCHEMA-1",
+  "purpose": "Stable contract between deterministic board analyzer and VMB Board Compiler.",
+  "required_families": [
+    "devices", "module_bindings", "buses", "connections", "io_ranges", "memory_ranges",
+    "irq", "dma", "clocks", "configuration_points", "programmed_contents", "diagnostics"
+  ],
+  "tits": {"type": "bit", "down": 0, "up": 1, "meaning": "Truncated Information To Substrate"}
+}

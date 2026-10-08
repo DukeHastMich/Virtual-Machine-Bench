@@ -1,0 +1,4343 @@
+{
+  "format": "VMBS-CODE-STORE-2",
+  "default_binding": "NONE",
+  "principle": "MODULE_ID is stable; implementation locator is replaceable. Configuration points are declarative compiler/synthesis inputs.",
+  "modules": [
+    {
+      "module_id": "VMB.NET.RTL8019AS",
+      "kind": "device",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Expansion Cards/Network Cards/RTL8019AS/Rtl8019As.vb",
+        "class": "Rtl8019As",
+        "resolution": "computer_visible_controller_core",
+        "contract": "PSEUDOCODE CONTRACT \u2014 RTL8019AS\n\nRepresent the complete VMB-visible behavior of the RTL8019AS, not only this specimen.\nON RESET falling-edge sampling: latch JP/PNP/BS/IOS/IRQS configuration inputs as defined by the component record. After sampling, honor their documented alternate BROM-bus roles.\nExpose ISA address/data/control interface, reset, IOCHRDY, selected IRQ behavior, boot-ROM interface, EEPROM interface, and Ethernet-facing behavior required by VMB.\nIf Analyzer proves a configuration input fixed, accept a compile-time default. If a source is a user control, bind it to the machine PCB-instance control. If a source can change live, expose a runtime input.\nNever infer IO base, IRQ, ROM mapping, or mode from board identity. Those values/connections arrive from Board IR.\nFirmware bytes are not embedded in this module.",
+        "note": "CP42 IC-boundary extraction. ISA decode/configuration, EEPROM, boot ROM, IRQ routing and host Ethernet transport remain board/external concerns."
+      },
+      "interfaces": [
+        "ISA_BUS",
+        "IRQ",
+        "BOOT_ROM",
+        "EEPROM",
+        "ETHERNET"
+      ],
+      "configuration_points": [
+        {
+          "id": "IO_BASE",
+          "type": "enum",
+          "machine_effect": "ISA I/O decode base",
+          "physical_realization": "jumper|jumperless|PnP"
+        },
+        {
+          "id": "IRQ",
+          "type": "enum",
+          "machine_effect": "ISA interrupt selection",
+          "physical_realization": "jumper|jumperless|PnP"
+        },
+        {
+          "id": "BOOT_ROM_ENABLE",
+          "type": "boolean",
+          "machine_effect": "boot ROM mapping enabled",
+          "physical_realization": "jumper|configuration"
+        }
+      ],
+      "composition": {
+        "construction": {
+          "kind": "constructor",
+          "entry_class": "Rtl8019As",
+          "arguments": []
+        },
+        "endpoints": [
+          {
+            "interface": "ISA8",
+            "signals": [
+              "A0..A19",
+              "D0..D7",
+              "AEN",
+              "IOR#",
+              "IOW#",
+              "RESETDRV",
+              "SMEMW#",
+              "SMEMR#",
+              "IRQ3",
+              "IRQ4",
+              "IRQ5",
+              "IRQ9",
+              "IOCHRDY"
+            ],
+            "binding": {
+              "kind": "isa_controller",
+              "register_read": "ReadRegister",
+              "register_write": "WriteRegister",
+              "dma_read": "RemoteDmaReadByte",
+              "dma_write": "RemoteDmaWriteByte",
+              "irq_event": "InterruptChanged"
+            }
+          },
+          {
+            "interface": "BOOT_ROM",
+            "signals": [
+              "A14",
+              "A15",
+              "A16",
+              "A17",
+              "A18",
+              "D0..D7",
+              "CE#"
+            ],
+            "binding": {
+              "kind": "external_memory_bus",
+              "adapter": "RTL8019_BOOT_ROM"
+            }
+          },
+          {
+            "interface": "MICROWIRE_3WIRE",
+            "signals": [
+              "CS",
+              "CLK",
+              "DI",
+              "DO"
+            ],
+            "binding": {
+              "kind": "serial_protocol",
+              "adapter": "RTL8019_MICROWIRE",
+              "drive_event": "MicrowirePinsChanged",
+              "sample_method": "SetEepromDataOut",
+              "cs_property": "EepromChipSelect",
+              "clock_property": "EepromClock",
+              "di_property": "EepromDataIn"
+            }
+          }
+        ],
+        "host_services": [
+          {
+            "kind": "ETHERNET_FRAME_TRANSPORT",
+            "event": "TransmitRequested"
+          }
+        ]
+      }
+    },
+    {
+      "module_id": "VMB.MEM.SST39SF040",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Expansion Cards/Memory/Sst39Sf040.vb",
+        "class": "Sst39Sf040",
+        "resolution": "computer_visible_device_behavior",
+        "contract": "PSEUDOCODE CONTRACT \u2014 SST39SF040\n\nImplement 512 KiB x8 parallel flash behavior at VMB resolution, including reads and guest-visible programming/erase behavior where exercised. Backing payload size is exactly 524288 bytes.\nFirmware payload is selected from the Firmware Store and copied/installed into the machine-local PCB instance. Runtime writes modify only that instance copy. Missing payload remains unresolved; do not invent contents.",
+        "note": "Source-backed Code Store binding promoted by CP39; board wiring and programmed contents remain external.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "consumed_and_mutated_as_machine_instance",
+          "reverse_delivery": "required"
+        }
+      },
+      "configuration_points": [
+        {
+          "id": "CONTENTS",
+          "type": "image",
+          "machine_effect": "programmed flash bytes",
+          "physical_realization": "programmed_device_contents"
+        }
+      ],
+      "composition": {
+        "construction": {
+          "kind": "constructor",
+          "entry_class": "Sst39Sf040",
+          "arguments": []
+        },
+        "endpoints": [
+          {
+            "interface": "PARALLEL_X8_MEMORY",
+            "signals": [
+              "A0..A18"
+            ],
+            "binding": {
+              "kind": "method_address",
+              "read": "ReadByte",
+              "write": "WriteByte"
+            }
+          },
+          {
+            "interface": "PARALLEL_X8_MEMORY",
+            "signals": [
+              "D0..D7"
+            ],
+            "binding": {
+              "kind": "method_data",
+              "read": "ReadByte",
+              "write": "WriteByte"
+            }
+          },
+          {
+            "interface": "PARALLEL_X8_MEMORY",
+            "signals": [
+              "CE#",
+              "OE#",
+              "WE#"
+            ],
+            "binding": {
+              "kind": "bus_control",
+              "adapter": "PARALLEL_MEMORY_X8"
+            }
+          },
+          {
+            "interface": "PARALLEL_X8_MEMORY",
+            "signals": [
+              "VDD",
+              "VSS"
+            ],
+            "binding": {
+              "kind": "power",
+              "runtime_behavior": "validated_not_signal_simulated"
+            }
+          }
+        ],
+        "state": {
+          "snapshot_method": "Snapshot",
+          "payload_argument": "imageInBed"
+        }
+      }
+    },
+    {
+      "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Expansion Cards/Memory/Microwire93Lc46c.vb",
+        "class": "Microwire93Lc46c",
+        "resolution": "computer_visible_device_behavior",
+        "contract": "PSEUDOCODE CONTRACT \u2014 93LC46C\n\nImplement 1 Kbit Microwire EEPROM with CS/CLK/DI/DO live behavior. ORG selects x8 when low and x16 when high; honor static, reset/configured, or live wiring as represented by Board IR.\nPersistent contents belong to the machine-local PCB instance. Firmware Store may supply an installable initial payload, but component identity does not imply payload identity. Implement the full VMB-visible behavior for both legal organizations.",
+        "note": "Source-backed Code Store binding promoted by CP39; board wiring and programmed contents remain external.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bits": 1024,
+          "simulation": "consumed_and_mutated_as_machine_instance",
+          "reverse_delivery": "required",
+          "organization": "ORG-selectable"
+        }
+      },
+      "configuration_points": [
+        {
+          "id": "CONTENTS",
+          "type": "image",
+          "machine_effect": "EEPROM bytes/words",
+          "physical_realization": "programmed_device_contents"
+        },
+        {
+          "id": "ORG",
+          "type": "enum",
+          "allowed": [
+            "x8",
+            "x16"
+          ],
+          "machine_effect": "memory organization",
+          "physical_realization": "strap|controller_pin"
+        }
+      ],
+      "composition": {
+        "construction": {
+          "kind": "constructor",
+          "entry_class": "Microwire93Lc46c",
+          "arguments": []
+        },
+        "endpoints": [
+          {
+            "interface": "MICROWIRE_3WIRE",
+            "signals": [
+              "CS",
+              "CLK",
+              "DI",
+              "DO"
+            ],
+            "binding": {
+              "kind": "serial_protocol",
+              "adapter": "MICROWIRE_93LC46",
+              "drive_method": "SetSerialPins",
+              "read_property": "SerialDataOut",
+              "organization": "x16"
+            }
+          },
+          {
+            "interface": "CONFIG",
+            "signals": [
+              "ORG"
+            ],
+            "binding": {
+              "kind": "configuration",
+              "property": "organization"
+            }
+          },
+          {
+            "interface": "POWER",
+            "signals": [
+              "VCC",
+              "VSS"
+            ],
+            "binding": {
+              "kind": "power",
+              "runtime_behavior": "validated_not_signal_simulated"
+            }
+          }
+        ],
+        "state": {
+          "snapshot_method": "Snapshot",
+          "payload_argument": "imageInBed"
+        }
+      }
+    },
+    {
+      "module_id": "VMB.STUB.DIPSHIT_BLACKHOLE",
+      "kind": "stub_blackhole",
+      "implementation": {
+        "language": "NONE",
+        "status": "stub",
+        "compile_allowed": false,
+        "error_message": "You didn't write the code for this dipshit!",
+        "note": "Deliberate VMB-side landmine. BS may recognize a component before executable behavior exists. Replace its binding with a real MODULE_ID after implementation; this stub must never manufacture."
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.NET.ETHERNET_BACKEND",
+      "kind": "external_network_backend",
+      "implementation": {
+        "language": "NONE",
+        "status": "stub",
+        "compile_allowed": false,
+        "error_message": "You didn't write the code for this dipshit!",
+        "note": "Preliminary architectural stake for the generic external Ethernet connection boundary. Expected to own live plug/unplug state and eventually host UDP/TAP/Npcap/etc. attachment, frame ingress/egress, diagnostics/capture plumbing, and link-state signaling. The contract may need expansion or revision after VMBS analyzes more real network boards. Do not encode RTL8019- or specimen-specific assumptions here."
+      },
+      "interfaces": [
+        "ETHERNET_DEVICE_SIDE",
+        "ETHERNET_EXTERNAL_SIDE"
+      ],
+      "configuration_points": [
+        {
+          "id": "CONNECTED",
+          "type": "boolean",
+          "sampling": "live",
+          "machine_effect": "virtual Ethernet cable physically plugged/unplugged"
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX00",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input NAND",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX02",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input NOR",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX04",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "hex inverter",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX08",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input AND",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX32",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input OR",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX86",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input XOR",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX138",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX244",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "octal tri-state buffer",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX245",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "octal bidirectional tri-state transceiver",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX373",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "octal transparent latch",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX374",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "octal positive-edge register",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.AT.PIC8259A",
+      "kind": "interrupt_controller",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "HardwareBus.vb",
+        "class": "Pic8259",
+        "resolution": "computer-visible-pc-at-projection",
+        "description": "Dual AT cascade is board topology; each MODULE_ID instance represents one 8259A-compatible PIC.",
+        "reference_audit": "VMBS/tools/cp71_8259a_source_audit.py",
+        "note": "Buffered-mode/uPM electrical bus details are outside this transaction-level PC/AT projection; do not use this worker as a pin-timing model."
+      },
+      "interfaces": [
+        "AT_MOTHERBOARD"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.AT.PIT8254",
+      "kind": "timer",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "HardwareBus.vb",
+        "class": "Pit8253",
+        "resolution": "computer-visible-digital-timing",
+        "description": "Existing Pit8253 runtime implements the AT 8253/8254-compatible timer substrate including read-back/status behavior used by the 82C206 path.",
+        "reference_audit": "VMBS/tools/cp70_8254_source_audit.py"
+      },
+      "interfaces": [
+        "AT_MOTHERBOARD"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.AT.DMA8237A",
+      "kind": "dma_controller",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "MotherboardDevices.vb",
+        "class": "Dma8237",
+        "resolution": "computer-visible-pc-at-transaction-projection",
+        "description": "Existing Dma8237 runtime models the dual AT DMA substrate. VMBS may instantiate/bind physical 8237A-compatible topology without inventing board constants.",
+        "reference_audit": "VMBS/tools/cp72_8237a_source_audit.py",
+        "note": "AT transaction projection; standalone memory-to-memory and exact 8237A pin-cycle generation remain outside this worker."
+      },
+      "interfaces": [
+        "AT_MOTHERBOARD"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.AT.KBC8042",
+      "kind": "keyboard_controller_firmware_personality",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "MotherboardDevices.vb",
+        "class": "KeyboardController8042",
+        "resolution": "computer_visible_at_keyboard_controller_personality",
+        "description": "AT-compatible keyboard-controller firmware personality hosted by the 8042-class board wrapper: host command/status behavior, keyboard serial transport, IRQ1, A20 and RESET# effects. This is not the generic Intel 8042AH microcontroller identity or an assertion of exact mask-ROM bytes.",
+        "physical_identity_binding": null,
+        "exact_mask_rom_payload_known": false,
+        "payload_contract": {
+          "exact_payload_known": false,
+          "simulation": "BYPASSED_TRANSITIONAL_BEHAVIOR_MODEL",
+          "reverse_delivery": "UNRESOLVED",
+          "authenticity_exception": true,
+          "note": "Must not be treated as final authentic 8042 silicon+ROM implementation."
+        }
+      },
+      "interfaces": [
+        "AT_MOTHERBOARD"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.AT.RTC146818",
+      "kind": "rtc_cmos",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "MotherboardDevices.vb",
+        "class": "CmosRtc",
+        "resolution": "computer_visible_authentic_rtc_behavior_with_at_board_wrapper",
+        "description": "MC146818A-visible RTC behavior (calendar/time, binary/BCD, 12/24-hour, alarm/periodic/update interrupts, UIP/update timing) hosted by the AT board wrapper; ports 70h/71h, NMI mask and chipset upper CMOS are board integration rather than RTC silicon."
+      },
+      "interfaces": [
+        "AT_MOTHERBOARD"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.CT.82C211",
+      "kind": "chipset_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb",
+        "class": "Ct82C211BoardScriptWorker",
+        "class_factory": "BoardScriptWorkerRegistry.Create",
+        "worker_id": "ct.neat.82c211",
+        "resolution": "computer_visible_chipset_behavior",
+        "description": "Physical C&T NEAT package worker; board topology remains external."
+      },
+      "interfaces": [
+        "LOCAL_BUS",
+        "CHIPSET_CONTROL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.CT.82C212",
+      "kind": "chipset_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb",
+        "class": "Ct82C212BoardScriptWorker",
+        "class_factory": "BoardScriptWorkerRegistry.Create",
+        "worker_id": "ct.neat.82c212",
+        "resolution": "computer_visible_chipset_behavior",
+        "description": "Physical C&T NEAT package worker; board topology remains external."
+      },
+      "interfaces": [
+        "LOCAL_BUS",
+        "CHIPSET_CONTROL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.CT.82C215",
+      "kind": "chipset_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb",
+        "class": "Ct82C215BoardScriptWorker",
+        "class_factory": "BoardScriptWorkerRegistry.Create",
+        "worker_id": "ct.neat.82c215",
+        "resolution": "computer_visible_chipset_behavior",
+        "description": "Physical C&T NEAT package worker; board topology remains external."
+      },
+      "interfaces": [
+        "LOCAL_BUS",
+        "CHIPSET_CONTROL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.CT.82C206",
+      "kind": "chipset_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb",
+        "class": "Ct82C206BoardScriptWorker",
+        "class_factory": "BoardScriptWorkerRegistry.Create",
+        "worker_id": "ct.neat.82c206",
+        "resolution": "computer_visible_chipset_behavior",
+        "description": "Physical C&T NEAT package worker; board topology remains external."
+      },
+      "interfaces": [
+        "LOCAL_BUS",
+        "CHIPSET_CONTROL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX157",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-to-1 multiplexer with common select and active-low enable",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX688",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "8-bit equality comparator with active-low enable/output",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX74",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual positive-edge D flip-flop with asynchronous preset and clear",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX273",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "octal positive-edge D register with asynchronous clear",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX161",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit synchronous binary counter with asynchronous clear",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX163",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit synchronous binary counter with synchronous clear",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX393",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual 4-bit ripple counter with asynchronous clear",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_27256_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Eprom27256.vb",
+        "class": "VmbEprom27256",
+        "reference_model": "VMBS/tools/eprom27256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "27256-class 32768 x 8 EPROM normal installed-machine behavior",
+        "note": "CE#/OE# gated read and exact payload semantics. Programming voltage/pulse algorithm is programmer-side behavior and remains outside installed-machine execution.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 32768,
+          "simulation": "consumed_by_worker",
+          "reverse_delivery": "required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8"
+      ],
+      "configuration_points": [
+        {
+          "id": "CONTENTS",
+          "type": "image",
+          "machine_effect": "EPROM bytes",
+          "physical_realization": "programmed_device_contents",
+          "exact_bytes": 32768
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.HEADLAND.HT12A",
+      "kind": "chipset_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Board Script/BoardScriptWorkers.vb",
+        "class": "HeadlandHt12BoardScriptWorker",
+        "class_factory": "BoardScriptWorkerRegistry.Create",
+        "worker_id": "headland.ht12-a",
+        "resolution": "computer_visible_chipset_behavior",
+        "description": "Headland HT12/A 286 chipset silicon worker; board population and straps remain external."
+      },
+      "interfaces": [
+        "LOCAL_BUS",
+        "CHIPSET_CONTROL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.HUALON.HM6818P",
+      "kind": "rtc_cmos",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/Support Chips/RTC/Hualon HM6818/Hm6818Rtc.vb",
+        "class": "Hm6818Rtc",
+        "resolution": "computer_visible_rtc_cmos_behavior",
+        "description": "Hualon HM6818P/HM6818-family RTC implemented as a 64-byte MC146818-compatible RTC/CMOS derivative."
+      },
+      "interfaces": [
+        "AT_RTC_CMOS"
+      ],
+      "configuration_points": [
+        {
+          "id": "NVRAM",
+          "type": "persistent_bytes",
+          "machine_effect": "battery-backed RTC/CMOS contents",
+          "physical_realization": "device_state"
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX139",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX148",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX151",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX153",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX166",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX174",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX125",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX126",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX51",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "3-to-8 active-low decoder",
+        "note": "Digital computer-visible logic only; analog thresholds, propagation delay, drive strength and power behavior are outside VMB resolution.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX42",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "BCD-to-decimal decoder",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX85",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit magnitude comparator",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX175",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad positive-edge D flip-flop with complementary outputs and clear",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX190",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "synchronous BCD up/down counter",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX191",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "synchronous binary up/down counter",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX192",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "synchronous BCD up/down counter with dual clocks, asynchronous load and clear",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX193",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "synchronous binary up/down counter with dual clocks, asynchronous load and clear",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX194",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit bidirectional universal shift register",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX280",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "9-bit odd/even parity generator/checker",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX283",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit binary full adder with carry",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX73",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual negative-edge J-K flip-flop with asynchronous clear",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX75",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad transparent D latch with complementary outputs",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX76",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual negative-edge J-K flip-flop with asynchronous preset and clear",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX90",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "decade ripple counter with gated zero/nine preset",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX92",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "divide-by-twelve ripple counter with gated zero reset",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX93",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit binary ripple counter with gated zero reset",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX83A",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit full adder, functionally identical to 74LS283 with different terminal arrangement",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX95B",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "4-bit parallel-access shift register with serial/parallel modes and separate clocks",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing behavior remains evidence-bound.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX03",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input NAND with open-collector outputs",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX05",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "hex inverter with open-collector outputs",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX06",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "hex high-voltage open-collector inverter/driver",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX10",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "triple 3-input NAND",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX11",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "triple 3-input AND",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX14",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "hex Schmitt-trigger inverter (binary functional resolution)",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX20",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual 4-input NAND",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX21",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "dual 4-input AND",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX27",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "triple 3-input NOR",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX30",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "single 8-input NAND",
+        "note": "Digital computer-visible logic only; family-specific electrical/timing/analog behavior remains evidence-bound. Open-collector release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX01",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input NAND with open-collector outputs",
+        "note": "Digital functional resolution; electrical/timing/analog behavior remains evidence-bound. Open-collector/three-state release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX132",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input NAND with Schmitt-trigger inputs",
+        "note": "Digital functional resolution; electrical/timing/analog behavior remains evidence-bound. Open-collector/three-state release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX133",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "single 13-input NAND",
+        "note": "Digital functional resolution; electrical/timing/analog behavior remains evidence-bound. Open-collector/three-state release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX136",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "quad 2-input XOR with open-collector outputs",
+        "note": "Digital functional resolution; electrical/timing/analog behavior remains evidence-bound. Open-collector/three-state release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX251",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "8-to-1 data selector with complementary three-state outputs",
+        "note": "Digital functional resolution; electrical/timing/analog behavior remains evidence-bound. Open-collector/three-state release is represented as high impedance.",
+        "class": "Vmb74xxSimpleMsi"
+      },
+      "interfaces": [],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_6116",
+      "kind": "memory_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/AsyncSram8.vb",
+        "class": "VmbAsyncSram8",
+        "constructor": {
+          "capacity_bytes": 2048
+        },
+        "reference_model": "VMBS/tools/async_sram_models.py",
+        "resolution": "digital_storage",
+        "description": "2K x 8 asynchronous SRAM",
+        "note": "Asynchronous storage/control semantics. Variant access time, voltage, standby current and retention are evidence-bound physical/electrical facts."
+      },
+      "interfaces": [
+        {
+          "kind": "PARALLEL_X8_MEMORY",
+          "signals": [
+            "A",
+            "DQ0..DQ7",
+            "CE#",
+            "OE#",
+            "WE#"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_6264",
+      "kind": "memory_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/AsyncSram8.vb",
+        "class": "VmbAsyncSram8",
+        "constructor": {
+          "capacity_bytes": 8192
+        },
+        "reference_model": "VMBS/tools/async_sram_models.py",
+        "resolution": "digital_storage",
+        "description": "8K x 8 asynchronous SRAM",
+        "note": "Asynchronous storage/control semantics. Variant access time, voltage, standby current and retention are evidence-bound physical/electrical facts."
+      },
+      "interfaces": [
+        {
+          "kind": "PARALLEL_X8_MEMORY",
+          "signals": [
+            "A",
+            "DQ0..DQ7",
+            "CE#",
+            "OE#",
+            "WE#"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_62256",
+      "kind": "memory_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/AsyncSram8.vb",
+        "class": "VmbAsyncSram8",
+        "constructor": {
+          "capacity_bytes": 32768
+        },
+        "reference_model": "VMBS/tools/async_sram_models.py",
+        "resolution": "digital_storage",
+        "description": "32K x 8 asynchronous SRAM",
+        "note": "Asynchronous storage/control semantics. Variant access time, voltage, standby current and retention are evidence-bound physical/electrical facts."
+      },
+      "interfaces": [
+        {
+          "kind": "PARALLEL_X8_MEMORY",
+          "signals": [
+            "A",
+            "DQ0..DQ7",
+            "CE#",
+            "OE#",
+            "WE#"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX123",
+      "kind": "timed_digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class": "Vmb74xxMonostable",
+        "class_factory": "VmbTimedDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "timed_digital_behavioral",
+        "description": "dual retriggerable monostable multivibrator",
+        "note": "Consumes board-resolved pulse width in nanoseconds. Physical Rext/Cext-to-pulse-width conversion remains electrical/timing evidence and is not guessed by this digital worker."
+      },
+      "interfaces": [],
+      "configuration_points": [
+        {
+          "name": "pulse_width_nanoseconds",
+          "source": "board_resolved_timing"
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX221",
+      "kind": "timed_digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class": "Vmb74xxMonostable",
+        "class_factory": "VmbTimedDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "timed_digital_behavioral",
+        "description": "dual non-retriggerable monostable multivibrator",
+        "note": "Consumes board-resolved pulse width in nanoseconds. Physical Rext/Cext-to-pulse-width conversion remains electrical/timing evidence and is not guessed by this digital worker."
+      },
+      "interfaces": [],
+      "configuration_points": [
+        {
+          "name": "pulse_width_nanoseconds",
+          "source": "board_resolved_timing"
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.IFACE.MC1488",
+      "kind": "line_driver_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Eia232LineInterface.vb",
+        "class": "VmbMc1488",
+        "reference_model": "VMBS/tools/line_interface_models.py",
+        "resolution": "digital_line_polarity",
+        "description": "quad TTL/DTL to EIA-232 line driver",
+        "note": "Digital polarity projection only. Voltage magnitude, output current, slew rate, loading and supply rails remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "TTL_TO_EIA232",
+          "channels": 4
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.IFACE.MC1489",
+      "kind": "line_receiver_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Eia232LineInterface.vb",
+        "class": "VmbMc1489",
+        "reference_model": "VMBS/tools/line_interface_models.py",
+        "resolution": "digital_line_polarity",
+        "description": "quad EIA-232 to TTL line receiver",
+        "note": "Digital polarity projection only. Thresholds, hysteresis and input loading remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "EIA232_TO_TTL",
+          "channels": 4
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.DRAM_MCM6665A",
+      "kind": "dram_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/DramX1.vb",
+        "class": "VmbMcm6665A",
+        "reference_model": "VMBS/tools/dram_x1_models.py",
+        "resolution": "digital_storage_refresh_observable",
+        "description": "Motorola MCM6665A 64K x1 page-mode DRAM",
+        "note": "Models row/column storage and 128-cycle/2ms refresh obligation. It deliberately does not invent a deterministic data-decay pattern after retention is violated."
+      },
+      "interfaces": [
+        {
+          "kind": "MUXED_DRAM_X1",
+          "signals": [
+            "A0..A7",
+            "D",
+            "Q",
+            "RAS#",
+            "CAS#",
+            "W#"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.DRAM_TMS4256",
+      "kind": "dram_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/DramX1.vb",
+        "class": "VmbTms4256",
+        "reference_model": "VMBS/tools/dram_x1_models.py",
+        "resolution": "digital_storage_refresh_observable",
+        "description": "Texas Instruments TMS4256 256K x1 page-mode DRAM",
+        "note": "Models 9+9 multiplexed addressing and 256-cycle/4ms refresh obligation. Page/refresh protocol timing limits remain evidence-domain constraints; no deterministic post-retention corruption is invented."
+      },
+      "interfaces": [
+        {
+          "kind": "MUXED_DRAM_X1",
+          "signals": [
+            "A0..A8",
+            "D",
+            "Q",
+            "RAS#",
+            "CAS#",
+            "W#"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.CLOCK.INTEL_8284A",
+      "kind": "clock_reset_ready_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8284A.vb",
+        "class": "VmbIntel8284AClockCore",
+        "reference_model": "VMBS/tools/intel8284a_model.py",
+        "resolution": "digital_clock_reset_ready",
+        "description": "Intel 8284A clock generator/driver digital timing implementation",
+        "note": "Models F/C source selection at digital tick resolution, divide-by-three CLK, divide-by-two PCLK relationship, CSYNC forcing, falling-edge RESET synchronization, and one/two-stage READY synchronization. Analog crystal behavior, propagation tolerances and metastability remain electrical-domain concerns."
+      },
+      "interfaces": [
+        {
+          "kind": "CLOCK_SOURCE",
+          "signals": [
+            "X1",
+            "X2",
+            "F/C#",
+            "EFI",
+            "CSYNC",
+            "OSC",
+            "CLK",
+            "PCLK"
+          ]
+        },
+        {
+          "kind": "RESET",
+          "signals": [
+            "RES",
+            "RESET"
+          ]
+        },
+        {
+          "kind": "READY_SYNC",
+          "signals": [
+            "RDY1",
+            "AEN1#",
+            "RDY2",
+            "AEN2#",
+            "ASYNC",
+            "READY"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.BUS.INTEL_8282",
+      "kind": "octal_latch",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8282_8283.vb",
+        "class": "VmbIntel8282",
+        "reference_model": "VMBS/tools/intel828x_bus_models.py",
+        "resolution": "digital-functional",
+        "description": "Intel 8282 manual-backed digital functional model",
+        "note": "Three-state is represented explicitly; electrical drive strength and propagation timing remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "LATCHED_BUS_X8"
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.BUS.INTEL_8283",
+      "kind": "octal_latch",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8282_8283.vb",
+        "class": "VmbIntel8283",
+        "reference_model": "VMBS/tools/intel828x_bus_models.py",
+        "resolution": "digital-functional",
+        "description": "Intel 8283 manual-backed digital functional model",
+        "note": "Three-state is represented explicitly; electrical drive strength and propagation timing remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "LATCHED_BUS_X8"
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.BUS.INTEL_8286",
+      "kind": "octal_bus_transceiver",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8286_8287.vb",
+        "class": "VmbIntel8286",
+        "reference_model": "VMBS/tools/intel828x_bus_models.py",
+        "resolution": "digital-functional",
+        "description": "Intel 8286 manual-backed digital functional model",
+        "note": "Three-state is represented explicitly; electrical drive strength and propagation timing remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "BIDIRECTIONAL_BUS_X8"
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.BUS.INTEL_8287",
+      "kind": "octal_bus_transceiver",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8286_8287.vb",
+        "class": "VmbIntel8287",
+        "reference_model": "VMBS/tools/intel828x_bus_models.py",
+        "resolution": "digital-functional",
+        "description": "Intel 8287 manual-backed digital functional model",
+        "note": "Three-state is represented explicitly; electrical drive strength and propagation timing remain electrical-domain facts."
+      },
+      "interfaces": [
+        {
+          "kind": "BIDIRECTIONAL_BUS_X8"
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.BUS.INTEL_8288",
+      "kind": "bus_controller",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "partial",
+        "compile_allowed": false,
+        "source": "Hardware/IC Modules/Interface/Intel8288.vb",
+        "class": "VmbIntel8288StatusDecoder",
+        "reference_model": "VMBS/tools/intel8288_model.py",
+        "resolution": "status-decode-only",
+        "description": "Intel 8288 status decode; full command/control timing pending",
+        "note": "Do not compile as complete 8288. Clocked command timing, advanced write strobes, ALE/DEN/DT-R/MCE-PDEN and AEN/CEN/IOB interactions remain unresolved."
+      },
+      "interfaces": [
+        {
+          "kind": "MAX_MODE_BUS_CONTROLLER"
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.IO.INTEL_8255A",
+      "kind": "programmable_peripheral_interface",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Interface/Intel8255A.vb",
+        "class": "VmbIntel8255A",
+        "reference_model": "VMBS/tools/intel8255a_model.py",
+        "resolution": "digital-functional-handshake",
+        "description": "Intel 8255A CPU-visible programming, Mode 0 and Mode 1/2 handshake state. Electrical timing remains outside the digital worker."
+      },
+      "interfaces": [
+        {
+          "kind": "CPU_IO_X8",
+          "signals": [
+            "D0..D7",
+            "A0",
+            "A1",
+            "CS#",
+            "RD#",
+            "WR#",
+            "RESET"
+          ]
+        },
+        {
+          "kind": "PROGRAMMABLE_PARALLEL_IO_24",
+          "signals": [
+            "PA0..PA7",
+            "PB0..PB7",
+            "PC0..PC7"
+          ]
+        }
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_27128_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Eprom27128.vb",
+        "class": "VmbEprom27128",
+        "reference_model": "VMBS/tools/eprom27128_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "27128A-class 16384 x 8 EPROM normal installed-machine behavior",
+        "note": "CE#/OE# gated read and exact payload semantics. Erase/programmer physics remain outside installed-machine execution.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 16384,
+          "simulation": "consumed_by_worker",
+          "reverse_delivery": "required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8"
+      ],
+      "configuration_points": [
+        {
+          "id": "CONTENTS",
+          "type": "image",
+          "machine_effect": "EPROM bytes",
+          "physical_realization": "programmed_device_contents",
+          "exact_bytes": 16384
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_27C512_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Eprom27512.vb",
+        "class": "VmbEprom27512",
+        "reference_model": "VMBS/tools/eprom27512_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "27512/27C512-class 65536 x 8 EPROM normal installed-machine behavior",
+        "note": "CE#/OE# gated read and exact payload semantics. Erase/programmer physics remain outside installed-machine execution.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 65536,
+          "simulation": "consumed_by_worker",
+          "reverse_delivery": "required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8"
+      ],
+      "configuration_points": [
+        {
+          "id": "CONTENTS",
+          "type": "image",
+          "machine_effect": "EPROM bytes",
+          "physical_realization": "programmed_device_contents",
+          "exact_bytes": 65536
+        }
+      ]
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2114",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2114.vb",
+        "class": "Intel2114",
+        "reference_model": "VMBS/tools/sram2114_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2114 1024 x 4 static RAM with common tri-state I/O, active-low CS and WE"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X4"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2148H",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2148H.vb",
+        "class": "Intel2148H",
+        "reference_model": "VMBS/tools/sram2148h_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2148H 1024 x 4 static RAM; same logical pin use as 2114 with faster timing and automatic CS power-down"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X4"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2102A",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2102A.vb",
+        "class": "Intel2102A",
+        "reference_model": "VMBS/tools/sram2102a_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2102A 1024 x 1 static RAM with separate DIN/DOUT, active-low CE, R/W high=read, and tri-state deselect"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X1_SEPARATE_IO"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_5101",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel5101.vb",
+        "class": "Intel5101",
+        "reference_model": "VMBS/tools/sram5101_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 5101 256 x 4 CMOS static RAM with separate DI/DO, CE1 active-low, CE2 active-high, output disable, and R/W control"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X4_SEPARATE_IO"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2101A",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2101A.vb",
+        "class": "Intel2101A",
+        "reference_model": "VMBS/tools/sram2101a_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2101A 256 x 4 N-channel static RAM; pin-compatible logical interface with 5101 but distinct silicon/power identity"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X4_SEPARATE_IO"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2142",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2142.vb",
+        "class": "Intel2142",
+        "reference_model": "VMBS/tools/sram2142_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2142 1024 x 4 static RAM with common tri-state I/O, CS1 active-low, CS2 active-high, WE active-low and OD output disable"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X4"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.SRAM_INTEL_2147H",
+      "kind": "memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/Intel2147H.vb",
+        "class": "Intel2147H",
+        "reference_model": "VMBS/tools/sram2147h_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Intel 2147H 4096 x 1 high-speed static RAM with separate DIN/DOUT, active-low CS/WE, tri-state output and CS-controlled standby"
+      },
+      "interfaces": [
+        "PARALLEL_STATIC_RAM_X1_SEPARATE_IO"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C64B_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c64b.vb",
+        "class": "VmbAt28c64b",
+        "reference_model": "VMBS/tools/at28c64b_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28C64B 8192 x 8 parallel EEPROM read/write storage and write-cycle polling behavior",
+        "note": "Normal in-system reads/writes are modeled. High-voltage chip erase and analog power/noise thresholds remain electrical/maintenance behavior.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 8192,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C256_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28C256 32768 x 8 paged parallel EEPROM read/write storage and write-cycle polling behavior",
+        "note": "Normal in-system reads/writes modeled; high-voltage identification/chip erase and analog thresholds remain electrical/maintenance behavior.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C010_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c010.vb",
+        "class": "VmbAt28c010",
+        "reference_model": "VMBS/tools/at28c010_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28C010 128K x 8 paged parallel EEPROM read/write storage and write-cycle polling behavior",
+        "note": "Normal in-system read/write modeled; analog power/noise and high-voltage identification remain physical truth.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 131072,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C16T_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c16t.vb",
+        "class": "VmbAt28c16t",
+        "reference_model": "VMBS/tools/at28c16t_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28C16-T 2K x 8 PCMCIA attribute EEPROM with byte-write, DATA polling and RDY/BUSY behavior",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 2048,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE",
+        "READY_BUSY_OPEN_DRAIN"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28BV64B_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c64b.vb",
+        "class": "VmbAt28c64b",
+        "reference_model": "VMBS/tools/at28c64b_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28BV64B 8K x 8 parallel EEPROM; shares digital storage protocol implementation with AT28C64B while retaining distinct physical/electrical identity",
+        "note": "Battery-voltage electrical envelope is not interchangeable with the 5V AT28C64B despite shared digital behavior.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 8192,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28HC64B_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c64b.vb",
+        "class": "VmbAt28c64b",
+        "reference_model": "VMBS/tools/at28c64b_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28HC64B 8K x 8 parallel EEPROM; shares digital storage protocol implementation with AT28C64B while retaining distinct physical/electrical identity",
+        "note": "High-speed 70 ns timing is board-facing physical truth; digital storage protocol is shared with AT28C64B.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 8192,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28HC64BF_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c64b.vb",
+        "class": "VmbAt28c64b",
+        "reference_model": "VMBS/tools/at28c64b_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28HC64BF 8K x 8 fast-write parallel EEPROM using shared digital storage behavior with distinct 120ns/2ms physical timing identity",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 8192,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28HC256_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "High-speed 256-Kbit parallel EEPROM; 64-byte page register.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28HC256E_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "High-endurance HC256 option; physical endurance identity retained.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28HC256F_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Fast-write HC256 option; 3 ms maximum write-cycle option.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C256E_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "High-endurance C256 option.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C256F_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Fast-write C256 option.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C010E_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c010.vb",
+        "class": "VmbAt28c010",
+        "reference_model": "VMBS/tools/at28c010_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "High-endurance 1-Mbit parallel EEPROM option.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 131072,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28BV256_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c256.vb",
+        "class": "VmbAt28c256",
+        "reference_model": "VMBS/tools/at28c256_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Battery-voltage 256-Kbit parallel EEPROM; low-voltage board identity is not interchangeable with 5 V C256.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 32768,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28LV010_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented-shared-behavior",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c010.vb",
+        "class": "VmbAt28c010",
+        "reference_model": "VMBS/tools/at28c010_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "Low-voltage 1-Mbit parallel EEPROM; voltage domain retained independently of shared storage semantics.",
+        "payload_contract": {
+          "required": false,
+          "capacity_bytes": 131072,
+          "simulation": "optional_initial_image_then_runtime_mutable",
+          "reverse_delivery": "state_snapshot_required_if_preserving_machine_state"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ_WRITE"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EEPROM_AT28C040_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At28c040.vb",
+        "class": "VmbAt28c040",
+        "reference_model": "VMBS/tools/at28c040_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT28C040 512K x8 paged EEPROM, 256-byte page and 10ms max write cycle.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C020_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C020 262144 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 262144,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C040_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C040 524288 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C080_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C080 1048576 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 1048576,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C1024_X16",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C1024 65536 x 16 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 131072,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X16_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C2048_X16",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C2048 131072 x 16 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 262144,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X16_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27C4096_X16",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27C4096 262144 x 16 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X16_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV256A_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV256A 32768 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 32768,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV512A_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV512A 65536 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 65536,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV010A_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV010A 131072 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 131072,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV020A_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV020A 262144 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 262144,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV040A_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV040A 524288 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV256R_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV256R 32768 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 32768,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV512R_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV512R 65536 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 65536,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV010_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV010 131072 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 131072,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV020_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV020 262144 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 262144,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV040_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV040 524288 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV080_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV080 1048576 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 1048576,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV1024_X16",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV1024 65536 x 16 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 131072,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X16_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27LV4096_X16",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27LV4096 262144 x 16 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 524288,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X16_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.MEM.EPROM_AT27BV010_X8",
+      "kind": "programmed_memory",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/Memory/At27Otp.vb",
+        "class": "VmbAt27Otp",
+        "reference_model": "VMBS/tools/at27_otp_model.py",
+        "resolution": "computer_visible_memory_behavior",
+        "description": "AT27BV010 131072 x 8 OTP EPROM normal read behavior.",
+        "payload_contract": {
+          "required": true,
+          "capacity_bytes": 131072,
+          "simulation": "exact_image_required_for_programmed_identity",
+          "reverse_delivery": "exact_payload_required"
+        }
+      },
+      "interfaces": [
+        "PARALLEL_MEMORY_X8_READ"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC00",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC00: quad 2-input NAND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX00",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC02",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC02: quad 2-input NOR",
+        "shared_behavior_parent": "VMB.LOGIC.74XX02",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC04",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC04: hex inverter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX04",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC08",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC08: quad 2-input AND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX08",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC10",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC10: triple 3-input NAND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX10",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC11",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC11: triple 3-input AND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX11",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC14",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC14: hex Schmitt-trigger inverter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX14",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC20",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC20: dual 4-input NAND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX20",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC21",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC21: dual 4-input AND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX21",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC27",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC27: triple 3-input NOR",
+        "shared_behavior_parent": "VMB.LOGIC.74XX27",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC30",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC30: 8-input NAND",
+        "shared_behavior_parent": "VMB.LOGIC.74XX30",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC32",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC32: quad 2-input OR",
+        "shared_behavior_parent": "VMB.LOGIC.74XX32",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC42",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC42: BCD-to-decimal decoder",
+        "shared_behavior_parent": "VMB.LOGIC.74XX42",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC85",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC85: 4-bit magnitude comparator",
+        "shared_behavior_parent": "VMB.LOGIC.74XX85",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC86",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC86: quad 2-input XOR",
+        "shared_behavior_parent": "VMB.LOGIC.74XX86",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC125",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC125: quad buffer, active-low 3-state enables",
+        "shared_behavior_parent": "VMB.LOGIC.74XX125",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC126",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC126: quad buffer, active-high 3-state enables",
+        "shared_behavior_parent": "VMB.LOGIC.74XX126",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC138",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC138: 3-to-8 decoder/demultiplexer",
+        "shared_behavior_parent": "VMB.LOGIC.74XX138",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC139",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC139: dual 2-to-4 decoder/demultiplexer",
+        "shared_behavior_parent": "VMB.LOGIC.74XX139",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC148",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC148: 8-to-3 priority encoder",
+        "shared_behavior_parent": "VMB.LOGIC.74XX148",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC151",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC151: 8-to-1 data selector/multiplexer",
+        "shared_behavior_parent": "VMB.LOGIC.74XX151",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC153",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC153: dual 4-to-1 data selector/multiplexer",
+        "shared_behavior_parent": "VMB.LOGIC.74XX153",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC157",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC157: quad 2-to-1 data selector/multiplexer",
+        "shared_behavior_parent": "VMB.LOGIC.74XX157",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC244",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC244: octal buffer/line driver with 3-state outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX244",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC245",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC245: octal bus transceiver with 3-state outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX245",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible Boolean/tri-state behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC51",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC51: dual 2-wide 2-input AND-OR-invert gate",
+        "shared_behavior_parent": "VMB.LOGIC.74XX51",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC73",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC73: dual J-K flip-flop with clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX73",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC74",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC74: dual D-type positive-edge-triggered flip-flop with preset and clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX74",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC75",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC75: quad bistable transparent latch",
+        "shared_behavior_parent": "VMB.LOGIC.74XX75",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC76",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC76: dual J-K flip-flop with preset and clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX76",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC90",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC90: decade counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX90",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC92",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC92: divide-by-12 counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX92",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC93",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC93: 4-bit binary counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX93",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC123",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC123: dual retriggerable monostable multivibrator",
+        "shared_behavior_parent": "VMB.LOGIC.74XX123",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC132",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC132: quad 2-input NAND Schmitt-trigger gate",
+        "shared_behavior_parent": "VMB.LOGIC.74XX132",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC133",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC133: 13-input NAND gate",
+        "shared_behavior_parent": "VMB.LOGIC.74XX133",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC136",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC136: quad 2-input XOR gate with open-drain outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX136",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC161",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC161: 4-bit synchronous binary counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX161",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC163",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC163: 4-bit synchronous binary counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX163",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC166",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC166: 8-bit parallel-load shift register",
+        "shared_behavior_parent": "VMB.LOGIC.74XX166",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC174",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC174: hex D-type flip-flop with clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX174",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC175",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC175: quad D-type flip-flop with clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX175",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC190",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC190: 4-bit synchronous up/down decade counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX190",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC191",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC191: 4-bit synchronous up/down binary counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX191",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC192",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC192: 4-bit synchronous up/down decade counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX192",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC193",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC193: 4-bit synchronous up/down binary counter",
+        "shared_behavior_parent": "VMB.LOGIC.74XX193",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC194",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC194: 4-bit bidirectional universal shift register",
+        "shared_behavior_parent": "VMB.LOGIC.74XX194",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC221",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC221: dual monostable multivibrator",
+        "shared_behavior_parent": "VMB.LOGIC.74XX221",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC251",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC251: 8-line to 1-line data selector/multiplexer with 3-state outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX251",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC273",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC273: octal D-type flip-flop with clear",
+        "shared_behavior_parent": "VMB.LOGIC.74XX273",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC03",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC03: quad 2-input NAND gates with open-drain outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX03",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC05",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC05: hex inverters with open-drain outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX05",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC373",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC373: octal transparent D-type latches with 3-state outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX373",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC374",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC374: octal edge-triggered D-type flip-flops with 3-state outputs",
+        "shared_behavior_parent": "VMB.LOGIC.74XX374",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC393",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC393: dual 4-bit binary counters",
+        "shared_behavior_parent": "VMB.LOGIC.74XX393",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_SN74HC688",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "SN74HC688: 8-bit identity comparator with enable",
+        "shared_behavior_parent": "VMB.LOGIC.74XX688",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_CD74HC280",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "CD74HC280: 9-bit odd/even parity generator/checker",
+        "shared_behavior_parent": "VMB.LOGIC.74XX280",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    },
+    {
+      "module_id": "VMB.LOGIC.TI_CD74HC283",
+      "kind": "digital_logic_ic",
+      "implementation": {
+        "language": "VB.NET",
+        "status": "implemented",
+        "compile_allowed": true,
+        "source": "Hardware/IC Modules/DigitalLogicIc.vb",
+        "class_factory": "VmbDigitalIcRegistry.Create",
+        "reference_model": "VMBS/tools/ic_logic_models.py",
+        "resolution": "digital_behavioral",
+        "description": "CD74HC283: 4-bit binary full adder with fast carry",
+        "shared_behavior_parent": "VMB.LOGIC.74XX283",
+        "note": "Exact HC physical/electrical identity is preserved in Component Store; computer-visible digital behavior delegates to the verified generic 74xx function."
+      },
+      "interfaces": [
+        "DIGITAL"
+      ],
+      "configuration_points": []
+    }
+  ],
+  "composite_module_policy": "Prefer one reusable module per meaningful IC. Composite modules are permitted only when separation causes unacceptable overhead/architecture cost and the contraction is invariant for every board matched by that composite pattern."
+}

@@ -1,0 +1,40 @@
+{
+  "test": "VMBS semantic-only reconstruction readiness",
+  "raw_sidecar_allowed": false,
+  "semantic_parse_tree_allowed": false,
+  "compact_sections_visible": [
+    "components",
+    "footprints",
+    "pads",
+    "drills",
+    "segments",
+    "vias",
+    "zones",
+    "drawings"
+  ],
+  "represented_occurrences": {
+    "components": 34,
+    "footprints": 34,
+    "pads": 366,
+    "drills": 229,
+    "segments": 1219,
+    "vias": 95,
+    "zones": 5,
+    "drawings": 820
+  },
+  "result": "FAIL_EXPECTED",
+  "reason": "CP06 compact dictionaries/occurrence directories are not yet sufficient to emit a complete KiCad board without consulting preserved parse/source data.",
+  "missing_authoritative_compact_sections": [
+    "board_header/version/generator",
+    "general",
+    "layers",
+    "setup/design_rules",
+    "net_table",
+    "board_outline_and_nonprimitive_graphics",
+    "text_payloads_and_properties",
+    "footprint_metadata/properties",
+    "zone_full_semantics",
+    "plot/document_metadata"
+  ],
+  "acceptance_rule": "PASS only when a fresh .kicad_pcb is emitted using compact VMBS dictionaries/occurrences alone and independently parsed comparison finds zero physical/electrical/property differences."
+}

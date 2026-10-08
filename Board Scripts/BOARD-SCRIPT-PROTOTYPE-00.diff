@@ -1,0 +1,1953 @@
+diff -ruN "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md" "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"
+--- "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"	2026-09-11 00:29:17.208252060 +0000
+@@ -0,0 +1,60 @@
++# Board Script Prototype 00 — evidence ledger
++
++Date: 2026-09-10
++
++## Inputs
++
++- Preserved FOX/HT12 construction checkpoint: `VMB-FOX-II-HT12-FULL-SOURCE-CHECKPOINT-00-WIP-2026-09-10.zip`.
++- Chipset corpus part 1: `/Virtual Machine Bench/Chipset Library/chipset library 1 of 2.zip`.
++- C&T source used for the second prototype: `CT-CS8221-NEAT/CS8221_NEAT_Data_Book_198710.pdf` inside corpus part 1.
++- Existing VMB green NEAT behavior in `MotherboardDevices.vb` was used as the behavioral comparison target for the split prototype workers.  The prototype does not replace it.
++
++## Why these two chipset shapes
++
++### Headland HT12/A
++
++The FOX work already has a reusable `HeadlandHt12` silicon worker.  It is a useful Board Script specimen because the physical motherboard contains one dominant integrated chipset package plus external CPU, RTC, BIOS, DRAM and glue.
++
++The script therefore proves that a physical part ID can bind to an existing behavior worker and receive board-level power-on straps without placing HT12 semantics in the board description.
++
++### Chips and Technologies CS8221 NEAT
++
++The October 1987 data book explicitly describes CS8221 as a four-chip chipset:
++
++- 82C211 CPU/Bus Controller;
++- 82C212 Page/Interleave and EMS Memory Controller;
++- 82C215 Data/Address Buffer;
++- 82C206 Integrated Peripherals Controller.
++
++Prototype 00 gives each physical package its own Board Script worker boundary.  This is intentionally parallel to the existing monolithic live VMB NEAT class until equivalence can be demonstrated.
++
++## Sourced NEAT inter-chip pin subset used by the sample `.bs`
++
++The first reference script only connects nets for which the 84-pin PLCC pin descriptions were directly recoverable from the data book:
++
++| Signal | Source pin | Destination pin(s) |
++|---|---|---|
++| PROCCLK | 82C211 pin 2 | 82C212 pin 83 |
++| RESET4 | 82C211 pin 38 | 82C212 pin 12 |
++| HLDA1 | 82C211 pin 40 | 82C212 pin 19; 82C215 pin 53 |
++| PAR ERR | 82C215 pin 83 | 82C211 pin 11 |
++| ACEN | 82C211 pin 47 | 82C215 pin 14 |
++| DLE | 82C212 pin 45 | 82C215 pin 76 |
++| DRD | 82C212 pin 33 | 82C215 pin 74 |
++
++The metadata deliberately marks `physical_pin_map_complete=false` because this is only a sourced subset, not a complete package model.
++
++## Behavioral scope of split NEAT prototype
++
++- 82C211: reset/register ownership for 60h, 61h and 62h; write masks retained from the live implementation. READY-timeout status and actual bus-state machinery are not migrated yet.
++- 82C212: reset/register ownership for 64h–6Fh with current live write masks. DRAM/shadow/EMS decode behavior remains in the live implementation for now.
++- 82C215: explicit physical worker boundary for address/data buffering and parity; no fake indexed-register surface is introduced.
++- 82C206: indexed configuration byte 01h reset/write/read surface only. PIC/DMA/PIT/RTC functionality has not been split out of the live runtime by this prototype.
++
++This is enough to test the Board Script component/worker geometry without claiming a completed NEAT refactor.
++
++## Physical-truth rule
++
++Coordinates in the two sample files are prototype board-space positions.  FOX coordinates are rough visual anchors only; the NEAT reference board is wholly synthetic.  Neither is claimed as historical copper or production placement.
++
++`ManufacturingReady` must remain false until complete package pin maps, selected footprints, body dimensions/keepouts, board mechanics, power domains and required electrical rules are sourced.  Unknown parts and unknown pins are hard compile errors rather than guessed hardware.
+diff -ruN "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00.diff" "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00.diff"
+--- "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00.diff"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00.diff"	2026-09-11 00:29:58.930914512 +0000
+@@ -0,0 +1,64 @@
++diff -ruN "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md" "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"
++--- "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"	1970-01-01 00:00:00.000000000 +0000
+++++ "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md"	2026-09-11 00:29:17.208252060 +0000
++@@ -0,0 +1,60 @@
+++# Board Script Prototype 00 — evidence ledger
+++
+++Date: 2026-09-10
+++
+++## Inputs
+++
+++- Preserved FOX/HT12 construction checkpoint: `VMB-FOX-II-HT12-FULL-SOURCE-CHECKPOINT-00-WIP-2026-09-10.zip`.
+++- Chipset corpus part 1: `/Virtual Machine Bench/Chipset Library/chipset library 1 of 2.zip`.
+++- C&T source used for the second prototype: `CT-CS8221-NEAT/CS8221_NEAT_Data_Book_198710.pdf` inside corpus part 1.
+++- Existing VMB green NEAT behavior in `MotherboardDevices.vb` was used as the behavioral comparison target for the split prototype workers.  The prototype does not replace it.
+++
+++## Why these two chipset shapes
+++
+++### Headland HT12/A
+++
+++The FOX work already has a reusable `HeadlandHt12` silicon worker.  It is a useful Board Script specimen because the physical motherboard contains one dominant integrated chipset package plus external CPU, RTC, BIOS, DRAM and glue.
+++
+++The script therefore proves that a physical part ID can bind to an existing behavior worker and receive board-level power-on straps without placing HT12 semantics in the board description.
+++
+++### Chips and Technologies CS8221 NEAT
+++
+++The October 1987 data book explicitly describes CS8221 as a four-chip chipset:
+++
+++- 82C211 CPU/Bus Controller;
+++- 82C212 Page/Interleave and EMS Memory Controller;
+++- 82C215 Data/Address Buffer;
+++- 82C206 Integrated Peripherals Controller.
+++
+++Prototype 00 gives each physical package its own Board Script worker boundary.  This is intentionally parallel to the existing monolithic live VMB NEAT class until equivalence can be demonstrated.
+++
+++## Sourced NEAT inter-chip pin subset used by the sample `.bs`
+++
+++The first reference script only connects nets for which the 84-pin PLCC pin descriptions were directly recoverable from the data book:
+++
+++| Signal | Source pin | Destination pin(s) |
+++|---|---|---|
+++| PROCCLK | 82C211 pin 2 | 82C212 pin 83 |
+++| RESET4 | 82C211 pin 38 | 82C212 pin 12 |
+++| HLDA1 | 82C211 pin 40 | 82C212 pin 19; 82C215 pin 53 |
+++| PAR ERR | 82C215 pin 83 | 82C211 pin 11 |
+++| ACEN | 82C211 pin 47 | 82C215 pin 14 |
+++| DLE | 82C212 pin 45 | 82C215 pin 76 |
+++| DRD | 82C212 pin 33 | 82C215 pin 74 |
+++
+++The metadata deliberately marks `physical_pin_map_complete=false` because this is only a sourced subset, not a complete package model.
+++
+++## Behavioral scope of split NEAT prototype
+++
+++- 82C211: reset/register ownership for 60h, 61h and 62h; write masks retained from the live implementation. READY-timeout status and actual bus-state machinery are not migrated yet.
+++- 82C212: reset/register ownership for 64h–6Fh with current live write masks. DRAM/shadow/EMS decode behavior remains in the live implementation for now.
+++- 82C215: explicit physical worker boundary for address/data buffering and parity; no fake indexed-register surface is introduced.
+++- 82C206: indexed configuration byte 01h reset/write/read surface only. PIC/DMA/PIT/RTC functionality has not been split out of the live runtime by this prototype.
+++
+++This is enough to test the Board Script component/worker geometry without claiming a completed NEAT refactor.
+++
+++## Physical-truth rule
+++
+++Coordinates in the two sample files are prototype board-space positions.  FOX coordinates are rough visual anchors only; the NEAT reference board is wholly synthetic.  Neither is claimed as historical copper or production placement.
+++
+++`ManufacturingReady` must remain false until complete package pin maps, selected footprints, body dimensions/keepouts, board mechanics, power domains and required electrical rules are sourced.  Unknown parts and unknown pins are hard compile errors rather than guessed hardware.
+diff -ruN "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-CHANGESET.txt" "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-CHANGESET.txt"
+--- "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-CHANGESET.txt"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-CHANGESET.txt"	2026-09-11 00:29:44.508760256 +0000
+@@ -0,0 +1,28 @@
++VMB Board Script Prototype 00 - changes from preserved FOX/HT12 checkpoint
++Added: 19
++  + Board Scripts/BOARD-SCRIPT-PROTOTYPE-00-EVIDENCE.md
++  + Board Scripts/BOARD-SCRIPT-PROTOTYPE-STATIC-VALIDATION.txt
++  + Board Scripts/CHECKPOINT-00.md
++  + Board Scripts/Samples/INVALID-Invented-Part-Must-Fail.bs
++  + Board Scripts/Samples/NEAT-CS8221-Reference.bs
++  + Board Scripts/Samples/Octek-FOX-II-286-Rev3.2.bs
++  + Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py
++  + Hardware/Board Script/BoardScriptCatalog.vb
++  + Hardware/Board Script/BoardScriptCli.vb
++  + Hardware/Board Script/BoardScriptCompiler.vb
++  + Hardware/Board Script/BoardScriptLexer.vb
++  + Hardware/Board Script/BoardScriptModel.vb
++  + Hardware/Board Script/BoardScriptParser.vb
++  + Hardware/Board Script/BoardScriptWorkers.vb
++  + Hardware/Board Script/README.md
++  + Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb
++  + Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/PARTS-METADATA.json
++  + Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/WORKER-METADATA.json
++  + Hardware/Chipsets/Headland/HT12/WORKER-METADATA.json
++Modified: 2
++  * Program.vb
++  * VirtualComputer.Modern.vbproj
++Removed: 0
++
++Protected live hardware source modified: NONE
++Expected existing modifications: Program.vb, VirtualComputer.Modern.vbproj only
+diff -ruN "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-STATIC-VALIDATION.txt" "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-STATIC-VALIDATION.txt"
+--- "foxsrc/Board Scripts/BOARD-SCRIPT-PROTOTYPE-STATIC-VALIDATION.txt"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/BOARD-SCRIPT-PROTOTYPE-STATIC-VALIDATION.txt"	2026-09-11 00:29:36.272194482 +0000
+@@ -0,0 +1,9 @@
++PASS grammar/catalog: Octek-FOX-II-286-Rev3.2.bs (5 components, 0 nets)
++PASS grammar/catalog: NEAT-CS8221-Reference.bs (4 components, 7 nets)
++PASS negative test: invented part rejected
++PASS NEAT sourced pin subset
++PASS FOX HT12 strap encoding: REG10=76h
++PASS split NEAT reset-surface parity with live worker
++PASS project Compile list: 75 unique entries
++PASS coarse VB type/module block-balance scan
++NOTE no dotnet/MSBuild/VBC toolchain present; this is not a compile claim
+diff -ruN "foxsrc/Board Scripts/CHECKPOINT-00.md" "work/full/Board Scripts/CHECKPOINT-00.md"
+--- "foxsrc/Board Scripts/CHECKPOINT-00.md"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/CHECKPOINT-00.md"	2026-09-11 00:29:17.209954470 +0000
+@@ -0,0 +1,86 @@
++# VMB Board Script — Checkpoint 00 / language + dual-chipset prototype
++
++Date: 2026-09-10
++Status: source prototype complete; static validation passed; external VB.NET build still required.
++
++## Baseline
++
++Built on the preserved FOX/HT12 full-source WIP checkpoint.  That baseline remains separately archived and was not overwritten.
++
++## Added language engine
++
++`Hardware/Board Script/` now contains:
++
++- lexical scanner with `#` and `//` comments;
++- parser and AST for boards, components, placement, straps and nets;
++- recursive metadata catalog loader;
++- worker registry;
++- compiler/validator;
++- command-line check path;
++- language README.
++
++Prototype syntax uses `.bs` files.  A board describes physical population and wiring, not chipset behavior.
++
++## First two chipset forms
++
++1. **Headland HT12/A** — existing real `HeadlandHt12` behavior worker is bound through `WORKER-METADATA.json`; FOX sample applies sourced power-on strap fields through the worker adapter.
++2. **C&T CS8221 NEAT** — new parallel Board-Script-first workers represent the physical 82C211, 82C212, 82C215 and 82C206 packages independently. Seven first-pass inter-chip nets in the sample use sourced PLCC84 pin identities.
++
++The existing live `NeatCs8221Chipset` is not replaced or edited.
++
++## Hard compiler rules already present
++
++- unknown physical part ID => error;
++- worker metadata cannot create a part absent from parts metadata;
++- duplicate physical part IDs / worker bindings => error;
++- unknown worker => error;
++- straps on a part with no behavioral worker => error;
++- duplicate refdes or net => error;
++- unknown component or unknown pin in a net => error;
++- net requires at least two endpoints;
++- placement must be inside the declared board outline;
++- prototype rotation must be a multiple of 90 degrees;
++- side must be top or bottom;
++- incomplete pin/footprint evidence leaves the graph logic-valid but `ManufacturingReady=False`.
++
++`INVALID-Invented-Part-Must-Fail.bs` is retained as a permanent negative conformance specimen.
++
++## Existing source modified
++
++Only two pre-existing files differ from the preserved FOX checkpoint:
++
++- `Program.vb` — early dispatch for `--board-script-check`; ordinary WinForms startup remains the fallback path.
++- `VirtualComputer.Modern.vbproj` — explicit compile/content entries for prototype source and metadata.
++
++All other Board Script / NEAT prototype files are additions. No existing CPU, memory bus, live NEAT chipset, ISA, video, audio, storage or timing implementation was edited.
++
++## Validation performed here
++
++`Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py` passed:
++
++- FOX grammar/catalog specimen: 5 components, 0 nets;
++- NEAT grammar/catalog specimen: 4 components, 7 nets;
++- invented-part negative test;
++- sourced NEAT pin subset assertions;
++- unique project Compile entries and presence of all prototype sources;
++- coarse VB type/module block-balance scan.
++
++The environment has no dotnet, MSBuild or VBC toolchain, so no VB.NET compile or runtime success is claimed.
++
++## External validation
++
++On the Windows/VMB tree:
++
++```text
++python "Board Scripts\VALIDATE-BOARD-SCRIPT-PROTOTYPE.py"
++dotnet build VirtualComputer.Modern.vbproj
++VirtualComputer.Modern.exe --board-script-check "Board Scripts\Samples\Octek-FOX-II-286-Rev3.2.bs" --source-root "."
++VirtualComputer.Modern.exe --board-script-check "Board Scripts\Samples\NEAT-CS8221-Reference.bs" --source-root "."
++VirtualComputer.Modern.exe --board-script-check "Board Scripts\Samples\INVALID-Invented-Part-Must-Fail.bs" --source-root "."
++```
++
++The first two checks should exit 0 and write `.check.txt` reports; the invalid specimen must exit 2.
++
++## Next architectural step
++
++Do not immediately replace the live NEAT implementation.  First give the `.bs` compiler a runtime graph attachment seam, then construct a Board-Script-driven test fabric for HT12 and the split NEAT workers.  Compare the split NEAT register/decode behavior against the green monolith before migration.
+diff -ruN "foxsrc/Board Scripts/Samples/INVALID-Invented-Part-Must-Fail.bs" "work/full/Board Scripts/Samples/INVALID-Invented-Part-Must-Fail.bs"
+--- "foxsrc/Board Scripts/Samples/INVALID-Invented-Part-Must-Fail.bs"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/Samples/INVALID-Invented-Part-Must-Fail.bs"	2026-09-11 00:26:00.823400458 +0000
+@@ -0,0 +1,10 @@
++# Negative conformance specimen.  This MUST fail: VMB does not invent parts.
++board impossible-demo {
++    title "Negative Board Script test";
++    units mm;
++    outline 100 100;
++
++    component U1 : acme-magic-quantum-286-chipset {
++        place 50 50 rot 0 side top;
++    }
++}
+diff -ruN "foxsrc/Board Scripts/Samples/NEAT-CS8221-Reference.bs" "work/full/Board Scripts/Samples/NEAT-CS8221-Reference.bs"
+--- "foxsrc/Board Scripts/Samples/NEAT-CS8221-Reference.bs"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/Samples/NEAT-CS8221-Reference.bs"	2026-09-11 00:26:00.821879461 +0000
+@@ -0,0 +1,60 @@
++# C&T CS8221 four-package chipset composition specimen.
++# The nets below are taken from the 1987 NEAT data book pin descriptions.
++# Coordinates are deliberately synthetic prototype positions, not a historical board.
++board ct-neat-reference-286 {
++    title "C&T CS8221 NEAT worker-composition reference";
++    units mm;
++    outline 240 220;
++
++    component U211 : ct-82c211 {
++        place 60 80 rot 0 side top;
++    }
++
++    component U212 : ct-82c212 {
++        place 110 80 rot 0 side top;
++    }
++
++    component U215 : ct-82c215 {
++        place 110 130 rot 0 side top;
++    }
++
++    component U206 : ct-82c206 {
++        place 60 130 rot 0 side top;
++    }
++
++    net PROCCLK {
++        endpoint U211.PROCCLK;
++        endpoint U212.PROCCLK;
++    }
++
++    net RESET4 {
++        endpoint U211.RESET4;
++        endpoint U212.RESET4;
++    }
++
++    net HLDA1 {
++        endpoint U211.HLDA1;
++        endpoint U212.HLDA1;
++        endpoint U215.HLDA1;
++    }
++
++    net PARERR {
++        endpoint U215.PAR_ERR;
++        endpoint U211.PAR_ERR;
++    }
++
++    net ACEN {
++        endpoint U211.ACEN;
++        endpoint U215.ACEN;
++    }
++
++    net DLE {
++        endpoint U212.DLE;
++        endpoint U215.DLE;
++    }
++
++    net DRD {
++        endpoint U212.DRD;
++        endpoint U215.DRD;
++    }
++}
+diff -ruN "foxsrc/Board Scripts/Samples/Octek-FOX-II-286-Rev3.2.bs" "work/full/Board Scripts/Samples/Octek-FOX-II-286-Rev3.2.bs"
+--- "foxsrc/Board Scripts/Samples/Octek-FOX-II-286-Rev3.2.bs"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/Samples/Octek-FOX-II-286-Rev3.2.bs"	2026-09-11 00:26:00.819344580 +0000
+@@ -0,0 +1,33 @@
++# VMB Board Script prototype
++# Logic-valid construction specimen; placement coordinates are rough board-space
++# anchors only and are NOT historical fabrication claims.
++board octek-fox-ii-286-rev3-2 {
++    title "Octek FOX II 286 Rev. 3.2 - Board Script prototype";
++    units mm;
++    outline 220 220;
++
++    component U_HT12 : headland-ht12-a {
++        place 78 92 rot 0 side top;
++        strap RamConfigurationCode = 6;
++        strap AtBusLowSpeed = false;
++        strap ZeroWaitMainMemory = true;
++        strap ExtraWaitStateMode = 3;
++        strap TcStrapHigh = false;
++    }
++
++    component U_CPU : amd-n80l286-16-s {
++        place 102 132 rot 0 side top;
++    }
++
++    component U_RTC : hualon-hm6818p {
++        place 118 201 rot 0 side top;
++    }
++
++    component U_ROM_E : eprom-27256-even {
++        place 132 104 rot 90 side top;
++    }
++
++    component U_ROM_O : eprom-27256-odd {
++        place 148 104 rot 90 side top;
++    }
++}
+diff -ruN "foxsrc/Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py" "work/full/Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py"
+--- "foxsrc/Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Board Scripts/VALIDATE-BOARD-SCRIPT-PROTOTYPE.py"	2026-09-11 00:29:35.492294007 +0000
+@@ -0,0 +1,208 @@
++#!/usr/bin/env python3
++"""Source-level conformance check for VMB Board Script prototype 0.
++
++This does not replace a VB.NET compile.  It independently checks the grammar
++specimens, metadata integrity, expected negative test, project inclusion, and a
++small set of source-structure invariants in environments without dotnet.
++"""
++from __future__ import annotations
++import json, re, sys
++from pathlib import Path
++import xml.etree.ElementTree as ET
++
++ROOT = Path(__file__).resolve().parents[1]
++TOK = re.compile(r'''\s*(?:(?P<comment>\#.*|//.*)|(?P<string>"(?:\\.|[^"])*")|(?P<number>-?\d+(?:\.\d+)?)|(?P<ident>[A-Za-z_$][A-Za-z0-9_$-]*)|(?P<sym>[{}:.=;]))''')
++
++class ParseError(RuntimeError): pass
++
++def lex(text):
++    out=[]; pos=0
++    while pos < len(text):
++        if text[pos:].strip()=="": break
++        m=TOK.match(text,pos)
++        if not m:
++            line=text.count("\n",0,pos)+1
++            raise ParseError(f"unlexable input at line {line}: {text[pos:pos+20]!r}")
++        pos=m.end()
++        if m.group('comment'): continue
++        if m.group('string'):
++            out.append(('string', bytes(m.group('string')[1:-1], 'utf-8').decode('unicode_escape')))
++        elif m.group('number'): out.append(('number',m.group('number')))
++        elif m.group('ident'): out.append(('ident',m.group('ident')))
++        else: out.append((m.group('sym'),m.group('sym')))
++    out.append(('eof',''))
++    return out
++
++class Parser:
++    def __init__(self,text): self.t=lex(text); self.i=0
++    def cur(self): return self.t[self.i]
++    def eat(self,k,v=None):
++        t=self.cur()
++        if t[0]!=k or (v is not None and t[1].lower()!=v.lower()):
++            raise ParseError(f"expected {v or k}, got {t}")
++        self.i+=1; return t[1]
++    def kw(self,s): return self.eat('ident',s)
++    def ident(self): return self.eat('ident')
++    def num(self): return float(self.eat('number'))
++    def value(self):
++        k,v=self.cur()
++        if k=='string': self.i+=1; return v
++        if k=='number': self.i+=1; return float(v)
++        if k=='ident': self.i+=1; return {'true':True,'false':False}.get(v.lower(),v)
++        raise ParseError('expected value')
++    def parse(self):
++        self.kw('board'); b={'id':self.ident(),'title':None,'units':'mm','outline':None,'components':[],'nets':[]}; self.eat('{')
++        while self.cur()[0]!='}':
++            k=self.cur()[1].lower()
++            if k=='title': self.i+=1; b['title']=self.eat('string'); self.eat(';')
++            elif k=='units': self.i+=1; b['units']=self.ident(); self.eat(';')
++            elif k=='outline': self.i+=1; b['outline']=(self.num(),self.num()); self.eat(';')
++            elif k=='component': b['components'].append(self.component())
++            elif k=='net': b['nets'].append(self.net())
++            else: raise ParseError(f'unknown board statement {self.cur()}')
++        self.eat('}'); self.eat('eof'); return b
++    def component(self):
++        self.kw('component'); c={'ref':self.ident()}; self.eat(':'); c['part']=self.ident(); self.eat('{'); c['straps']={}; c['place']=None
++        while self.cur()[0]!='}':
++            k=self.cur()[1].lower()
++            if k=='place':
++                self.i+=1; x=self.num(); y=self.num(); self.kw('rot'); r=int(self.num()); self.kw('side'); side=self.ident(); self.eat(';'); c['place']=(x,y,r,side)
++            elif k=='strap':
++                self.i+=1; n=self.ident(); self.eat('='); c['straps'][n]=self.value(); self.eat(';')
++            else: raise ParseError(f'unknown component statement {self.cur()}')
++        self.eat('}'); return c
++    def net(self):
++        self.kw('net'); n={'name':self.ident(),'endpoints':[]}; self.eat('{')
++        while self.cur()[0]!='}':
++            self.kw('endpoint'); ref=self.ident(); self.eat('.'); pin=self.ident(); self.eat(';'); n['endpoints'].append((ref,pin))
++        self.eat('}'); return n
++
++def load_catalog():
++    parts={}; bindings={}
++    for p in ROOT.rglob('PARTS-METADATA.json'):
++        d=json.loads(p.read_text(encoding='utf-8-sig'))
++        for x in d.get('parts',[]):
++            if not x.get('id'): continue
++            if x['id'] in parts: raise AssertionError(f"duplicate part id {x['id']}")
++            parts[x['id']]={'data':x,'source':p}
++    for p in ROOT.rglob('WORKER-METADATA.json'):
++        d=json.loads(p.read_text(encoding='utf-8-sig'))
++        for x in d.get('bindings',[]):
++            pid=x['part_id']
++            if pid not in parts: raise AssertionError(f"worker metadata invents unknown part {pid}")
++            bindings[pid]={'data':x,'source':p}
++    return parts,bindings
++
++def validate(board,parts,bindings):
++    errors=[]
++    if board['units'].lower()!='mm': errors.append('units')
++    if not board['outline'] or min(board['outline'])<=0: errors.append('outline')
++    refs={}
++    for c in board['components']:
++        if c['ref'] in refs: errors.append('duplicate ref '+c['ref'])
++        refs[c['ref']]=c
++        if c['part'] not in parts: errors.append('unknown part '+c['part']); continue
++        if not c['place']: errors.append('missing placement '+c['ref']); continue
++        x,y,r,side=c['place']; w,h=board['outline']
++        if not (0<=x<=w and 0<=y<=h): errors.append('outside outline '+c['ref'])
++        if r%90: errors.append('rotation '+c['ref'])
++        if side.lower() not in ('top','bottom'): errors.append('side '+c['ref'])
++        if c['straps'] and c['part'] not in bindings: errors.append('straps without worker '+c['ref'])
++    netnames=set()
++    for n in board['nets']:
++        if n['name'] in netnames: errors.append('duplicate net '+n['name'])
++        netnames.add(n['name'])
++        if len(n['endpoints'])<2: errors.append('short net '+n['name'])
++        for ref,pin in n['endpoints']:
++            if ref not in refs: errors.append('unknown ref '+ref); continue
++            pid=refs[ref]['part']
++            if pid not in parts: continue
++            pinset={x['name'].lower() for x in bindings.get(pid,{}).get('data',{}).get('pins',[])}
++            if not pinset: errors.append(f'no pin metadata {ref}.{pin}')
++            elif pin.lower() not in pinset: errors.append(f'unknown pin {ref}.{pin}')
++    return errors
++
++def vb_balance(path):
++    text=path.read_text(encoding='utf-8-sig')
++    pairs=[('Class','End Class'),('Module','End Module'),('Structure','End Structure'),('Enum','End Enum'),('Interface','End Interface')]
++    failures=[]
++    for start_kw,end_kw in pairs:
++        a=len(re.findall(rf'^\s*(?:Public |Private |Friend |Protected |Shared |NotInheritable |MustInherit |Partial )*{start_kw}\b',text,re.M|re.I))
++        b=len(re.findall(rf'^\s*{re.escape(end_kw)}\b',text,re.M|re.I))
++        if a!=b: failures.append(f'{start_kw} {a}!={b}')
++    return failures
++
++def main():
++    parts,bindings=load_catalog()
++    good=['Octek-FOX-II-286-Rev3.2.bs','NEAT-CS8221-Reference.bs']
++    for name in good:
++        board=Parser((ROOT/'Board Scripts'/'Samples'/name).read_text()).parse()
++        errs=validate(board,parts,bindings)
++        if errs: raise AssertionError(f'{name} failed: {errs}')
++        print(f'PASS grammar/catalog: {name} ({len(board["components"])} components, {len(board["nets"])} nets)')
++    bad=Parser((ROOT/'Board Scripts'/'Samples'/'INVALID-Invented-Part-Must-Fail.bs').read_text()).parse()
++    errs=validate(bad,parts,bindings)
++    if not any(e.startswith('unknown part') for e in errs): raise AssertionError('negative invented-part test did not fail as required')
++    print('PASS negative test: invented part rejected')
++
++    # Exact sourced NEAT pins used by the sample must stay pinned to the captured PLCC84 numbers.
++    expected={
++      'ct-82c211':{'PROCCLK':2,'RESET4':38,'HLDA1':40,'PAR_ERR':11,'ACEN':47},
++      'ct-82c212':{'PROCCLK':83,'RESET4':12,'HLDA1':19,'DLE':45,'DRD':33},
++      'ct-82c215':{'HLDA1':53,'PAR_ERR':83,'ACEN':14,'DLE':76,'DRD':74},
++    }
++    for pid,pins in expected.items():
++        got={x['name']:x.get('number') for x in bindings[pid]['data']['pins']}
++        for name,num in pins.items():
++            if got.get(name)!=num: raise AssertionError(f'{pid}.{name} expected pin {num}, got {got.get(name)}')
++    print('PASS NEAT sourced pin subset')
++
++    # FOX HT12 script's current 4 MiB power-on straps must encode the same REG10
++    # value as Ht12PowerOnStraps.SystemConfigurationValue: 6 | 10h | (3 << 5) = 76h.
++    fox=Parser((ROOT/'Board Scripts'/'Samples'/'Octek-FOX-II-286-Rev3.2.bs').read_text()).parse()
++    ht12=next(c for c in fox['components'] if c['part']=='headland-ht12-a')
++    st=ht12['straps']
++    reg10=(int(st['RamConfigurationCode']) & 7)
++    if st['AtBusLowSpeed']: reg10 |= 0x08
++    if st['ZeroWaitMainMemory']: reg10 |= 0x10
++    reg10 |= (int(st['ExtraWaitStateMode']) & 3) << 5
++    if st['TcStrapHigh']: reg10 |= 0x80
++    if reg10 != 0x76: raise AssertionError(f'FOX HT12 REG10 expected 76h, got {reg10:02X}h')
++    print('PASS FOX HT12 strap encoding: REG10=76h')
++
++    # The split NEAT prototype starts from the same reset register values as the
++    # current green monolithic worker for the surfaces it owns.
++    live=(ROOT/'MotherboardDevices.vb').read_text(encoding='utf-8-sig')
++    split=(ROOT/'Hardware'/'Chipsets'/'Chips and Technologies'/'CS8221 NEAT'/'CtNeatBoardScriptWorkers.vb').read_text(encoding='utf-8-sig')
++    for text,label in [('_ra1 = &H45','live 82C211 REG61'),('_ra2 = &H18','live 82C211 REG62'),('_rb(1) = &HE','live 82C212 REG65'),('_rb(6) = &H80','live 82C212 REG6A'),('_rb(7) = &H6B','live 82C212 REG6B'),('_ipcConfiguration = &HC0','live 82C206 REG01')]:
++        if text not in live: raise AssertionError('missing '+label)
++    for text,label in [('_reg61 = &H45','split 82C211 REG61'),('_reg62 = &H18','split 82C211 REG62'),('_registers(1) = &HE','split 82C212 REG65'),('_registers(6) = &H80','split 82C212 REG6A'),('_registers(7) = &H6B','split 82C212 REG6B'),('_configuration = &HC0','split 82C206 REG01')]:
++        if text not in split: raise AssertionError('missing '+label)
++    print('PASS split NEAT reset-surface parity with live worker')
++
++    project=ET.parse(ROOT/'VirtualComputer.Modern.vbproj').getroot()
++    inc=[e.attrib.get('Include','') for e in project.iter() if e.tag.endswith('Compile')]
++    if len(inc)!=len(set(x.lower() for x in inc)): raise AssertionError('duplicate Compile entry')
++    required=[
++      r'Hardware\Board Script\BoardScriptModel.vb',r'Hardware\Board Script\BoardScriptLexer.vb',
++      r'Hardware\Board Script\BoardScriptParser.vb',r'Hardware\Board Script\BoardScriptCatalog.vb',
++      r'Hardware\Board Script\BoardScriptWorkers.vb',r'Hardware\Board Script\BoardScriptCompiler.vb',
++      r'Hardware\Board Script\BoardScriptCli.vb',r'Hardware\Chipsets\Headland\HT12\HeadlandHt12.vb',
++      r'Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\CtNeatBoardScriptWorkers.vb']
++    missing=[x for x in required if x not in inc]
++    if missing: raise AssertionError(f'missing Compile entries: {missing}')
++    print(f'PASS project Compile list: {len(inc)} unique entries')
++
++    files=[ROOT/x.replace('\\','/') for x in required]
++    failures=[]
++    for p in files:
++        f=vb_balance(p)
++        if f: failures.append(f'{p.relative_to(ROOT)}: {f}')
++    if failures: raise AssertionError('VB structural balance failed: '+'; '.join(failures))
++    print('PASS coarse VB type/module block-balance scan')
++    print('NOTE no dotnet/MSBuild/VBC toolchain present; this is not a compile claim')
++
++if __name__=='__main__':
++    try: main()
++    except Exception as e:
++        print('FAIL:',e,file=sys.stderr); sys.exit(1)
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptCatalog.vb" "work/full/Hardware/Board Script/BoardScriptCatalog.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptCatalog.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptCatalog.vb"	2026-09-11 00:28:26.984972496 +0000
+@@ -0,0 +1,116 @@
++Imports System
++Imports System.Collections.Generic
++Imports System.IO
++Imports System.Text.Json
++
++Public NotInheritable Class BoardScriptPartCatalog
++    Private ReadOnly _parts As New Dictionary(Of String, BoardScriptPartMetadata)(StringComparer.OrdinalIgnoreCase)
++
++    Public ReadOnly Property Parts As IReadOnlyDictionary(Of String, BoardScriptPartMetadata)
++        Get
++            Return _parts
++        End Get
++    End Property
++
++    Public Shared Function LoadTree(rootPathInBed As String) As BoardScriptPartCatalog
++        If String.IsNullOrWhiteSpace(rootPathInBed) Then Throw New ArgumentNullException(NameOf(rootPathInBed))
++        If Not Directory.Exists(rootPathInBed) Then Throw New DirectoryNotFoundException(rootPathInBed)
++
++        Dim catalogInBed As New BoardScriptPartCatalog()
++        For Each pathInBed As String In Directory.EnumerateFiles(rootPathInBed, "PARTS-METADATA.json", SearchOption.AllDirectories)
++            catalogInBed.LoadPartsMetadata(pathInBed)
++        Next
++        For Each pathInBed As String In Directory.EnumerateFiles(rootPathInBed, "WORKER-METADATA.json", SearchOption.AllDirectories)
++            catalogInBed.LoadWorkerMetadata(pathInBed)
++        Next
++        Return catalogInBed
++    End Function
++
++    Public Function TryGetPart(partIdInBed As String, ByRef metadataInBed As BoardScriptPartMetadata) As Boolean
++        Return _parts.TryGetValue(partIdInBed, metadataInBed)
++    End Function
++
++    Private Sub LoadPartsMetadata(pathInBed As String)
++        Using documentInBed As JsonDocument = JsonDocument.Parse(File.ReadAllText(pathInBed))
++            Dim partsElementInBed As JsonElement
++            If Not documentInBed.RootElement.TryGetProperty("parts", partsElementInBed) OrElse partsElementInBed.ValueKind <> JsonValueKind.Array Then Return
++
++            For Each partElementInBed As JsonElement In partsElementInBed.EnumerateArray()
++                Dim idInBed As String = ReadString(partElementInBed, "id")
++                If String.IsNullOrWhiteSpace(idInBed) Then Continue For
++                Dim metadataInBed As BoardScriptPartMetadata = Nothing
++                If Not _parts.TryGetValue(idInBed, metadataInBed) Then
++                    metadataInBed = New BoardScriptPartMetadata With {.PartId = idInBed}
++                    _parts.Add(idInBed, metadataInBed)
++                ElseIf Not String.IsNullOrWhiteSpace(metadataInBed.PartsMetadataSource) AndAlso
++                       Not String.Equals(metadataInBed.PartsMetadataSource, pathInBed, StringComparison.OrdinalIgnoreCase) Then
++                    Throw New InvalidDataException("Duplicate physical part id '" & idInBed & "' appears in both '" & metadataInBed.PartsMetadataSource & "' and '" & pathInBed & "'.")
++                End If
++                metadataInBed.Manufacturer = ReadString(partElementInBed, "manufacturer")
++                metadataInBed.PartNumber = ReadString(partElementInBed, "part_number")
++                metadataInBed.Package = ReadString(partElementInBed, "package")
++                metadataInBed.Role = ReadString(partElementInBed, "role")
++                metadataInBed.PartsMetadataSource = pathInBed
++            Next
++        End Using
++    End Sub
++
++    Private Sub LoadWorkerMetadata(pathInBed As String)
++        Using documentInBed As JsonDocument = JsonDocument.Parse(File.ReadAllText(pathInBed))
++            Dim bindingsInBed As JsonElement
++            If Not documentInBed.RootElement.TryGetProperty("bindings", bindingsInBed) OrElse bindingsInBed.ValueKind <> JsonValueKind.Array Then Return
++
++            For Each bindingInBed As JsonElement In bindingsInBed.EnumerateArray()
++                Dim partIdInBed As String = ReadString(bindingInBed, "part_id")
++                If String.IsNullOrWhiteSpace(partIdInBed) Then Continue For
++                Dim metadataInBed As BoardScriptPartMetadata = Nothing
++                If Not _parts.TryGetValue(partIdInBed, metadataInBed) Then
++                    Throw New InvalidDataException("Worker metadata '" & pathInBed & "' references unknown part '" & partIdInBed & "'. A behavior binding cannot create a physical part identity.")
++                End If
++                If Not String.IsNullOrWhiteSpace(metadataInBed.WorkerMetadataSource) AndAlso
++                   Not String.Equals(metadataInBed.WorkerMetadataSource, pathInBed, StringComparison.OrdinalIgnoreCase) Then
++                    Throw New InvalidDataException("Duplicate worker binding for part '" & partIdInBed & "' appears in both '" & metadataInBed.WorkerMetadataSource & "' and '" & pathInBed & "'.")
++                End If
++                metadataInBed.WorkerId = ReadString(bindingInBed, "worker_id")
++                metadataInBed.PhysicalPinMapComplete = ReadBoolean(bindingInBed, "physical_pin_map_complete")
++                metadataInBed.FootprintKnown = ReadBoolean(bindingInBed, "footprint_known")
++                metadataInBed.WorkerMetadataSource = pathInBed
++
++                Dim pinsInBed As JsonElement
++                If bindingInBed.TryGetProperty("pins", pinsInBed) AndAlso pinsInBed.ValueKind = JsonValueKind.Array Then
++                    For Each pinInBed As JsonElement In pinsInBed.EnumerateArray()
++                        Dim pinNameInBed As String = ReadString(pinInBed, "name")
++                        If String.IsNullOrWhiteSpace(pinNameInBed) Then Continue For
++                        Dim pinMetadataInBed As New BoardScriptPinMetadata With {
++                            .Name = pinNameInBed,
++                            .Direction = ReadString(pinInBed, "direction")
++                        }
++                        Dim numberInBed As JsonElement
++                        If pinInBed.TryGetProperty("number", numberInBed) AndAlso numberInBed.ValueKind = JsonValueKind.Number Then
++                            Dim parsedInBed As Integer
++                            If numberInBed.TryGetInt32(parsedInBed) Then pinMetadataInBed.Number = parsedInBed
++                        End If
++                        metadataInBed.Pins(pinNameInBed) = pinMetadataInBed
++                    Next
++                End If
++            Next
++        End Using
++    End Sub
++
++    Private Shared Function ReadString(elementInBed As JsonElement, propertyNameInBed As String) As String
++        Dim valueInBed As JsonElement
++        If elementInBed.TryGetProperty(propertyNameInBed, valueInBed) AndAlso valueInBed.ValueKind = JsonValueKind.String Then
++            Return If(valueInBed.GetString(), String.Empty)
++        End If
++        Return String.Empty
++    End Function
++
++    Private Shared Function ReadBoolean(elementInBed As JsonElement, propertyNameInBed As String) As Boolean
++        Dim valueInBed As JsonElement
++        If elementInBed.TryGetProperty(propertyNameInBed, valueInBed) Then
++            If valueInBed.ValueKind = JsonValueKind.True Then Return True
++            If valueInBed.ValueKind = JsonValueKind.False Then Return False
++        End If
++        Return False
++    End Function
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptCli.vb" "work/full/Hardware/Board Script/BoardScriptCli.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptCli.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptCli.vb"	2026-09-11 00:26:48.040302802 +0000
+@@ -0,0 +1,62 @@
++Imports System
++Imports System.IO
++Imports System.Text
++
++Public Module BoardScriptCli
++    Public Function TryRunFromCommandLine(argsInBed As String()) As Boolean
++        If argsInBed Is Nothing OrElse argsInBed.Length < 2 Then Return False
++        If Not String.Equals(argsInBed(0), "--board-script-check", StringComparison.OrdinalIgnoreCase) Then Return False
++
++        Try
++            Dim scriptPathInBed As String = Path.GetFullPath(argsInBed(1))
++            Dim sourceRootInBed As String = AppContext.BaseDirectory
++            Dim reportPathInBed As String = Path.ChangeExtension(scriptPathInBed, ".check.txt")
++
++            Dim iInBed As Integer = 2
++            While iInBed < argsInBed.Length
++                Select Case argsInBed(iInBed).ToLowerInvariant()
++                    Case "--source-root"
++                        If iInBed + 1 >= argsInBed.Length Then Throw New ArgumentException("--source-root requires a path.")
++                        sourceRootInBed = Path.GetFullPath(argsInBed(iInBed + 1))
++                        iInBed += 2
++                    Case "--report"
++                        If iInBed + 1 >= argsInBed.Length Then Throw New ArgumentException("--report requires a path.")
++                        reportPathInBed = Path.GetFullPath(argsInBed(iInBed + 1))
++                        iInBed += 2
++                    Case Else
++                        Throw New ArgumentException("Unknown Board Script option '" & argsInBed(iInBed) & "'.")
++                End Select
++            End While
++
++            Dim definitionInBed As BoardScriptBoardDefinition = New BoardScriptParser(File.ReadAllText(scriptPathInBed)).ParseBoard()
++            Dim catalogInBed As BoardScriptPartCatalog = BoardScriptPartCatalog.LoadTree(sourceRootInBed)
++            Dim compiledInBed As BoardScriptCompiledBoard = New BoardScriptCompiler(catalogInBed, New BoardScriptWorkerRegistry()).Compile(definitionInBed)
++
++            Dim outputInBed As New StringBuilder()
++            outputInBed.AppendLine("Board Script: " & definitionInBed.Title)
++            outputInBed.AppendLine("  id                    : " & definitionInBed.BoardId)
++            outputInBed.AppendLine("  outline               : " & definitionInBed.Width.ToString("0.###") & " x " & definitionInBed.Height.ToString("0.###") & " " & definitionInBed.Units)
++            outputInBed.AppendLine("  components            : " & compiledInBed.Components.Count)
++            outputInBed.AppendLine("  nets                  : " & definitionInBed.Nets.Count)
++            outputInBed.AppendLine("  manufacturing ready   : " & compiledInBed.ManufacturingReady.ToString())
++            For Each componentInBed As BoardScriptCompiledComponent In compiledInBed.Components
++                Dim workerTextInBed As String = If(componentInBed.Worker Is Nothing, "<physical-only>", componentInBed.Worker.WorkerId)
++                outputInBed.AppendLine("  " & componentInBed.Definition.RefDes & " = " & componentInBed.Definition.PartId & " -> " & workerTextInBed)
++            Next
++            For Each diagnosticInBed As BoardScriptDiagnostic In compiledInBed.Diagnostics
++                outputInBed.AppendLine(diagnosticInBed.ToString())
++            Next
++
++            Dim reportDirectoryInBed As String = Path.GetDirectoryName(reportPathInBed)
++            If Not String.IsNullOrWhiteSpace(reportDirectoryInBed) Then Directory.CreateDirectory(reportDirectoryInBed)
++            File.WriteAllText(reportPathInBed, outputInBed.ToString())
++            Console.Write(outputInBed.ToString())
++            Console.WriteLine("Report: " & reportPathInBed)
++            Environment.ExitCode = If(compiledInBed.HasErrors, 2, 0)
++        Catch ex As Exception
++            Console.Error.WriteLine(ex.Message)
++            Environment.ExitCode = 2
++        End Try
++        Return True
++    End Function
++End Module
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptCompiler.vb" "work/full/Hardware/Board Script/BoardScriptCompiler.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptCompiler.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptCompiler.vb"	2026-09-11 00:27:51.502371152 +0000
+@@ -0,0 +1,130 @@
++Imports System
++Imports System.Collections.Generic
++
++Public NotInheritable Class BoardScriptCompiler
++    Private ReadOnly _catalog As BoardScriptPartCatalog
++    Private ReadOnly _workers As BoardScriptWorkerRegistry
++
++    Public Sub New(catalogInBed As BoardScriptPartCatalog, workersInBed As BoardScriptWorkerRegistry)
++        If catalogInBed Is Nothing Then Throw New ArgumentNullException(NameOf(catalogInBed))
++        If workersInBed Is Nothing Then Throw New ArgumentNullException(NameOf(workersInBed))
++        _catalog = catalogInBed
++        _workers = workersInBed
++    End Sub
++
++    Public Function Compile(definitionInBed As BoardScriptBoardDefinition) As BoardScriptCompiledBoard
++        If definitionInBed Is Nothing Then Throw New ArgumentNullException(NameOf(definitionInBed))
++        Dim resultInBed As New BoardScriptCompiledBoard With {.Definition = definitionInBed}
++
++        If Not String.Equals(definitionInBed.Units, "mm", StringComparison.OrdinalIgnoreCase) Then
++            AddError(resultInBed, "Prototype accepts only millimetres; got '" & definitionInBed.Units & "'.")
++        End If
++        If definitionInBed.Width <= 0 OrElse definitionInBed.Height <= 0 Then
++            AddError(resultInBed, "Board outline must have positive width and height.")
++        End If
++
++        Dim componentsByRefDesInBed As New Dictionary(Of String, BoardScriptCompiledComponent)(StringComparer.OrdinalIgnoreCase)
++        For Each componentInBed As BoardScriptComponentDefinition In definitionInBed.Components
++            If String.IsNullOrWhiteSpace(componentInBed.RefDes) Then
++                AddError(resultInBed, "Component has an empty reference designator.")
++                Continue For
++            End If
++            If componentsByRefDesInBed.ContainsKey(componentInBed.RefDes) Then
++                AddError(resultInBed, "Duplicate reference designator '" & componentInBed.RefDes & "'.")
++                Continue For
++            End If
++
++            Dim metadataInBed As BoardScriptPartMetadata = Nothing
++            If Not _catalog.TryGetPart(componentInBed.PartId, metadataInBed) Then
++                AddError(resultInBed, "Unknown part '" & componentInBed.PartId & "' at " & componentInBed.RefDes & ". Board Script will not invent a component.")
++                Continue For
++            End If
++
++            If componentInBed.Placement Is Nothing Then
++                AddError(resultInBed, componentInBed.RefDes & " has no placement.")
++            Else
++                ValidatePlacement(resultInBed, componentInBed)
++            End If
++
++            Dim compiledComponentInBed As New BoardScriptCompiledComponent With {
++                .Definition = componentInBed,
++                .Metadata = metadataInBed
++            }
++
++            If componentInBed.Straps.Count > 0 AndAlso String.IsNullOrWhiteSpace(metadataInBed.WorkerId) Then
++                AddError(resultInBed, componentInBed.RefDes & " declares straps, but part '" & componentInBed.PartId & "' has no behavioral worker binding to receive them.")
++            End If
++
++            If Not String.IsNullOrWhiteSpace(metadataInBed.WorkerId) Then
++                If Not _workers.CanCreate(metadataInBed.WorkerId) Then
++                    AddError(resultInBed, componentInBed.RefDes & " requests worker '" & metadataInBed.WorkerId & "', but no worker factory exists.")
++                Else
++                    Try
++                        compiledComponentInBed.Worker = _workers.Create(metadataInBed.WorkerId, componentInBed)
++                    Catch ex As Exception
++                        AddError(resultInBed, componentInBed.RefDes & " worker construction failed: " & ex.Message)
++                    End Try
++                End If
++            End If
++
++            resultInBed.Components.Add(compiledComponentInBed)
++            componentsByRefDesInBed.Add(componentInBed.RefDes, compiledComponentInBed)
++        Next
++
++        Dim netNamesInBed As New HashSet(Of String)(StringComparer.OrdinalIgnoreCase)
++        For Each netInBed As BoardScriptNetDefinition In definitionInBed.Nets
++            If Not netNamesInBed.Add(netInBed.Name) Then AddError(resultInBed, "Duplicate net name '" & netInBed.Name & "'.")
++            If netInBed.Endpoints.Count < 2 Then AddError(resultInBed, "Net '" & netInBed.Name & "' must have at least two endpoints.")
++            For Each endpointInBed As BoardScriptEndpoint In netInBed.Endpoints
++                Dim componentInBed As BoardScriptCompiledComponent = Nothing
++                If Not componentsByRefDesInBed.TryGetValue(endpointInBed.RefDes, componentInBed) Then
++                    AddError(resultInBed, "Net '" & netInBed.Name & "' references unknown component '" & endpointInBed.RefDes & "'.")
++                    Continue For
++                End If
++                If componentInBed.Metadata.Pins.Count = 0 Then
++                    AddError(resultInBed, "Net '" & netInBed.Name & "' references " & endpointInBed & ", but that part has no sourced logical-pin declaration yet.")
++                    Continue For
++                End If
++                If Not componentInBed.Metadata.Pins.ContainsKey(endpointInBed.PinName) Then
++                    AddError(resultInBed, "Net '" & netInBed.Name & "' references unknown pin '" & endpointInBed.PinName & "' on " & endpointInBed.RefDes & ".")
++                End If
++            Next
++        Next
++
++        resultInBed.ManufacturingReady = Not resultInBed.HasErrors
++        If resultInBed.ManufacturingReady Then
++            For Each componentInBed As BoardScriptCompiledComponent In resultInBed.Components
++                If Not componentInBed.Metadata.FootprintKnown OrElse
++                   (componentInBed.Metadata.Pins.Count > 0 AndAlso Not componentInBed.Metadata.PhysicalPinMapComplete) Then
++                    resultInBed.ManufacturingReady = False
++                    AddInfo(resultInBed, componentInBed.Definition.RefDes & " is logic-valid but not manufacturing-complete; footprint/pin evidence is incomplete.")
++                End If
++            Next
++        End If
++
++        Return resultInBed
++    End Function
++
++    Private Sub ValidatePlacement(resultInBed As BoardScriptCompiledBoard, componentInBed As BoardScriptComponentDefinition)
++        Dim placementInBed As BoardScriptPlacement = componentInBed.Placement
++        If placementInBed.X < 0 OrElse placementInBed.Y < 0 OrElse
++           placementInBed.X > resultInBed.Definition.Width OrElse placementInBed.Y > resultInBed.Definition.Height Then
++            AddError(resultInBed, componentInBed.RefDes & " placement lies outside the board outline.")
++        End If
++        If placementInBed.RotationDegrees Mod 90 <> 0 Then
++            AddError(resultInBed, componentInBed.RefDes & " prototype rotation must be a multiple of 90 degrees.")
++        End If
++        If Not String.Equals(placementInBed.Side, "top", StringComparison.OrdinalIgnoreCase) AndAlso
++           Not String.Equals(placementInBed.Side, "bottom", StringComparison.OrdinalIgnoreCase) Then
++            AddError(resultInBed, componentInBed.RefDes & " side must be top or bottom.")
++        End If
++    End Sub
++
++    Private Shared Sub AddError(resultInBed As BoardScriptCompiledBoard, messageInBed As String)
++        resultInBed.Diagnostics.Add(New BoardScriptDiagnostic With {.IsError = True, .Message = messageInBed})
++    End Sub
++
++    Private Shared Sub AddInfo(resultInBed As BoardScriptCompiledBoard, messageInBed As String)
++        resultInBed.Diagnostics.Add(New BoardScriptDiagnostic With {.IsError = False, .Message = messageInBed})
++    End Sub
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptLexer.vb" "work/full/Hardware/Board Script/BoardScriptLexer.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptLexer.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptLexer.vb"	2026-09-11 00:26:54.639681621 +0000
+@@ -0,0 +1,205 @@
++Imports System
++Imports System.Globalization
++Imports System.Text
++
++Public Enum BoardScriptTokenKind
++    Identifier = 0
++    StringLiteral = 1
++    Number = 2
++    LeftBrace = 3
++    RightBrace = 4
++    Colon = 5
++    Dot = 6
++    Equals = 7
++    Semicolon = 8
++    EndOfFile = 9
++End Enum
++
++Public Structure BoardScriptToken
++    Public Kind As BoardScriptTokenKind
++    Public Text As String
++    Public Line As Integer
++    Public Column As Integer
++
++    Public Sub New(kindInBed As BoardScriptTokenKind, textInBed As String, lineInBed As Integer, columnInBed As Integer)
++        Kind = kindInBed
++        Text = textInBed
++        Line = lineInBed
++        Column = columnInBed
++    End Sub
++End Structure
++
++Public NotInheritable Class BoardScriptParseException
++    Inherits Exception
++
++    Public Sub New(messageInBed As String, tokenInBed As BoardScriptToken)
++        MyBase.New("Board Script line " & tokenInBed.Line & ", column " & tokenInBed.Column & ": " & messageInBed)
++    End Sub
++End Class
++
++Public NotInheritable Class BoardScriptLexer
++    Private ReadOnly _source As String
++    Private _position As Integer
++    Private _line As Integer = 1
++    Private _column As Integer = 1
++
++    Public Sub New(sourceInBed As String)
++        _source = If(sourceInBed, String.Empty)
++    End Sub
++
++    Public Function NextToken() As BoardScriptToken
++        SkipWhitespaceAndComments()
++        If _position >= _source.Length Then
++            Return New BoardScriptToken(BoardScriptTokenKind.EndOfFile, String.Empty, _line, _column)
++        End If
++
++        Dim startLineInBed As Integer = _line
++        Dim startColumnInBed As Integer = _column
++        Dim chInBed As Char = _source(_position)
++
++        Select Case chInBed
++            Case "{"c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.LeftBrace, "{", startLineInBed, startColumnInBed)
++            Case "}"c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.RightBrace, "}", startLineInBed, startColumnInBed)
++            Case ":"c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.Colon, ":", startLineInBed, startColumnInBed)
++            Case "."c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.Dot, ".", startLineInBed, startColumnInBed)
++            Case "="c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.Equals, "=", startLineInBed, startColumnInBed)
++            Case ";"c
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.Semicolon, ";", startLineInBed, startColumnInBed)
++            Case """"c
++                Return ReadString()
++        End Select
++
++        If Char.IsDigit(chInBed) OrElse (chInBed = "-"c AndAlso PeekDigit()) Then Return ReadNumber()
++        If IsIdentifierStart(chInBed) Then Return ReadIdentifier()
++
++        Throw New BoardScriptParseException("Unexpected character '" & chInBed & "'.",
++                                            New BoardScriptToken(BoardScriptTokenKind.Identifier, chInBed.ToString(), startLineInBed, startColumnInBed))
++    End Function
++
++    Private Function ReadString() As BoardScriptToken
++        Dim startLineInBed As Integer = _line
++        Dim startColumnInBed As Integer = _column
++        Advance()
++        Dim builderInBed As New StringBuilder()
++        While _position < _source.Length
++            Dim chInBed As Char = _source(_position)
++            If chInBed = """"c Then
++                Advance()
++                Return New BoardScriptToken(BoardScriptTokenKind.StringLiteral, builderInBed.ToString(), startLineInBed, startColumnInBed)
++            End If
++            If chInBed = "\"c Then
++                Advance()
++                If _position >= _source.Length Then Exit While
++                Dim escapedInBed As Char = _source(_position)
++                Select Case escapedInBed
++                    Case "n"c : builderInBed.Append(ControlChars.Lf)
++                    Case "r"c : builderInBed.Append(ControlChars.Cr)
++                    Case "t"c : builderInBed.Append(ControlChars.Tab)
++                    Case """"c : builderInBed.Append(""""c)
++                    Case "\"c : builderInBed.Append("\"c)
++                    Case Else : builderInBed.Append(escapedInBed)
++                End Select
++                Advance()
++            Else
++                builderInBed.Append(chInBed)
++                Advance()
++            End If
++        End While
++        Throw New BoardScriptParseException("Unterminated string literal.",
++                                            New BoardScriptToken(BoardScriptTokenKind.StringLiteral, builderInBed.ToString(), startLineInBed, startColumnInBed))
++    End Function
++
++    Private Function ReadNumber() As BoardScriptToken
++        Dim startInBed As Integer = _position
++        Dim startLineInBed As Integer = _line
++        Dim startColumnInBed As Integer = _column
++        If _source(_position) = "-"c Then Advance()
++        While _position < _source.Length AndAlso Char.IsDigit(_source(_position))
++            Advance()
++        End While
++        If _position < _source.Length AndAlso _source(_position) = "."c Then
++            Advance()
++            While _position < _source.Length AndAlso Char.IsDigit(_source(_position))
++                Advance()
++            End While
++        End If
++        Return New BoardScriptToken(BoardScriptTokenKind.Number,
++                                    _source.Substring(startInBed, _position - startInBed),
++                                    startLineInBed,
++                                    startColumnInBed)
++    End Function
++
++    Private Function ReadIdentifier() As BoardScriptToken
++        Dim startInBed As Integer = _position
++        Dim startLineInBed As Integer = _line
++        Dim startColumnInBed As Integer = _column
++        While _position < _source.Length AndAlso IsIdentifierPart(_source(_position))
++            Advance()
++        End While
++        Return New BoardScriptToken(BoardScriptTokenKind.Identifier,
++                                    _source.Substring(startInBed, _position - startInBed),
++                                    startLineInBed,
++                                    startColumnInBed)
++    End Function
++
++    Private Sub SkipWhitespaceAndComments()
++        Do
++            While _position < _source.Length AndAlso Char.IsWhiteSpace(_source(_position))
++                Advance()
++            End While
++            If _position >= _source.Length Then Return
++
++            If _source(_position) = "#"c Then
++                SkipToEndOfLine()
++                Continue Do
++            End If
++            If _source(_position) = "/"c AndAlso _position + 1 < _source.Length AndAlso _source(_position + 1) = "/"c Then
++                Advance()
++                Advance()
++                SkipToEndOfLine()
++                Continue Do
++            End If
++            Exit Do
++        Loop
++    End Sub
++
++    Private Sub SkipToEndOfLine()
++        While _position < _source.Length AndAlso _source(_position) <> ControlChars.Lf
++            Advance()
++        End While
++    End Sub
++
++    Private Function PeekDigit() As Boolean
++        Return _position + 1 < _source.Length AndAlso Char.IsDigit(_source(_position + 1))
++    End Function
++
++    Private Shared Function IsIdentifierStart(chInBed As Char) As Boolean
++        Return Char.IsLetter(chInBed) OrElse chInBed = "_"c OrElse chInBed = "$"c
++    End Function
++
++    Private Shared Function IsIdentifierPart(chInBed As Char) As Boolean
++        Return Char.IsLetterOrDigit(chInBed) OrElse chInBed = "_"c OrElse chInBed = "-"c OrElse chInBed = "$"c
++    End Function
++
++    Private Sub Advance()
++        If _position >= _source.Length Then Return
++        If _source(_position) = ControlChars.Lf Then
++            _line += 1
++            _column = 1
++        Else
++            _column += 1
++        End If
++        _position += 1
++    End Sub
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptModel.vb" "work/full/Hardware/Board Script/BoardScriptModel.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptModel.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptModel.vb"	2026-09-11 00:26:00.784070550 +0000
+@@ -0,0 +1,156 @@
++Imports System
++Imports System.Collections.Generic
++
++Public Enum BoardScriptValueKind
++    Text = 0
++    Number = 1
++    Boolean = 2
++End Enum
++
++Public NotInheritable Class BoardScriptValue
++    Public ReadOnly Property Kind As BoardScriptValueKind
++    Public ReadOnly Property TextValue As String
++    Public ReadOnly Property NumberValue As Double
++    Public ReadOnly Property BooleanValue As Boolean
++
++    Private Sub New(kindInBed As BoardScriptValueKind,
++                    textInBed As String,
++                    numberInBed As Double,
++                    booleanInBed As Boolean)
++        Kind = kindInBed
++        TextValue = If(textInBed, String.Empty)
++        NumberValue = numberInBed
++        BooleanValue = booleanInBed
++    End Sub
++
++    Public Shared Function FromText(valueInBed As String) As BoardScriptValue
++        Return New BoardScriptValue(BoardScriptValueKind.Text, valueInBed, 0, False)
++    End Function
++
++    Public Shared Function FromNumber(valueInBed As Double) As BoardScriptValue
++        Return New BoardScriptValue(BoardScriptValueKind.Number,
++                                    valueInBed.ToString(Globalization.CultureInfo.InvariantCulture),
++                                    valueInBed,
++                                    False)
++    End Function
++
++    Public Shared Function FromBoolean(valueInBed As Boolean) As BoardScriptValue
++        Return New BoardScriptValue(BoardScriptValueKind.Boolean,
++                                    If(valueInBed, "true", "false"),
++                                    0,
++                                    valueInBed)
++    End Function
++
++    Public Function AsInteger(nameInBed As String) As Integer
++        If Kind <> BoardScriptValueKind.Number OrElse Math.Truncate(NumberValue) <> NumberValue Then
++            Throw New InvalidOperationException(nameInBed & " requires an integer value.")
++        End If
++        Return CInt(NumberValue)
++    End Function
++
++    Public Function AsBoolean(nameInBed As String) As Boolean
++        If Kind <> BoardScriptValueKind.Boolean Then
++            Throw New InvalidOperationException(nameInBed & " requires true or false.")
++        End If
++        Return BooleanValue
++    End Function
++
++    Public Overrides Function ToString() As String
++        Return TextValue
++    End Function
++End Class
++
++Public NotInheritable Class BoardScriptPlacement
++    Public Property X As Double
++    Public Property Y As Double
++    Public Property RotationDegrees As Integer
++    Public Property Side As String = "top"
++End Class
++
++Public NotInheritable Class BoardScriptComponentDefinition
++    Public Property RefDes As String = String.Empty
++    Public Property PartId As String = String.Empty
++    Public Property Placement As BoardScriptPlacement
++    Public ReadOnly Property Straps As New Dictionary(Of String, BoardScriptValue)(StringComparer.OrdinalIgnoreCase)
++End Class
++
++Public NotInheritable Class BoardScriptEndpoint
++    Public Property RefDes As String = String.Empty
++    Public Property PinName As String = String.Empty
++
++    Public Overrides Function ToString() As String
++        Return RefDes & "." & PinName
++    End Function
++End Class
++
++Public NotInheritable Class BoardScriptNetDefinition
++    Public Property Name As String = String.Empty
++    Public ReadOnly Property Endpoints As New List(Of BoardScriptEndpoint)()
++End Class
++
++Public NotInheritable Class BoardScriptBoardDefinition
++    Public Property BoardId As String = String.Empty
++    Public Property Title As String = String.Empty
++    Public Property Units As String = "mm"
++    Public Property Width As Double
++    Public Property Height As Double
++    Public ReadOnly Property Components As New List(Of BoardScriptComponentDefinition)()
++    Public ReadOnly Property Nets As New List(Of BoardScriptNetDefinition)()
++End Class
++
++Public NotInheritable Class BoardScriptDiagnostic
++    Public Property IsError As Boolean
++    Public Property Message As String = String.Empty
++
++    Public Overrides Function ToString() As String
++        Return If(IsError, "ERROR: ", "INFO : ") & Message
++    End Function
++End Class
++
++Public NotInheritable Class BoardScriptPinMetadata
++    Public Property Name As String = String.Empty
++    Public Property Number As Integer?
++    Public Property Direction As String = String.Empty
++End Class
++
++Public NotInheritable Class BoardScriptPartMetadata
++    Public Property PartId As String = String.Empty
++    Public Property Manufacturer As String = String.Empty
++    Public Property PartNumber As String = String.Empty
++    Public Property Package As String = String.Empty
++    Public Property Role As String = String.Empty
++    Public Property WorkerId As String = String.Empty
++    Public Property PhysicalPinMapComplete As Boolean
++    Public Property FootprintKnown As Boolean
++    Public ReadOnly Property Pins As New Dictionary(Of String, BoardScriptPinMetadata)(StringComparer.OrdinalIgnoreCase)
++    Public Property PartsMetadataSource As String = String.Empty
++    Public Property WorkerMetadataSource As String = String.Empty
++End Class
++
++Public Interface IBoardScriptWorker
++    ReadOnly Property WorkerId As String
++    ReadOnly Property SiliconIdentity As String
++    Function DiagnosticText() As String
++End Interface
++
++Public NotInheritable Class BoardScriptCompiledComponent
++    Public Property Definition As BoardScriptComponentDefinition
++    Public Property Metadata As BoardScriptPartMetadata
++    Public Property Worker As IBoardScriptWorker
++End Class
++
++Public NotInheritable Class BoardScriptCompiledBoard
++    Public Property Definition As BoardScriptBoardDefinition
++    Public ReadOnly Property Components As New List(Of BoardScriptCompiledComponent)()
++    Public ReadOnly Property Diagnostics As New List(Of BoardScriptDiagnostic)()
++    Public Property ManufacturingReady As Boolean
++
++    Public ReadOnly Property HasErrors As Boolean
++        Get
++            For Each diagnosticInBed As BoardScriptDiagnostic In Diagnostics
++                If diagnosticInBed.IsError Then Return True
++            Next
++            Return False
++        End Get
++    End Property
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptParser.vb" "work/full/Hardware/Board Script/BoardScriptParser.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptParser.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptParser.vb"	2026-09-11 00:26:00.790211996 +0000
+@@ -0,0 +1,158 @@
++Imports System
++Imports System.Globalization
++
++Public NotInheritable Class BoardScriptParser
++    Private ReadOnly _lexer As BoardScriptLexer
++    Private _current As BoardScriptToken
++
++    Public Sub New(sourceInBed As String)
++        _lexer = New BoardScriptLexer(sourceInBed)
++        _current = _lexer.NextToken()
++    End Sub
++
++    Public Function ParseBoard() As BoardScriptBoardDefinition
++        ExpectKeyword("board")
++        Dim resultInBed As New BoardScriptBoardDefinition With {.BoardId = ExpectIdentifier()}
++        Expect(BoardScriptTokenKind.LeftBrace)
++
++        While _current.Kind <> BoardScriptTokenKind.RightBrace
++            If _current.Kind = BoardScriptTokenKind.EndOfFile Then Throw ErrorInBed("Expected '}' before end of file.")
++            Select Case _current.Text.ToLowerInvariant()
++                Case "title"
++                    Advance()
++                    resultInBed.Title = Expect(BoardScriptTokenKind.StringLiteral).Text
++                    Expect(BoardScriptTokenKind.Semicolon)
++                Case "units"
++                    Advance()
++                    resultInBed.Units = ExpectIdentifier()
++                    Expect(BoardScriptTokenKind.Semicolon)
++                Case "outline"
++                    Advance()
++                    resultInBed.Width = ExpectNumber()
++                    resultInBed.Height = ExpectNumber()
++                    Expect(BoardScriptTokenKind.Semicolon)
++                Case "component"
++                    resultInBed.Components.Add(ParseComponent())
++                Case "net"
++                    resultInBed.Nets.Add(ParseNet())
++                Case Else
++                    Throw ErrorInBed("Unknown board statement '" & _current.Text & "'.")
++            End Select
++        End While
++        Expect(BoardScriptTokenKind.RightBrace)
++        Expect(BoardScriptTokenKind.EndOfFile)
++        If String.IsNullOrWhiteSpace(resultInBed.Title) Then resultInBed.Title = resultInBed.BoardId
++        Return resultInBed
++    End Function
++
++    Private Function ParseComponent() As BoardScriptComponentDefinition
++        ExpectKeyword("component")
++        Dim resultInBed As New BoardScriptComponentDefinition With {.RefDes = ExpectIdentifier()}
++        Expect(BoardScriptTokenKind.Colon)
++        resultInBed.PartId = ExpectIdentifier()
++        Expect(BoardScriptTokenKind.LeftBrace)
++
++        While _current.Kind <> BoardScriptTokenKind.RightBrace
++            Select Case _current.Text.ToLowerInvariant()
++                Case "place"
++                    Advance()
++                    Dim placementInBed As New BoardScriptPlacement()
++                    placementInBed.X = ExpectNumber()
++                    placementInBed.Y = ExpectNumber()
++                    ExpectKeyword("rot")
++                    placementInBed.RotationDegrees = CInt(ExpectNumber())
++                    ExpectKeyword("side")
++                    placementInBed.Side = ExpectIdentifier()
++                    Expect(BoardScriptTokenKind.Semicolon)
++                    resultInBed.Placement = placementInBed
++                Case "strap"
++                    Advance()
++                    Dim nameInBed As String = ExpectIdentifier()
++                    Expect(BoardScriptTokenKind.Equals)
++                    resultInBed.Straps(nameInBed) = ParseValue()
++                    Expect(BoardScriptTokenKind.Semicolon)
++                Case Else
++                    Throw ErrorInBed("Unknown component statement '" & _current.Text & "'.")
++            End Select
++        End While
++        Expect(BoardScriptTokenKind.RightBrace)
++        Return resultInBed
++    End Function
++
++    Private Function ParseNet() As BoardScriptNetDefinition
++        ExpectKeyword("net")
++        Dim resultInBed As New BoardScriptNetDefinition With {.Name = ExpectIdentifier()}
++        Expect(BoardScriptTokenKind.LeftBrace)
++        While _current.Kind <> BoardScriptTokenKind.RightBrace
++            ExpectKeyword("endpoint")
++            Dim endpointInBed As New BoardScriptEndpoint With {.RefDes = ExpectIdentifier()}
++            Expect(BoardScriptTokenKind.Dot)
++            endpointInBed.PinName = ExpectIdentifier()
++            Expect(BoardScriptTokenKind.Semicolon)
++            resultInBed.Endpoints.Add(endpointInBed)
++        End While
++        Expect(BoardScriptTokenKind.RightBrace)
++        Return resultInBed
++    End Function
++
++    Private Function ParseValue() As BoardScriptValue
++        Select Case _current.Kind
++            Case BoardScriptTokenKind.StringLiteral
++                Dim textInBed As String = _current.Text
++                Advance()
++                Return BoardScriptValue.FromText(textInBed)
++            Case BoardScriptTokenKind.Number
++                Return BoardScriptValue.FromNumber(ExpectNumber())
++            Case BoardScriptTokenKind.Identifier
++                If String.Equals(_current.Text, "true", StringComparison.OrdinalIgnoreCase) Then
++                    Advance()
++                    Return BoardScriptValue.FromBoolean(True)
++                End If
++                If String.Equals(_current.Text, "false", StringComparison.OrdinalIgnoreCase) Then
++                    Advance()
++                    Return BoardScriptValue.FromBoolean(False)
++                End If
++                Dim identifierInBed As String = _current.Text
++                Advance()
++                Return BoardScriptValue.FromText(identifierInBed)
++            Case Else
++                Throw ErrorInBed("Expected a string, number, true, false, or identifier value.")
++        End Select
++    End Function
++
++    Private Function ExpectNumber() As Double
++        Dim tokenInBed As BoardScriptToken = Expect(BoardScriptTokenKind.Number)
++        Dim resultInBed As Double
++        If Not Double.TryParse(tokenInBed.Text, NumberStyles.Float, CultureInfo.InvariantCulture, resultInBed) Then
++            Throw New BoardScriptParseException("Invalid number '" & tokenInBed.Text & "'.", tokenInBed)
++        End If
++        Return resultInBed
++    End Function
++
++    Private Function ExpectIdentifier() As String
++        Return Expect(BoardScriptTokenKind.Identifier).Text
++    End Function
++
++    Private Sub ExpectKeyword(keywordInBed As String)
++        If _current.Kind <> BoardScriptTokenKind.Identifier OrElse
++           Not String.Equals(_current.Text, keywordInBed, StringComparison.OrdinalIgnoreCase) Then
++            Throw ErrorInBed("Expected '" & keywordInBed & "'.")
++        End If
++        Advance()
++    End Sub
++
++    Private Function Expect(kindInBed As BoardScriptTokenKind) As BoardScriptToken
++        If _current.Kind <> kindInBed Then Throw ErrorInBed("Expected " & kindInBed.ToString() & ".")
++        Dim resultInBed As BoardScriptToken = _current
++        Advance()
++        Return resultInBed
++    End Function
++
++    Private Sub Advance()
++        _current = _lexer.NextToken()
++    End Sub
++
++    Private Function ErrorInBed(messageInBed As String) As BoardScriptParseException
++        Return New BoardScriptParseException(messageInBed, _current)
++    End Function
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/BoardScriptWorkers.vb" "work/full/Hardware/Board Script/BoardScriptWorkers.vb"
+--- "foxsrc/Hardware/Board Script/BoardScriptWorkers.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/BoardScriptWorkers.vb"	2026-09-11 00:26:00.797559187 +0000
+@@ -0,0 +1,89 @@
++Imports System
++Imports System.Collections.Generic
++
++Public NotInheritable Class BoardScriptWorkerRegistry
++    Private ReadOnly _factories As New Dictionary(Of String, Func(Of BoardScriptComponentDefinition, IBoardScriptWorker))(StringComparer.OrdinalIgnoreCase)
++
++    Public Sub New()
++        Register("headland.ht12-a", Function(componentInBed) New HeadlandHt12BoardScriptWorker(componentInBed))
++        Register("ct.neat.82c211", Function(componentInBed) New Ct82C211BoardScriptWorker(componentInBed))
++        Register("ct.neat.82c212", Function(componentInBed) New Ct82C212BoardScriptWorker(componentInBed))
++        Register("ct.neat.82c215", Function(componentInBed) New Ct82C215BoardScriptWorker(componentInBed))
++        Register("ct.neat.82c206", Function(componentInBed) New Ct82C206BoardScriptWorker(componentInBed))
++    End Sub
++
++    Public Sub Register(workerIdInBed As String, factoryInBed As Func(Of BoardScriptComponentDefinition, IBoardScriptWorker))
++        If String.IsNullOrWhiteSpace(workerIdInBed) Then Throw New ArgumentNullException(NameOf(workerIdInBed))
++        If factoryInBed Is Nothing Then Throw New ArgumentNullException(NameOf(factoryInBed))
++        _factories(workerIdInBed) = factoryInBed
++    End Sub
++
++    Public Function CanCreate(workerIdInBed As String) As Boolean
++        Return Not String.IsNullOrWhiteSpace(workerIdInBed) AndAlso _factories.ContainsKey(workerIdInBed)
++    End Function
++
++    Public Function Create(workerIdInBed As String, componentInBed As BoardScriptComponentDefinition) As IBoardScriptWorker
++        Dim factoryInBed As Func(Of BoardScriptComponentDefinition, IBoardScriptWorker) = Nothing
++        If Not _factories.TryGetValue(workerIdInBed, factoryInBed) Then
++            Throw New InvalidOperationException("No Board Script worker factory is registered for '" & workerIdInBed & "'.")
++        End If
++        Return factoryInBed(componentInBed)
++    End Function
++End Class
++
++Public NotInheritable Class HeadlandHt12BoardScriptWorker
++    Implements IBoardScriptWorker
++
++    Private ReadOnly _siliconInBed As HeadlandHt12
++
++    Public Sub New(componentInBed As BoardScriptComponentDefinition)
++        If componentInBed Is Nothing Then Throw New ArgumentNullException(NameOf(componentInBed))
++        Dim strapsInBed As New Ht12PowerOnStraps With {
++            .RamConfigurationCode = 0,
++            .AtBusLowSpeed = False,
++            .ZeroWaitMainMemory = False,
++            .ExtraWaitStateMode = 0,
++            .TcStrapHigh = False
++        }
++
++        For Each entryInBed As KeyValuePair(Of String, BoardScriptValue) In componentInBed.Straps
++            Select Case entryInBed.Key.ToLowerInvariant()
++                Case "ramconfigurationcode"
++                    strapsInBed.RamConfigurationCode = CByte(entryInBed.Value.AsInteger(entryInBed.Key) And &H7)
++                Case "atbuslowspeed"
++                    strapsInBed.AtBusLowSpeed = entryInBed.Value.AsBoolean(entryInBed.Key)
++                Case "zerowaitmainmemory"
++                    strapsInBed.ZeroWaitMainMemory = entryInBed.Value.AsBoolean(entryInBed.Key)
++                Case "extrawaitstatemode"
++                    strapsInBed.ExtraWaitStateMode = CByte(entryInBed.Value.AsInteger(entryInBed.Key) And &H3)
++                Case "tcstraphigh"
++                    strapsInBed.TcStrapHigh = entryInBed.Value.AsBoolean(entryInBed.Key)
++                Case Else
++                    Throw New InvalidOperationException("HT12/A has no sourced Board Script strap named '" & entryInBed.Key & "'.")
++            End Select
++        Next
++        _siliconInBed = New HeadlandHt12(strapsInBed)
++    End Sub
++
++    Public ReadOnly Property Silicon As HeadlandHt12
++        Get
++            Return _siliconInBed
++        End Get
++    End Property
++
++    Public ReadOnly Property WorkerId As String Implements IBoardScriptWorker.WorkerId
++        Get
++            Return "headland.ht12-a"
++        End Get
++    End Property
++
++    Public ReadOnly Property SiliconIdentity As String Implements IBoardScriptWorker.SiliconIdentity
++        Get
++            Return _siliconInBed.Identity
++        End Get
++    End Property
++
++    Public Function DiagnosticText() As String Implements IBoardScriptWorker.DiagnosticText
++        Return _siliconInBed.DiagnosticText()
++    End Function
++End Class
+diff -ruN "foxsrc/Hardware/Board Script/README.md" "work/full/Hardware/Board Script/README.md"
+--- "foxsrc/Hardware/Board Script/README.md"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Board Script/README.md"	2026-09-11 00:26:48.708490744 +0000
+@@ -0,0 +1,61 @@
++# VMB Board Script (`.bs`) prototype
++
++Board Script is a declarative motherboard composition language.  It does **not** contain silicon emulation.  A `.bs` file chooses documented parts, places them, applies board-level straps, and joins sourced pins into named nets.  Behavioral workers remain reusable code modules.
++
++The prototype deliberately separates four truths:
++
++1. `PARTS-METADATA.json` — manufacturer, part number, package, role, provenance.
++2. `WORKER-METADATA.json` — part-to-worker binding plus sourced logical/physical pin knowledge.
++3. `.bs` — board population, placement, straps, and nets.
++4. worker code — actual silicon behavior.
++
++The compiler refuses unknown part IDs, missing workers, unknown pins, duplicate refdes/nets, impossible board coordinates, unsupported rotations, and invalid strap values.  Missing fabrication evidence does **not** become guessed geometry: a board may be logic-valid while `ManufacturingReady=False`.
++
++## Prototype grammar
++
++```text
++board <board-id> {
++    title "human name";
++    units mm;
++    outline <width> <height>;
++
++    component <refdes> : <part-id> {
++        place <x> <y> rot <0|90|180|270> side <top|bottom>;
++        strap <name> = <string|number|true|false>;
++    }
++
++    net <name> {
++        endpoint <refdes>.<pin>;
++        endpoint <refdes>.<pin>;
++        ...
++    }
++}
++```
++
++`#` and `//` introduce line comments.
++
++## First worker bindings
++
++- `headland-ht12-a` -> `headland.ht12-a` -> real existing `HeadlandHt12` worker.
++- `ct-82c211` -> `ct.neat.82c211` -> split 82C211 prototype worker.
++- `ct-82c212` -> `ct.neat.82c212` -> split 82C212 prototype worker.
++- `ct-82c215` -> `ct.neat.82c215` -> split 82C215 prototype worker.
++- `ct-82c206` -> `ct.neat.82c206` -> split 82C206 prototype worker.
++
++The split NEAT workers are intentionally **parallel prototypes**, not replacements for the already-green live `NeatCs8221Chipset`.  Migration only happens after behavioral equivalence testing.
++
++## Command-line prototype
++
++After a build on a machine with the .NET toolchain:
++
++```text
++VirtualComputer.Modern.exe --board-script-check "Board Scripts\Samples\NEAT-CS8221-Reference.bs" --source-root "C:\path\to\VMB"
++```
++
++The command parses the script, recursively loads part/worker metadata from the supplied source root, constructs registered workers, validates nets/placement, and reports whether the board has enough evidence to be considered manufacturing-ready. It also writes `<script>.check.txt` unless `--report <path>` is supplied.
++
++The included `INVALID-Invented-Part-Must-Fail.bs` is a required negative test.  If it ever compiles successfully, the Board Script compiler has violated VMB's no-fantasy-hardware rule.
++
++## Deliberately not in prototype 0
++
++No runtime motherboard hot-swap, automatic ISA fabric binding, DRAM topology compiler, full package pin maps, footprints, placement collision geometry, power-domain/ERC, trace routing, or manufacturing export is claimed yet.  Those belong after this grammar/worker boundary proves stable.
+diff -ruN "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb" "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb"
+--- "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/CtNeatBoardScriptWorkers.vb"	2026-09-11 00:26:00.799318491 +0000
+@@ -0,0 +1,181 @@
++Imports System
++
++' Board-Script-first split of the physical four-chip CS8221 NEAT family.
++' This DOES NOT replace the proven live NeatCs8221Chipset class yet.  It gives
++' each actual package a worker boundary so Board Script can compose the board
++' without pretending the four-package chipset is one physical IC.
++
++Public NotInheritable Class Ct82C211BoardScriptWorker
++    Implements IBoardScriptWorker
++
++    Private _reg60 As Byte
++    Private _reg61 As Byte
++    Private _reg62 As Byte
++
++    Public Sub New(componentInBed As BoardScriptComponentDefinition)
++        If componentInBed Is Nothing Then Throw New ArgumentNullException(NameOf(componentInBed))
++        If componentInBed.Straps.Count <> 0 Then Throw New InvalidOperationException("82C211 prototype exposes no board straps yet; its indexed registers are firmware state.")
++        ResetRegisters()
++    End Sub
++
++    Public Sub ResetRegisters()
++        _reg60 = 0
++        _reg61 = &H45
++        _reg62 = &H18
++    End Sub
++
++    Public Function ReadIndexedRegister(indexInBed As Byte) As Byte
++        Select Case indexInBed
++            Case &H60 : Return CByte(_reg60 And &H34)
++            Case &H61 : Return _reg61
++            Case &H62 : Return _reg62
++            Case Else : Return &HFF
++        End Select
++    End Function
++
++    Public Sub WriteIndexedRegister(indexInBed As Byte, valueInBed As Byte)
++        Select Case indexInBed
++            Case &H60 : _reg60 = CByte(valueInBed And &H34)
++            Case &H61 : _reg61 = valueInBed
++            Case &H62 : _reg62 = CByte(valueInBed And &H3F)
++        End Select
++    End Sub
++
++    Public ReadOnly Property WorkerId As String Implements IBoardScriptWorker.WorkerId
++        Get
++            Return "ct.neat.82c211"
++        End Get
++    End Property
++
++    Public ReadOnly Property SiliconIdentity As String Implements IBoardScriptWorker.SiliconIdentity
++        Get
++            Return "Chips and Technologies 82C211 CPU/Bus Controller"
++        End Get
++    End Property
++
++    Public Function DiagnosticText() As String Implements IBoardScriptWorker.DiagnosticText
++        Return SiliconIdentity & " REG60=" & _reg60.ToString("X2") & " REG61=" & _reg61.ToString("X2") & " REG62=" & _reg62.ToString("X2")
++    End Function
++End Class
++
++Public NotInheritable Class Ct82C212BoardScriptWorker
++    Implements IBoardScriptWorker
++
++    Private ReadOnly _registers(11) As Byte
++
++    Public Sub New(componentInBed As BoardScriptComponentDefinition)
++        If componentInBed Is Nothing Then Throw New ArgumentNullException(NameOf(componentInBed))
++        If componentInBed.Straps.Count <> 0 Then Throw New InvalidOperationException("82C212 prototype exposes no board straps yet; its indexed registers are firmware state.")
++        ResetRegisters()
++    End Sub
++
++    Public Sub ResetRegisters()
++        Array.Clear(_registers, 0, _registers.Length)
++        _registers(0) = 0
++        _registers(1) = &HE
++        _registers(6) = &H80
++        _registers(7) = &H6B
++    End Sub
++
++    Public Function ReadIndexedRegister(indexInBed As Byte) As Byte
++        If indexInBed < &H64 OrElse indexInBed > &H6F Then Return &HFF
++        Return _registers(indexInBed - &H64)
++    End Function
++
++    Public Sub WriteIndexedRegister(indexInBed As Byte, valueInBed As Byte)
++        If indexInBed < &H65 OrElse indexInBed > &H6F Then Return
++        Dim slotInBed As Integer = indexInBed - &H64
++        Select Case indexInBed
++            Case &H65, &H67, &H68, &H69, &H6B, &H6D, &H6E
++                _registers(slotInBed) = valueInBed
++            Case &H66
++                _registers(slotInBed) = CByte(valueInBed And &H80)
++            Case &H6A, &H6C
++                _registers(slotInBed) = CByte(valueInBed And &HE0)
++            Case &H6F
++                _registers(slotInBed) = CByte(valueInBed And &HE6)
++        End Select
++    End Sub
++
++    Public ReadOnly Property WorkerId As String Implements IBoardScriptWorker.WorkerId
++        Get
++            Return "ct.neat.82c212"
++        End Get
++    End Property
++
++    Public ReadOnly Property SiliconIdentity As String Implements IBoardScriptWorker.SiliconIdentity
++        Get
++            Return "Chips and Technologies 82C212 Page/Interleave and EMS Memory Controller"
++        End Get
++    End Property
++
++    Public Function DiagnosticText() As String Implements IBoardScriptWorker.DiagnosticText
++        Return SiliconIdentity & " REG65=" & _registers(1).ToString("X2") & " REG6A=" & _registers(6).ToString("X2") & " REG6B=" & _registers(7).ToString("X2")
++    End Function
++End Class
++
++Public NotInheritable Class Ct82C215BoardScriptWorker
++    Implements IBoardScriptWorker
++
++    Public Sub New(componentInBed As BoardScriptComponentDefinition)
++        If componentInBed Is Nothing Then Throw New ArgumentNullException(NameOf(componentInBed))
++        If componentInBed.Straps.Count <> 0 Then Throw New InvalidOperationException("82C215 is a data/address buffer; no guest-visible strap surface is declared in this prototype.")
++    End Sub
++
++    Public ReadOnly Property WorkerId As String Implements IBoardScriptWorker.WorkerId
++        Get
++            Return "ct.neat.82c215"
++        End Get
++    End Property
++
++    Public ReadOnly Property SiliconIdentity As String Implements IBoardScriptWorker.SiliconIdentity
++        Get
++            Return "Chips and Technologies 82C215 Data/Address Buffer"
++        End Get
++    End Property
++
++    Public Function DiagnosticText() As String Implements IBoardScriptWorker.DiagnosticText
++        Return SiliconIdentity & " (physical parity/buffer worker boundary; no indexed registers)"
++    End Function
++End Class
++
++Public NotInheritable Class Ct82C206BoardScriptWorker
++    Implements IBoardScriptWorker
++
++    Private _configuration As Byte
++
++    Public Sub New(componentInBed As BoardScriptComponentDefinition)
++        If componentInBed Is Nothing Then Throw New ArgumentNullException(NameOf(componentInBed))
++        If componentInBed.Straps.Count <> 0 Then Throw New InvalidOperationException("82C206 prototype exposes no board straps yet; configuration register 01h is firmware state.")
++        ResetRegisters()
++    End Sub
++
++    Public Sub ResetRegisters()
++        _configuration = &HC0
++    End Sub
++
++    Public Function ReadIndexedRegister(indexInBed As Byte) As Byte
++        If indexInBed = &H1 Then Return _configuration
++        Return &HFF
++    End Function
++
++    Public Sub WriteIndexedRegister(indexInBed As Byte, valueInBed As Byte)
++        If indexInBed = &H1 Then _configuration = valueInBed
++    End Sub
++
++    Public ReadOnly Property WorkerId As String Implements IBoardScriptWorker.WorkerId
++        Get
++            Return "ct.neat.82c206"
++        End Get
++    End Property
++
++    Public ReadOnly Property SiliconIdentity As String Implements IBoardScriptWorker.SiliconIdentity
++        Get
++            Return "Chips and Technologies 82C206 Integrated Peripherals Controller"
++        End Get
++    End Property
++
++    Public Function DiagnosticText() As String Implements IBoardScriptWorker.DiagnosticText
++        Return SiliconIdentity & " REG01=" & _configuration.ToString("X2")
++    End Function
++End Class
+diff -ruN "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/PARTS-METADATA.json" "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/PARTS-METADATA.json"
+--- "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/PARTS-METADATA.json"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/PARTS-METADATA.json"	2026-09-11 00:27:51.502482105 +0000
+@@ -0,0 +1,42 @@
++{
++  "schema": "vmb.parts-metadata/1",
++  "family_id": "ct-cs8221-neat",
++  "family_name": "Chips and Technologies CS8221 NEAT",
++  "generated_from": [
++    "CS8221 New Enhanced AT (NEAT) Data Book, October 1987"
++  ],
++  "parts": [
++    {
++      "id": "ct-82c211",
++      "manufacturer": "Chips and Technologies",
++      "part_number": "82C211",
++      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
++      "role": "CPU/Bus Controller",
++      "scope": "chipset"
++    },
++    {
++      "id": "ct-82c212",
++      "manufacturer": "Chips and Technologies",
++      "part_number": "82C212",
++      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
++      "role": "Page/Interleave and EMS Memory Controller",
++      "scope": "chipset"
++    },
++    {
++      "id": "ct-82c215",
++      "manufacturer": "Chips and Technologies",
++      "part_number": "82C215",
++      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
++      "role": "Data/Address Buffer and parity logic",
++      "scope": "chipset"
++    },
++    {
++      "id": "ct-82c206",
++      "manufacturer": "Chips and Technologies",
++      "part_number": "82C206",
++      "package": "84-pin PLCC prototype package; 100-pin PFP family option also documented",
++      "role": "Integrated Peripherals Controller",
++      "scope": "chipset"
++    }
++  ]
++}
+diff -ruN "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/WORKER-METADATA.json" "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/WORKER-METADATA.json"
+--- "foxsrc/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/WORKER-METADATA.json"	1970-01-01 00:00:00.000000000 +0000
++++ "work/full/Hardware/Chipsets/Chips and Technologies/CS8221 NEAT/WORKER-METADATA.json"	2026-09-11 00:26:00.816656718 +0000
+@@ -0,0 +1,55 @@
++{
++  "schema": "vmb.worker-metadata/1",
++  "bindings": [
++    {
++      "part_id": "ct-82c211",
++      "worker_id": "ct.neat.82c211",
++      "physical_pin_map_complete": false,
++      "footprint_known": false,
++      "pins": [
++        {"name":"PROCCLK","number":2,"direction":"out"},
++        {"name":"RESET4","number":38,"direction":"out"},
++        {"name":"HLDA1","number":40,"direction":"out"},
++        {"name":"PAR_ERR","number":11,"direction":"in"},
++        {"name":"ACEN","number":47,"direction":"out"}
++      ]
++    },
++    {
++      "part_id": "ct-82c212",
++      "worker_id": "ct.neat.82c212",
++      "physical_pin_map_complete": false,
++      "footprint_known": false,
++      "pins": [
++        {"name":"PROCCLK","number":83,"direction":"in"},
++        {"name":"RESET4","number":12,"direction":"in"},
++        {"name":"HLDA1","number":19,"direction":"in"},
++        {"name":"ROM_CS","number":13,"direction":"out"},
++        {"name":"DLE","number":45,"direction":"out"},
++        {"name":"DRD","number":33,"direction":"out"},
++        {"name":"GA20","number":31,"direction":"io"},
++        {"name":"GATEA20","number":30,"direction":"in"}
++      ]
++    },
++    {
++      "part_id": "ct-82c215",
++      "worker_id": "ct.neat.82c215",
++      "physical_pin_map_complete": false,
++      "footprint_known": false,
++      "pins": [
++        {"name":"ACEN","number":14,"direction":"in"},
++        {"name":"HLDA1","number":53,"direction":"in"},
++        {"name":"DLE","number":76,"direction":"in"},
++        {"name":"DRD","number":74,"direction":"in"},
++        {"name":"PAR_ERR","number":83,"direction":"out"}
++      ]
++    },
++    {
++      "part_id": "ct-82c206",
++      "worker_id": "ct.neat.82c206",
++      "physical_pin_map_complete": false,
++      "footprint_known": false,
++      "pins": []
++    }
++  ],
++  "notes": "This prototype captures only the pins used by the first Board Script conformance board. physical_pin_map_complete remains false until the complete selected-package pin map and footprint are entered."
++}
+diff -ruN foxsrc/Hardware/Chipsets/Headland/HT12/WORKER-METADATA.json work/full/Hardware/Chipsets/Headland/HT12/WORKER-METADATA.json
+--- foxsrc/Hardware/Chipsets/Headland/HT12/WORKER-METADATA.json	1970-01-01 00:00:00.000000000 +0000
++++ work/full/Hardware/Chipsets/Headland/HT12/WORKER-METADATA.json	2026-09-11 00:26:00.811254672 +0000
+@@ -0,0 +1,13 @@
++{
++  "schema": "vmb.worker-metadata/1",
++  "bindings": [
++    {
++      "part_id": "headland-ht12-a",
++      "worker_id": "headland.ht12-a",
++      "physical_pin_map_complete": false,
++      "footprint_known": false,
++      "pins": []
++    }
++  ],
++  "notes": "The HT12/A behavior worker is real and reusable. Exact package pin map and fabrication footprint remain evidence-gated, so physical manufacturing validation must not pass yet."
++}
+diff -ruN foxsrc/Program.vb work/full/Program.vb
+--- foxsrc/Program.vb	2026-09-07 14:21:28.000000000 +0000
++++ work/full/Program.vb	2026-09-11 00:26:47.900286503 +0000
+@@ -4,6 +4,13 @@
+ Module Program
+     <STAThread>
+     Public Sub Main()
++        Dim rawArgsInBed As String() = Environment.GetCommandLineArgs()
++        If rawArgsInBed.Length > 1 Then
++            Dim forwardedArgsInBed(rawArgsInBed.Length - 2) As String
++            Array.Copy(rawArgsInBed, 1, forwardedArgsInBed, 0, forwardedArgsInBed.Length)
++            If BoardScriptCli.TryRunFromCommandLine(forwardedArgsInBed) Then Return
++        End If
++
+         Application.EnableVisualStyles()
+         Application.SetCompatibleTextRenderingDefault(False)
+         ' Install this filter before constructing Form1 so it gets first crack at
+diff -ruN foxsrc/VirtualComputer.Modern.vbproj work/full/VirtualComputer.Modern.vbproj
+--- foxsrc/VirtualComputer.Modern.vbproj	2026-09-10 14:46:02.000000000 +0000
++++ work/full/VirtualComputer.Modern.vbproj	2026-09-11 00:26:47.900529228 +0000
+@@ -144,4 +144,22 @@
+   <ItemGroup>
+     <PackageReference Include="MeltySynth" Version="2.4.1" />
+   </ItemGroup>
++
++  <ItemGroup>
++    <Compile Include="Hardware\Board Script\BoardScriptModel.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptLexer.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptParser.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptCatalog.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptWorkers.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptCompiler.vb" />
++    <Compile Include="Hardware\Board Script\BoardScriptCli.vb" />
++    <Compile Include="Hardware\Chipsets\Headland\HT12\HeadlandHt12.vb" />
++    <Compile Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\CtNeatBoardScriptWorkers.vb" />
++    <Content Include="Hardware\Chipsets\Headland\HT12\PARTS-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
++    <Content Include="Hardware\Chipsets\Headland\HT12\WORKER-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
++    <Content Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\PARTS-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
++    <Content Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\WORKER-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
++    <Content Include="Board Scripts\Samples\*.bs" CopyToOutputDirectory="PreserveNewest" />
++  </ItemGroup>
++
+ </Project>

@@ -1,0 +1,33 @@
+{
+  "test": "constructor follows semantic IR mutation",
+  "original_ios0": {
+    "instance_id": "U1",
+    "module_id": "VMB.NET.RTL8019AS",
+    "pin": "IOS0",
+    "role": "io_base_select",
+    "sampling": "reset_latched",
+    "source": {
+      "kind": "USER_CONTROL",
+      "bindings": [
+        {
+          "control": "SW3",
+          "element": 1
+        }
+      ]
+    }
+  },
+  "mutated_ios0": {
+    "instance_id": "U1",
+    "module_id": "VMB.NET.RTL8019AS",
+    "pin": "IOS0",
+    "role": "io_base_select",
+    "sampling": "reset_latched",
+    "source": {
+      "kind": "INTERNAL_DEFAULT",
+      "value": 0
+    }
+  },
+  "original_io_count": 16,
+  "mutated_io_count": 8,
+  "pass": true
+}

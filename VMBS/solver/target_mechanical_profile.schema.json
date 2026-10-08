@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VMBS TargetMechanicalProfile",
+  "type": "object",
+  "required": [
+    "mode",
+    "envelopes"
+  ],
+  "properties": {
+    "mode": {
+      "enum": [
+        "RECONSTRUCTION",
+        "DERIVATIVE",
+        "NOVEL"
+      ]
+    },
+    "envelopes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "outline_mm"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "outline_mm": {
+            "type": "array"
+          },
+          "fixed_interfaces": {
+            "type": "array"
+          },
+          "keepouts": {
+            "type": "array"
+          },
+          "height_zones": {
+            "type": "array"
+          }
+        }
+      }
+    }
+  }
+}

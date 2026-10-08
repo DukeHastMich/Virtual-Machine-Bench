@@ -1,4 +1,5 @@
 Imports System
+Imports System.Collections.Generic
 Imports System.IO
 Imports System.Text.Json
 
@@ -142,6 +143,209 @@ Public Class FloppyImage
     End Function
 End Class
 
+Public NotInheritable Class IdeDriveModelProfile
+    Public Sub New(idInBed As String,
+                   displayNameInBed As String,
+                   manufacturerInBed As String,
+                   modelInBed As String,
+                   firmwareInBed As String,
+                   totalSectorsInBed As Long,
+                   nativeCylindersInBed As Integer,
+                   nativeHeadsInBed As Integer,
+                   nativeSectorsPerTrackInBed As Integer,
+                   biosCylindersInBed As Integer,
+                   biosHeadsInBed As Integer,
+                   biosSectorsPerTrackInBed As Integer,
+                   ataMajorVersionInBed As Integer,
+                   supportsLba28InBed As Boolean,
+                   maximumMultipleSectorsInBed As Integer,
+                   maximumPioModeInBed As Integer,
+                   rotationRpmInBed As Integer,
+                   averageSeekMillisecondsInBed As Double,
+                   serialPrefixInBed As String)
+        Id = idInBed
+        DisplayName = displayNameInBed
+        Manufacturer = manufacturerInBed
+        Model = modelInBed
+        FirmwareRevision = firmwareInBed
+        TotalSectors = totalSectorsInBed
+        NativeCylinders = nativeCylindersInBed
+        NativeHeads = nativeHeadsInBed
+        NativeSectorsPerTrack = nativeSectorsPerTrackInBed
+        BiosCylinders = biosCylindersInBed
+        BiosHeads = biosHeadsInBed
+        BiosSectorsPerTrack = biosSectorsPerTrackInBed
+        AtaMajorVersion = ataMajorVersionInBed
+        SupportsLba28 = supportsLba28InBed
+        MaximumMultipleSectors = maximumMultipleSectorsInBed
+        MaximumPioMode = maximumPioModeInBed
+        RotationRpm = rotationRpmInBed
+        AverageSeekMilliseconds = averageSeekMillisecondsInBed
+        SerialPrefix = serialPrefixInBed
+    End Sub
+
+    Public ReadOnly Property Id As String
+    Public ReadOnly Property DisplayName As String
+    Public ReadOnly Property Manufacturer As String
+    Public ReadOnly Property Model As String
+    Public ReadOnly Property FirmwareRevision As String
+    Public ReadOnly Property TotalSectors As Long
+    Public ReadOnly Property NativeCylinders As Integer
+    Public ReadOnly Property NativeHeads As Integer
+    Public ReadOnly Property NativeSectorsPerTrack As Integer
+    Public ReadOnly Property BiosCylinders As Integer
+    Public ReadOnly Property BiosHeads As Integer
+    Public ReadOnly Property BiosSectorsPerTrack As Integer
+    Public ReadOnly Property AtaMajorVersion As Integer
+    Public ReadOnly Property SupportsLba28 As Boolean
+    Public ReadOnly Property MaximumMultipleSectors As Integer
+    Public ReadOnly Property MaximumPioMode As Integer
+    Public ReadOnly Property RotationRpm As Integer
+    Public ReadOnly Property AverageSeekMilliseconds As Double
+    Public ReadOnly Property SerialPrefix As String
+
+    Public ReadOnly Property CapacityBytes As Long
+        Get
+            Return TotalSectors * 512L
+        End Get
+    End Property
+
+    Public ReadOnly Property CapacityDescription As String
+        Get
+            Dim mibInBed As Double = CDbl(CapacityBytes) / (1024.0R * 1024.0R)
+            Dim mbInBed As Double = CDbl(CapacityBytes) / 1000000.0R
+            Return mibInBed.ToString("0.0") & " MiB / " & mbInBed.ToString("0.0") & " MB"
+        End Get
+    End Property
+
+    Public Function CreateIdentity(Optional serialInBed As String = Nothing) As HardDiskIdentity
+        Dim serialTextInBed As String = serialInBed
+        If String.IsNullOrWhiteSpace(serialTextInBed) Then
+            serialTextInBed = SerialPrefix & TotalSectors.ToString("X")
+        End If
+        If serialTextInBed.Length > 20 Then serialTextInBed = serialTextInBed.Substring(0, 20)
+        Return New HardDiskIdentity With {
+            .ProfileId = Id,
+            .Manufacturer = Manufacturer,
+            .Model = Model,
+            .SerialNumber = serialTextInBed,
+            .FirmwareRevision = FirmwareRevision,
+            .TotalSectors = TotalSectors,
+            .NativeCylinders = NativeCylinders,
+            .NativeHeads = NativeHeads,
+            .NativeSectorsPerTrack = NativeSectorsPerTrack,
+            .BiosCylinders = BiosCylinders,
+            .BiosHeads = BiosHeads,
+            .BiosSectorsPerTrack = BiosSectorsPerTrack,
+            .AtaMajorVersion = AtaMajorVersion,
+            .SupportsLba28 = SupportsLba28,
+            .MaximumMultipleSectors = MaximumMultipleSectors,
+            .MaximumPioMode = MaximumPioMode,
+            .RotationRpm = RotationRpm,
+            .AverageSeekMilliseconds = AverageSeekMilliseconds,
+            .Removable = False
+        }
+    End Function
+End Class
+
+' Catalog of physical ATA drive personalities available to the chassis configurator.
+' A profile is not merely a label: capacity, translated BIOS geometry and IDENTIFY
+' identity are one package.  The raw .hdd/.img remains platter data and its adjacent
+' .meta sidecar records which profile was used for that particular physical drive.
+Public NotInheritable Class IdeDriveModelCatalog
+    Public Const Generic64MiBId As String = "generic-64mib"
+    Public Const Generic500MbId As String = "generic-500mb"
+    Public Const ConnerCp2064Id As String = "conner-cp2064"
+    Public Const ConnerCp30064HId As String = "conner-cp30064h"
+
+    Private Shared ReadOnly _profiles As IdeDriveModelProfile() = {
+        New IdeDriveModelProfile(
+            Generic64MiBId,
+            "Generic 64 MiB IDE HDD",
+            "Generic",
+            "GENERIC 64M IDE HDD",
+            "1.00",
+            131072L,
+            130, 16, 63,
+            130, 16, 63,
+            2, True, 16, 2, 3600, 17.0R,
+            "G64-"),
+        New IdeDriveModelProfile(
+            Generic500MbId,
+            "Generic 500 MB IDE HDD",
+            "Generic",
+            "GENERIC 500MB IDE HDD",
+            "1.00",
+            1024000L,
+            1015, 16, 63,
+            1015, 16, 63,
+            2, True, 16, 2, 3600, 14.0R,
+            "G500-"),
+        New IdeDriveModelProfile(
+            ConnerCp2064Id,
+            "Conner CP-2064 — 64 MB",
+            "Conner Peripherals",
+            "CONNER CP2064",
+            "1.00",
+            125096L,
+            823, 4, 38,
+            823, 4, 38,
+            1, False, 1, 0, 3600, 19.0R,
+            "CP2064-"),
+        New IdeDriveModelProfile(
+            ConnerCp30064HId,
+            "Conner CP30064H — 60 MB",
+            "Conner Peripherals",
+            "CONNER CP30064H",
+            "1.00",
+            118872L,
+            762, 4, 39,
+            762, 4, 39,
+            1, False, 1, 0, 3400, 19.0R,
+            "CP30064H-")
+    }
+
+    Private Sub New()
+    End Sub
+
+    Public Shared Function GetProfiles() As IReadOnlyList(Of IdeDriveModelProfile)
+        Return _profiles
+    End Function
+
+    Public Shared Function FindById(idInBed As String) As IdeDriveModelProfile
+        If String.IsNullOrWhiteSpace(idInBed) Then Return Nothing
+        For Each profileInBed As IdeDriveModelProfile In _profiles
+            If profileInBed.Id.Equals(idInBed.Trim(), StringComparison.OrdinalIgnoreCase) Then Return profileInBed
+        Next
+        Return Nothing
+    End Function
+
+    Public Shared Function FindByExactSectorCount(sectorCountInBed As Long) As List(Of IdeDriveModelProfile)
+        Dim resultInBed As New List(Of IdeDriveModelProfile)()
+        For Each profileInBed As IdeDriveModelProfile In _profiles
+            If profileInBed.TotalSectors = sectorCountInBed Then resultInBed.Add(profileInBed)
+        Next
+        Return resultInBed
+    End Function
+
+    Public Shared Function DefaultProfileIdForSectorCount(sectorCountInBed As Long) As String
+        If sectorCountInBed = 131072L Then Return Generic64MiBId
+        If sectorCountInBed = 1024000L Then Return Generic500MbId
+        Return String.Empty
+    End Function
+
+    Public Shared Function Describe(profileInBed As IdeDriveModelProfile) As String
+        If profileInBed Is Nothing Then Return "No drive model selected"
+        Return profileInBed.Manufacturer & " " & profileInBed.Model & Environment.NewLine &
+               "Capacity: " & profileInBed.CapacityDescription & " (" & profileInBed.TotalSectors.ToString() & " sectors)" & Environment.NewLine &
+               "Native geometry: " & profileInBed.NativeCylinders.ToString() & " / " & profileInBed.NativeHeads.ToString() & " / " & profileInBed.NativeSectorsPerTrack.ToString() & Environment.NewLine &
+               "BIOS geometry: " & profileInBed.BiosCylinders.ToString() & " / " & profileInBed.BiosHeads.ToString() & " / " & profileInBed.BiosSectorsPerTrack.ToString() & Environment.NewLine &
+               "ATA-" & profileInBed.AtaMajorVersion.ToString() & If(profileInBed.SupportsLba28, " / LBA28", " / CHS") &
+               " / PIO " & profileInBed.MaximumPioMode.ToString() & Environment.NewLine &
+               profileInBed.RotationRpm.ToString() & " RPM / " & profileInBed.AverageSeekMilliseconds.ToString("0.0") & " ms average seek"
+    End Function
+End Class
+
 Public Class HardDiskImage
     Inherits FileBlockMedia
 
@@ -165,6 +369,14 @@ Public Class HardDiskImage
         End Using
         HardDiskIdentity.CreateDefault(path, sectorCount).Save(path)
     End Sub
+
+    Public Shared Sub Create(path As String, profileInBed As IdeDriveModelProfile)
+        If profileInBed Is Nothing Then Throw New ArgumentNullException(NameOf(profileInBed))
+        Using stream As New FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None)
+            stream.SetLength(profileInBed.TotalSectors * 512L)
+        End Using
+        profileInBed.CreateIdentity().Save(path)
+    End Sub
 End Class
 
 ' Persistent identity of the physical ATA drive represented by a raw sector file.
@@ -174,6 +386,7 @@ Public NotInheritable Class HardDiskIdentity
     Private Const CurrentSchemaVersion As Integer = 1
 
     Public Property SchemaVersion As Integer = CurrentSchemaVersion
+    Public Property ProfileId As String = String.Empty
     Public Property Manufacturer As String = "Cromwell Technologies"
     Public Property Model As String = "Cromwell IDE Hard Disk"
     Public Property SerialNumber As String = ""
@@ -204,6 +417,27 @@ Public NotInheritable Class HardDiskIdentity
                 Dim parsed As HardDiskIdentity = JsonSerializer.Deserialize(Of HardDiskIdentity)(File.ReadAllText(sidecar))
                 If parsed Is Nothing Then Throw New InvalidDataException("The hard-disk metadata file is empty.")
                 parsed.Validate(actualSectorCount, sidecar)
+                If String.IsNullOrWhiteSpace(parsed.ProfileId) Then
+                    Dim inferredProfileInBed As IdeDriveModelProfile = Nothing
+                    If parsed.Manufacturer.Equals("Cromwell Technologies", StringComparison.OrdinalIgnoreCase) AndAlso
+                       parsed.Model.StartsWith("Cromwell CT", StringComparison.OrdinalIgnoreCase) Then
+                        Dim inferredIdInBed As String = IdeDriveModelCatalog.DefaultProfileIdForSectorCount(actualSectorCount)
+                        inferredProfileInBed = IdeDriveModelCatalog.FindById(inferredIdInBed)
+                        If inferredProfileInBed IsNot Nothing Then
+                            Dim preservedSerialInBed As String = parsed.SerialNumber
+                            parsed = inferredProfileInBed.CreateIdentity(preservedSerialInBed)
+                            parsed.Save(imagePath)
+                        End If
+                    Else
+                        For Each candidateInBed As IdeDriveModelProfile In IdeDriveModelCatalog.FindByExactSectorCount(actualSectorCount)
+                            If candidateInBed.Model.Equals(parsed.Model, StringComparison.OrdinalIgnoreCase) Then
+                                parsed.ProfileId = candidateInBed.Id
+                                parsed.Save(imagePath)
+                                Exit For
+                            End If
+                        Next
+                    End If
+                End If
                 Return parsed
             Catch ex As InvalidDataException
                 Throw
@@ -225,13 +459,24 @@ Public NotInheritable Class HardDiskIdentity
 
     Public Shared Function CreateDefault(imagePath As String, sectorCount As Long) As HardDiskIdentity
         If sectorCount <= 0 Then Throw New ArgumentOutOfRangeException(NameOf(sectorCount))
+
+        Dim profileIdInBed As String = IdeDriveModelCatalog.DefaultProfileIdForSectorCount(sectorCount)
+        Dim profileInBed As IdeDriveModelProfile = IdeDriveModelCatalog.FindById(profileIdInBed)
+        If profileInBed IsNot Nothing Then
+            Dim identityFromProfileInBed As HardDiskIdentity = profileInBed.CreateIdentity()
+            identityFromProfileInBed.Validate(sectorCount, MetadataPath(imagePath))
+            Return identityFromProfileInBed
+        End If
+
         Dim heads As Integer = If(sectorCount >= 1008, 16, 1)
         Dim sectorsPerTrack As Integer = CInt(Math.Min(63L, sectorCount))
         Dim cylinders As Integer = CInt(Math.Max(1L, Math.Min(1024L, sectorCount \ CLng(heads * sectorsPerTrack))))
         Dim capacityMiB As Long = Math.Max(1L, sectorCount * 512L \ (1024L * 1024L))
-        Dim serial As String = "CT" & sectorCount.ToString("X12")
+        Dim serial As String = "GEN" & sectorCount.ToString("X12")
         Dim identity As New HardDiskIdentity With {
-            .Model = "Cromwell CT" & capacityMiB.ToString() & " IDE",
+            .ProfileId = String.Empty,
+            .Manufacturer = "Generic",
+            .Model = "GENERIC " & capacityMiB.ToString() & "M IDE HDD",
             .SerialNumber = serial,
             .TotalSectors = sectorCount,
             .NativeCylinders = cylinders,
@@ -244,6 +489,35 @@ Public NotInheritable Class HardDiskIdentity
         identity.Validate(sectorCount, MetadataPath(imagePath))
         Return identity
     End Function
+
+    Public Sub ApplyProfile(profileInBed As IdeDriveModelProfile, Optional preserveSerialInBed As Boolean = True)
+        If profileInBed Is Nothing Then Throw New ArgumentNullException(NameOf(profileInBed))
+        If TotalSectors <> profileInBed.TotalSectors Then
+            Throw New InvalidDataException("Drive model '" & profileInBed.DisplayName & "' requires " &
+                                           profileInBed.TotalSectors.ToString() & " sectors but this image contains " &
+                                           TotalSectors.ToString() & ".")
+        End If
+        Dim replacementInBed As HardDiskIdentity =
+            profileInBed.CreateIdentity(If(preserveSerialInBed, SerialNumber, Nothing))
+        ProfileId = replacementInBed.ProfileId
+        Manufacturer = replacementInBed.Manufacturer
+        Model = replacementInBed.Model
+        SerialNumber = replacementInBed.SerialNumber
+        FirmwareRevision = replacementInBed.FirmwareRevision
+        NativeCylinders = replacementInBed.NativeCylinders
+        NativeHeads = replacementInBed.NativeHeads
+        NativeSectorsPerTrack = replacementInBed.NativeSectorsPerTrack
+        BiosCylinders = replacementInBed.BiosCylinders
+        BiosHeads = replacementInBed.BiosHeads
+        BiosSectorsPerTrack = replacementInBed.BiosSectorsPerTrack
+        AtaMajorVersion = replacementInBed.AtaMajorVersion
+        SupportsLba28 = replacementInBed.SupportsLba28
+        MaximumMultipleSectors = replacementInBed.MaximumMultipleSectors
+        MaximumPioMode = replacementInBed.MaximumPioMode
+        RotationRpm = replacementInBed.RotationRpm
+        AverageSeekMilliseconds = replacementInBed.AverageSeekMilliseconds
+        Removable = replacementInBed.Removable
+    End Sub
 
     Public Sub Save(imagePath As String)
         Validate(TotalSectors, MetadataPath(imagePath))
@@ -261,6 +535,7 @@ Public NotInheritable Class HardDiskIdentity
         If TotalSectors <> actualSectorCount Then
             Throw New InvalidDataException("Hard-disk metadata capacity does not match the raw image in " & sourceDescription & ".")
         End If
+        If Not String.IsNullOrWhiteSpace(ProfileId) Then ValidateText(ProfileId, 64, NameOf(ProfileId), sourceDescription)
         ValidateText(Manufacturer, 40, NameOf(Manufacturer), sourceDescription)
         ValidateText(Model, 40, NameOf(Model), sourceDescription)
         ValidateText(SerialNumber, 20, NameOf(SerialNumber), sourceDescription)

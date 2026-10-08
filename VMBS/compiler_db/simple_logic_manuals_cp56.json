@@ -1,0 +1,10 @@
+{
+  "checkpoint":"CP56",
+  "policy":"Primary manufacturer documentation first. Behavioral aliases do not inherit family-specific electrical/timing numbers without evidence.",
+  "documents":[
+    {"parts":["SN74LS73A"],"manufacturer":"Texas Instruments","title":"Dual J-K Flip-Flops With Clear","url":"https://www.ti.com/product/SN74LS73A","facts":["two independent J-K flip-flops","LS73A negative-edge-triggered","individual direct clear"]},
+    {"parts":["SN74LS76A"],"manufacturer":"Texas Instruments","title":"Dual J-K Flip-Flops With Preset And Clear","url":"https://www.ti.com/document-viewer/SN54LS76A/datasheet","facts":["two independent negative-edge-triggered J-K flip-flops","preset and clear asynchronous active low","preset/clear override clock and data"]},
+    {"parts":["SN74LS75"],"manufacturer":"Texas Instruments","title":"4-Bit Bistable Latches","url":"https://www.ti.com/product/SN74LS75","facts":["four transparent D latches","Q follows D while enable high","state retained when enable low","complementary outputs"]},
+    {"parts":["SN74LS90","SN74LS92","SN74LS93"],"manufacturer":"Texas Instruments","title":"Decade, Divide-by-Twelve And Binary Counters","url":"https://www.ti.com/product/SN74LS92","facts":["separate divide-by-two stage and three-stage section","LS90 divide-by-five section","LS92 divide-by-six section","LS93 divide-by-eight section","gated zero reset","LS90 additionally gated set-to-nine"]}
+  ]
+}

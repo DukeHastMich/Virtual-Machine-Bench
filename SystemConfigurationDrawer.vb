@@ -15,6 +15,19 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property Chassis As String
     Public Property PowerSupply As String
     Public Property Motherboard As String
+    Public Property MotherboardHardwareId As String
+    Public Property MotherboardRuntimeStatus As String
+    Public Property CpuSocket As String
+    Public Property ClockGenerator As String
+    Public Property MemoryTopology As String
+    Public Property CacheTopology As String
+    Public Property ExpansionTopology As String
+    Public Property ExpansionCompatibility As String
+    Public Property MotherboardClockOptionId As String
+    Public Property MotherboardClockSetting As String
+    Public Property MotherboardCacheKilobytes As Integer
+    Public Property MotherboardCmos As String
+    Public Property MotherboardFirmwareImage As String
     Public Property Chipset As String
     Public Property ChipsetCpuBus As String
     Public Property ChipsetMemory As String
@@ -24,19 +37,24 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property ChipsetTiming As String
     Public Property Bios As String
     Public Property Cpu As String
+    Public Property CpuHardwareId As String
     Public Property CpuClock As String
     Public Property HostExecutionRatePercent As Integer
     Public Property HostExecutionRate As String
     Public Property NumericCoprocessor As String
+    Public Property NumericCoprocessorHardwareId As String
     Public Property Memory As String
     Public Property InstalledMemoryMb As Integer
     Public Property PendingMemoryMb As Integer?
     Public Property PendingHardwareSummary As String
     Public Property Video As String
+    Public Property VideoHardwareId As String
     Public Property VideoRom As String
     Public Property ExpansionAudio As String
+    Public Property AudioHardwareId As String
     Public Property Speaker As String
     Public Property Network As String
+    Public Property NetworkHardwareId As String
     Public Property FloppyController As String
     Public Property FloppyDriveA As String
     Public Property FloppyDriveB As String
@@ -46,7 +64,17 @@ Public NotInheritable Class SystemConfigurationSnapshot
     Public Property FloppyMediaSourceIdB As String
     Public Property HardDiskController As String
     Public Property HardDisk0 As String
+    Public Property HardDisk1 As String
     Public Property Optical As String
+    Public Property Optical1 As String
+    Public Property IdePrimaryMasterHardwareId As String
+    Public Property IdePrimarySlaveHardwareId As String
+    Public Property IdeSecondaryMasterHardwareId As String
+    Public Property IdeSecondarySlaveHardwareId As String
+    Public Property IdePrimaryMasterModelId As String
+    Public Property IdePrimarySlaveModelId As String
+    Public Property IdeSecondaryMasterModelId As String
+    Public Property IdeSecondarySlaveModelId As String
     Public Property Keyboard As String
     Public Property Com1 As String
     Public Property Com2 As String
@@ -299,7 +327,9 @@ Public NotInheritable Class SystemConfigurationDrawer
             SetValueInBed("floppy-a-media", snapshotInBed.FloppyMediaA)
             SetValueInBed("floppy-b-media", snapshotInBed.FloppyMediaB)
             SetValueInBed("hdd0", snapshotInBed.HardDisk0)
+            SetValueInBed("hdd1", snapshotInBed.HardDisk1)
             SetValueInBed("optical", snapshotInBed.Optical)
+            SetValueInBed("optical1", snapshotInBed.Optical1)
             SetValueInBed("keyboard", snapshotInBed.Keyboard)
             SetValueInBed("com1", snapshotInBed.Com1)
             SetValueInBed("com2", snapshotInBed.Com2)
@@ -314,18 +344,44 @@ Public NotInheritable Class SystemConfigurationDrawer
             SetValueInBed("chassis", snapshotInBed.Chassis)
             SetValueInBed("psu", snapshotInBed.PowerSupply)
 
-            SelectChoiceInBed("motherboard", snapshotInBed.Motherboard)
-            SelectChoiceInBed("cpu", snapshotInBed.Cpu)
-            SelectChoiceInBed("video", snapshotInBed.Video)
-            SelectChoiceInBed("audio", snapshotInBed.ExpansionAudio)
+            SelectChoiceInBed("motherboard", snapshotInBed.MotherboardHardwareId)
+            SelectChoiceInBed("motherboard-clock", snapshotInBed.MotherboardClockOptionId)
+            SelectChoiceInBed("motherboard-cache", snapshotInBed.MotherboardCacheKilobytes.ToString())
+            SelectChoiceInBed("cpu", snapshotInBed.CpuHardwareId)
+            SelectChoiceInBed("npx-selector", snapshotInBed.NumericCoprocessorHardwareId)
+            SelectChoiceInBed("video", snapshotInBed.VideoHardwareId)
+            SelectChoiceInBed("audio", snapshotInBed.AudioHardwareId)
             SelectChoiceInBed("speaker", snapshotInBed.Speaker)
-            SelectChoiceInBed("network", snapshotInBed.Network)
+            SelectChoiceInBed("network", snapshotInBed.NetworkHardwareId)
             SelectChoiceInBed("fdc", snapshotInBed.FloppyController)
             SelectChoiceInBed("floppy-a-drive", snapshotInBed.FloppyDriveA)
             SelectChoiceInBed("floppy-b-drive", snapshotInBed.FloppyDriveB)
             SelectChoiceInBed("floppy-a-source", snapshotInBed.FloppyMediaSourceIdA)
             SelectChoiceInBed("floppy-b-source", snapshotInBed.FloppyMediaSourceIdB)
             SelectChoiceInBed("ide", snapshotInBed.HardDiskController)
+            SelectChoiceInBed("ide-primary-master", snapshotInBed.IdePrimaryMasterHardwareId)
+            SelectChoiceInBed("ide-primary-slave", snapshotInBed.IdePrimarySlaveHardwareId)
+            SelectChoiceInBed("ide-secondary-master", snapshotInBed.IdeSecondaryMasterHardwareId)
+            SelectChoiceInBed("ide-secondary-slave", snapshotInBed.IdeSecondarySlaveHardwareId)
+            SelectChoiceInBed("ide-primary-master-model", snapshotInBed.IdePrimaryMasterModelId)
+            SelectChoiceInBed("ide-primary-slave-model", snapshotInBed.IdePrimarySlaveModelId)
+            SelectChoiceInBed("ide-secondary-master-model", snapshotInBed.IdeSecondaryMasterModelId)
+            SelectChoiceInBed("ide-secondary-slave-model", snapshotInBed.IdeSecondarySlaveModelId)
+
+            Select Case _currentPageInBed
+                Case "ide-c1d0"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(0, False))
+                    SetValueInBed("ide-attachment", snapshotInBed.HardDisk0)
+                Case "ide-c1d1"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(0, True))
+                    SetValueInBed("ide-attachment", snapshotInBed.Optical)
+                Case "ide-c2d0"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(1, False))
+                    SetValueInBed("ide-attachment", snapshotInBed.HardDisk1)
+                Case "ide-c2d1"
+                    SetValueInBed("ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(1, True))
+                    SetValueInBed("ide-attachment", snapshotInBed.Optical1)
+            End Select
 
             Dim memoryChoiceInBed As Integer = If(snapshotInBed.PendingMemoryMb.HasValue,
                                                    snapshotInBed.PendingMemoryMb.Value,
@@ -442,8 +498,13 @@ Public NotInheritable Class SystemConfigurationDrawer
 
         Dim storageInBed As TreeNode = AddNodeInBed(Nothing, "storage", "Storage")
         AddNodeInBed(storageInBed, "floppy", "Floppy Drives")
-        AddNodeInBed(storageInBed, "harddisk", "Hard Drives")
-        AddNodeInBed(storageInBed, "optical", "Optical Drives")
+        Dim ideInBed As TreeNode = AddNodeInBed(storageInBed, "ide", "IDE Controller")
+        Dim ideChannel1InBed As TreeNode = AddNodeInBed(ideInBed, "ide-channel1", "Channel 1 — Primary")
+        AddNodeInBed(ideChannel1InBed, "ide-c1d0", "Drive 0 (Master)")
+        AddNodeInBed(ideChannel1InBed, "ide-c1d1", "Drive 1 (Slave)")
+        Dim ideChannel2InBed As TreeNode = AddNodeInBed(ideInBed, "ide-channel2", "Channel 2 — Secondary")
+        AddNodeInBed(ideChannel2InBed, "ide-c2d0", "Drive 0 (Master)")
+        AddNodeInBed(ideChannel2InBed, "ide-c2d1", "Drive 1 (Slave)")
 
         Dim expansionInBed As TreeNode = AddNodeInBed(Nothing, "expansion", "Expansion")
         AddNodeInBed(expansionInBed, "video", "Video")
@@ -458,6 +519,9 @@ Public NotInheritable Class SystemConfigurationDrawer
         hostInBed.Expand()
         systemInBed.Expand()
         storageInBed.Expand()
+        ideInBed.Expand()
+        ideChannel1InBed.Expand()
+        ideChannel2InBed.Expand()
         expansionInBed.Expand()
         ioInBed.Expand()
     End Sub
@@ -513,8 +577,19 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                 Case "motherboard"
                     _pageTitleInBed.Text = "MOTHERBOARD"
-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
+                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
+                    AddValueInBed("Runtime status", "motherboard-runtime", snapshotInBed.MotherboardRuntimeStatus)
+                    AddValueInBed("CPU socket", "motherboard-socket", snapshotInBed.CpuSocket)
+                    AddValueInBed("Clock generator", "motherboard-clockgen", snapshotInBed.ClockGenerator)
+                    AddSelectorInBed("Clock / jumper setting", "motherboard-clock", _ownerInBed.GetMotherboardClockChoicesInBed(), AddressOf MotherboardClockSelectionChangedInBed)
+                    AddValueInBed("Memory topology", "motherboard-memory-topology", snapshotInBed.MemoryTopology, 84)
+                    AddValueInBed("Cache topology", "motherboard-cache-topology", snapshotInBed.CacheTopology, 70)
+                    AddSelectorInBed("Installed L2 cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
+                    AddValueInBed("CMOS / NVRAM", "motherboard-cmos", snapshotInBed.MotherboardCmos, 56)
+                    AddValueInBed("Firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 56)
+                    AddValueInBed("Expansion connectors", "motherboard-expansion", snapshotInBed.ExpansionTopology, 110)
+                    AddValueInBed("Installed-card fit", "motherboard-expansion-fit", snapshotInBed.ExpansionCompatibility, 56)
                     AddValueInBed("Chassis", "chassis", snapshotInBed.Chassis)
                     AddValueInBed("Power supply", "psu", snapshotInBed.PowerSupply)
                     AddNoteInBed("Device swaps are designed as physical replacements. Future profiles will validate slots, connectors, power, jumpers and resource conflicts before they can be committed.")
@@ -528,29 +603,30 @@ Public NotInheritable Class SystemConfigurationDrawer
                     AddValueInBed("Data / address buffer", "chipset-buffer", snapshotInBed.ChipsetBuffer)
                     AddValueInBed("Configuration interface", "chipset-ports", snapshotInBed.ChipsetConfigurationPorts)
                     AddValueInBed("Live timing state", "chipset-timing", snapshotInBed.ChipsetTiming, 118)
-                    AddNoteInBed("This identifies the chipset pieces the motherboard is actually asserting. The 82C215 buffer role is represented by the board's physical decode and routing rather than invented guest-visible registers.")
+                    AddNoteInBed("This page is motherboard-profile driven. Fixed chipset pieces are informational rather than swappable drop-down parts; guest-visible registers exist only where the selected physical silicon actually decodes them.")
 
                 Case "processor"
                     _pageTitleInBed.Text = "PROCESSOR"
-                    AddSelectorInBed("CPU", "cpu", {New HardwareProfileChoice(snapshotInBed.Cpu, snapshotInBed.Cpu)}, Nothing)
+                    AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
                     AddValueInBed("Running clock", "clock", snapshotInBed.CpuClock)
                     AddHostExecutionRateControlInBed(snapshotInBed.HostExecutionRatePercent,
                                                      snapshotInBed.HostExecutionRate)
-                    AddSelectorInBed("Numeric coprocessor", "npx-selector", {New HardwareProfileChoice(snapshotInBed.NumericCoprocessor, snapshotInBed.NumericCoprocessor)}, Nothing)
+                    AddSelectorInBed("Numeric coprocessor", "npx-selector", _ownerInBed.GetNumericCoprocessorChoicesInBed(), AddressOf NumericCoprocessorSelectionChangedInBed)
                     AddNoteInBed("Execution rate is host pacing only. It accelerates the complete machine timeline without changing the guest-visible CPU clock, PIT, ISA bus, DMA, video or storage timing ratios. CPU and NPX replacement remain powered chassis changes.")
 
                 Case "memory"
                     _pageTitleInBed.Text = "MEMORY"
-                    Dim choicesInBed As New List(Of HardwareProfileChoice)()
-                    For Each mbInBed As Integer In RamBankConfiguration.SupportedMemoryMegabytes
-                        choicesInBed.Add(New HardwareProfileChoice(mbInBed.ToString(), mbInBed.ToString() & " MB installed"))
-                    Next
-                    AddSelectorInBed("Installed RAM", "memory", choicesInBed, AddressOf MemorySelectionChangedInBed)
+                    AddSelectorInBed("Installed RAM", "memory", _ownerInBed.GetMemoryChoicesInBed(), AddressOf MemorySelectionChangedInBed)
+                    AddValueInBed("Physical topology", "memory-topology", snapshotInBed.MemoryTopology, 84)
+                    AddSelectorInBed("Secondary cache", "motherboard-cache", _ownerInBed.GetMotherboardCacheChoicesInBed(), AddressOf MotherboardCacheSelectionChangedInBed)
+                    AddValueInBed("Cache topology", "cache-topology", snapshotInBed.CacheTopology, 70)
                     AddNoteInBed("RAM changes are staged. The running machine is not altered until a power cycle, matching a physical SIMM-bank change rather than a warm reset.")
 
                 Case "firmware"
                     _pageTitleInBed.Text = "FIRMWARE"
                     AddSelectorInBed("System BIOS", "bios-selector", {New HardwareProfileChoice(snapshotInBed.Bios, snapshotInBed.Bios)}, Nothing)
+                    AddValueInBed("Board firmware image", "motherboard-firmware", snapshotInBed.MotherboardFirmwareImage, 60)
+                    AddValueInBed("Battery-backed state", "motherboard-cmos", snapshotInBed.MotherboardCmos, 60)
                     AddValueInBed("Video option ROM", "video-rom", snapshotInBed.VideoRom)
                     AddNoteInBed("Firmware selectors describe ROM devices physically installed in the build; guest firmware execution still occurs through the emulated bus and ROM windows.")
 
@@ -572,33 +648,47 @@ Public NotInheritable Class SystemConfigurationDrawer
 
                     AddNoteInBed("The drive mechanism remains the installed hardware. This page can attach that drive either to a host physical floppy drive or to an image source; the FDC and guest path remain identical. Disk-image authoring and physical-disk imaging remain Sneaker Net jobs.")
 
-                Case "harddisk"
-                    _pageTitleInBed.Text = "HARD DRIVES"
+                Case "ide"
+                    _pageTitleInBed.Text = "IDE CONTROLLER"
                     AddSelectorInBed("Controller", "ide", {New HardwareProfileChoice(snapshotInBed.HardDiskController, snapshotInBed.HardDiskController)}, Nothing)
-                    AddValueInBed("Primary master", "hdd0", snapshotInBed.HardDisk0)
-                    AddNoteInBed("Drive Shelf operations remain available through Media/Sneaker Net. Hardware-model, controller and channel selectors live here as the configuration layer grows.")
+                    AddValueInBed("Channel 1", "ide-channel1-summary", "Primary — 1F0h-1F7h + 3F6h — IRQ14")
+                    AddValueInBed("Channel 2", "ide-channel2-summary", "Secondary — 170h-177h + 376h — IRQ15")
+                    AddNoteInBed("Each channel has two ATA electrical positions: Drive 0 (master) and Drive 1 (slave). Device class and hard-disk model are properties of the socket; hard-disk platter data and its .meta identity travel together in the IDE Drive Shelf.")
 
-                Case "optical"
-                    _pageTitleInBed.Text = "OPTICAL DRIVES"
-                    AddSelectorInBed("Optical device", "optical-selector", {New HardwareProfileChoice(snapshotInBed.Optical, snapshotInBed.Optical)}, Nothing)
-                    AddNoteInBed("Optical image authoring and CD/DVD Shelf work remain separate from installed-drive configuration.")
+                Case "ide-channel1"
+                    BuildIdeChannelPageInBed(0, snapshotInBed)
+
+                Case "ide-channel2"
+                    BuildIdeChannelPageInBed(1, snapshotInBed)
+
+                Case "ide-c1d0"
+                    BuildIdeDevicePageInBed(0, False, snapshotInBed)
+
+                Case "ide-c1d1"
+                    BuildIdeDevicePageInBed(0, True, snapshotInBed)
+
+                Case "ide-c2d0"
+                    BuildIdeDevicePageInBed(1, False, snapshotInBed)
+
+                Case "ide-c2d1"
+                    BuildIdeDevicePageInBed(1, True, snapshotInBed)
 
                 Case "video"
                     _pageTitleInBed.Text = "VIDEO"
-                    AddSelectorInBed("Installed adapter", "video", {New HardwareProfileChoice(snapshotInBed.Video, snapshotInBed.Video)}, Nothing)
+                    AddSelectorInBed("Installed adapter", "video", _ownerInBed.GetVideoCardChoicesInBed(), AddressOf VideoSelectionChangedInBed)
                     AddValueInBed("Option ROM", "video-rom", snapshotInBed.VideoRom)
-                    AddNoteInBed("The running adapter is the Diamond Stealth Pro 928 path. Additional video boards will become alternate profiles in this same selector.")
+                    AddNoteInBed("This is the physical ISA video slot population. None leaves the slot electrically empty; an installed adapter contributes only its real I/O, memory and option-ROM decode.")
 
                 Case "audio"
                     _pageTitleInBed.Text = "AUDIO"
-                    AddSelectorInBed("Expansion audio", "audio", {New HardwareProfileChoice(snapshotInBed.ExpansionAudio, snapshotInBed.ExpansionAudio)}, Nothing, AddressOf AudioJumperButtonClickedInBed)
+                    AddSelectorInBed("Expansion audio", "audio", _ownerInBed.GetAudioCardChoicesInBed(), AddressOf AudioSelectionChangedInBed, AddressOf AudioJumperButtonClickedInBed)
                     AddSelectorInBed("Chassis speaker", "speaker", {New HardwareProfileChoice(snapshotInBed.Speaker, snapshotInBed.Speaker)}, Nothing)
-                    AddNoteInBed("The installed SB16 exposes a DSP 4.x command interface, mixer-controlled ISA IRQ/DMA resources, 8/16-bit PCM DMA playback and OPL-compatible FM ports. Host waveOut is only the final speaker transducer; guest software still drives the emulated card through ISA I/O, DMA and interrupts.")
+                    AddNoteInBed("This is the physical ISA audio slot population. None removes the card, its I/O decode, IRQ/DMA participation, game port and MPU-401. With an SB16 installed, guest software still reaches it only through ISA hardware paths.")
 
                 Case "network"
                     _pageTitleInBed.Text = "NETWORK"
-                    AddSelectorInBed("Installed adapter", "network", {New HardwareProfileChoice(snapshotInBed.Network, snapshotInBed.Network)}, Nothing, AddressOf NetworkJumperButtonClickedInBed)
-                    AddNoteInBed("The installed NE2000-compatible adapter exposes the DP8390 register pages, station PROM, remote-DMA data port and 16 KiB receive/transmit packet RAM. Host attachment is optional; an unplugged virtual cable leaves the guest-visible board installed exactly like a physical NIC with no Ethernet lead connected.")
+                    AddSelectorInBed("Installed adapter", "network", _ownerInBed.GetNetworkCardChoicesInBed(), AddressOf NetworkSelectionChangedInBed, AddressOf NetworkJumperButtonClickedInBed)
+                    AddNoteInBed("This is the physical ISA network slot population. None removes all adapter decode and clock participation. An installed NE2000 may still have its virtual Ethernet cable unplugged without removing the board itself.")
 
                 Case "io"
                     _pageTitleInBed.Text = "I/O && PORTS"
@@ -637,23 +727,21 @@ Public NotInheritable Class SystemConfigurationDrawer
                 Case Else
                     _currentPageInBed = "overview"
                     _pageTitleInBed.Text = "SYSTEM OVERVIEW"
-                    AddSelectorInBed("Motherboard", "motherboard", {New HardwareProfileChoice(snapshotInBed.Motherboard, snapshotInBed.Motherboard)}, Nothing)
+                    AddSelectorInBed("Motherboard", "motherboard", _ownerInBed.GetMotherboardChoicesInBed(), AddressOf MotherboardSelectionChangedInBed)
                     AddValueInBed("Chipset", "chipset", snapshotInBed.Chipset)
-                    AddSelectorInBed("CPU", "cpu", {New HardwareProfileChoice(snapshotInBed.Cpu, snapshotInBed.Cpu)}, Nothing)
-                    Dim memoryChoicesInBed As New List(Of HardwareProfileChoice)()
-                    For Each mbInBed As Integer In RamBankConfiguration.SupportedMemoryMegabytes
-                        memoryChoicesInBed.Add(New HardwareProfileChoice(mbInBed.ToString(), mbInBed.ToString() & " MB"))
-                    Next
-                    AddSelectorInBed("Memory", "memory", memoryChoicesInBed, AddressOf MemorySelectionChangedInBed)
-                    AddSelectorInBed("Video", "video", {New HardwareProfileChoice(snapshotInBed.Video, snapshotInBed.Video)}, Nothing)
-                    AddSelectorInBed("Audio card", "audio", {New HardwareProfileChoice(snapshotInBed.ExpansionAudio, snapshotInBed.ExpansionAudio)}, Nothing, AddressOf AudioJumperButtonClickedInBed)
-                    AddSelectorInBed("Network", "network", {New HardwareProfileChoice(snapshotInBed.Network, snapshotInBed.Network)}, Nothing, AddressOf NetworkJumperButtonClickedInBed)
+                    AddSelectorInBed("CPU", "cpu", _ownerInBed.GetProcessorChoicesInBed(), AddressOf CpuSelectionChangedInBed)
+                    AddSelectorInBed("Memory", "memory", _ownerInBed.GetMemoryChoicesInBed(), AddressOf MemorySelectionChangedInBed)
+                    AddSelectorInBed("Video", "video", _ownerInBed.GetVideoCardChoicesInBed(), AddressOf VideoSelectionChangedInBed)
+                    AddSelectorInBed("Audio card", "audio", _ownerInBed.GetAudioCardChoicesInBed(), AddressOf AudioSelectionChangedInBed, AddressOf AudioJumperButtonClickedInBed)
+                    AddSelectorInBed("Network", "network", _ownerInBed.GetNetworkCardChoicesInBed(), AddressOf NetworkSelectionChangedInBed, AddressOf NetworkJumperButtonClickedInBed)
                     AddValueInBed("CPU clock", "clock", snapshotInBed.CpuClock)
-                    AddValueInBed("Numeric coprocessor", "npx", snapshotInBed.NumericCoprocessor)
+                    AddSelectorInBed("Numeric coprocessor", "npx-selector", _ownerInBed.GetNumericCoprocessorChoicesInBed(), AddressOf NumericCoprocessorSelectionChangedInBed)
                     AddValueInBed("Floppy A", "floppy-a-media", snapshotInBed.FloppyMediaA)
                     AddValueInBed("Floppy B", "floppy-b-media", snapshotInBed.FloppyMediaB)
-                    AddValueInBed("Hard disk", "hdd0", snapshotInBed.HardDisk0)
-                    AddValueInBed("Optical", "optical", snapshotInBed.Optical)
+                    AddValueInBed("Channel 1 Drive 0 (Master)", "hdd0", snapshotInBed.HardDisk0)
+                    AddValueInBed("Channel 1 Drive 1 (Slave)", "optical", snapshotInBed.Optical)
+                    AddValueInBed("Channel 2 Drive 0 (Master)", "hdd1", snapshotInBed.HardDisk1)
+                    AddValueInBed("Channel 2 Drive 1 (Slave)", "optical1", snapshotInBed.Optical1)
                     AddValueInBed("COM1 / COM2", "serial-summary", snapshotInBed.Com1 & " / " & snapshotInBed.Com2)
                     AddValueInBed("LPT1 / LPT2", "parallel-summary", snapshotInBed.Lpt1 & " / " & snapshotInBed.Lpt2)
                     AddValueInBed("Game / MIDI", "midi-summary", snapshotInBed.GamePort & " / " & snapshotInBed.Midi)
@@ -661,6 +749,77 @@ Public NotInheritable Class SystemConfigurationDrawer
         Finally
             _pageBodyInBed.ResumeLayout()
         End Try
+    End Sub
+
+    Private Sub BuildIdeChannelPageInBed(channelInBed As Integer, snapshotInBed As SystemConfigurationSnapshot)
+        Dim channelNumberInBed As Integer = channelInBed + 1
+        _pageTitleInBed.Text = "IDE CHANNEL " & channelNumberInBed.ToString()
+        If channelInBed = 0 Then
+            AddValueInBed("Controller resources", "ide-channel-resource", "Primary — 1F0h-1F7h + 3F6h — IRQ14")
+            AddValueInBed("Drive 0 (Master)", "hdd0", snapshotInBed.HardDisk0)
+            AddValueInBed("Drive 1 (Slave)", "optical", snapshotInBed.Optical)
+        Else
+            AddValueInBed("Controller resources", "ide-channel-resource", "Secondary — 170h-177h + 376h — IRQ15")
+            AddValueInBed("Drive 0 (Master)", "hdd1", snapshotInBed.HardDisk1)
+            AddValueInBed("Drive 1 (Slave)", "optical1", snapshotInBed.Optical1)
+        End If
+        AddNoteInBed("Drive 0/1 are the ATA device numbers on this ribbon cable. Master/slave remains visible as the period electrical terminology, but the configuration tree is organized by channel and device position rather than by device class.")
+    End Sub
+
+    Private Sub BuildIdeDevicePageInBed(channelInBed As Integer,
+                                        slaveInBed As Boolean,
+                                        snapshotInBed As SystemConfigurationSnapshot)
+        Dim slotInBed As String = If(channelInBed = 0, "primary-", "secondary-") & If(slaveInBed, "slave", "master")
+        Dim selectorKeyInBed As String = "ide-" & slotInBed
+        Dim modelSelectorKeyInBed As String = selectorKeyInBed & "-model"
+        Dim hardwareIdInBed As String
+        Dim attachmentInBed As String
+        If channelInBed = 0 AndAlso Not slaveInBed Then
+            hardwareIdInBed = snapshotInBed.IdePrimaryMasterHardwareId
+            attachmentInBed = snapshotInBed.HardDisk0
+        ElseIf channelInBed = 0 Then
+            hardwareIdInBed = snapshotInBed.IdePrimarySlaveHardwareId
+            attachmentInBed = snapshotInBed.Optical
+        ElseIf Not slaveInBed Then
+            hardwareIdInBed = snapshotInBed.IdeSecondaryMasterHardwareId
+            attachmentInBed = snapshotInBed.HardDisk1
+        Else
+            hardwareIdInBed = snapshotInBed.IdeSecondarySlaveHardwareId
+            attachmentInBed = snapshotInBed.Optical1
+        End If
+
+        _pageTitleInBed.Text = "IDE CHANNEL " & (channelInBed + 1).ToString() & " — DRIVE " & If(slaveInBed, "1 (SLAVE)", "0 (MASTER)")
+        AddValueInBed("Electrical position",
+                      "ide-position",
+                      If(channelInBed = 0, "Primary", "Secondary") & " channel / device " & If(slaveInBed, "1 / slave", "0 / master"))
+
+        Dim hardwareChoicesInBed As HardwareProfileChoice() = {
+            New HardwareProfileChoice("empty", "Empty IDE socket"),
+            New HardwareProfileChoice("ata", "ATA hard disk"),
+            New HardwareProfileChoice("atapi", "ATAPI CD-ROM")
+        }
+        AddSelectorInBed("Installed device class", selectorKeyInBed, hardwareChoicesInBed, AddressOf IdeHardwareSelectionChangedInBed)
+        If _selectorsInBed.ContainsKey(selectorKeyInBed) Then _selectorsInBed(selectorKeyInBed).Tag = slotInBed
+
+        Dim kindInBed As IdeDeviceKind = IdeHardwareConfiguration.ParseKind(hardwareIdInBed, IdeDeviceKind.Empty)
+        If kindInBed = IdeDeviceKind.AtaHardDisk Then
+            Dim modelChoicesInBed As New List(Of HardwareProfileChoice)()
+            For Each profileInBed As IdeDriveModelProfile In IdeDriveModelCatalog.GetProfiles()
+                modelChoicesInBed.Add(New HardwareProfileChoice(profileInBed.Id, profileInBed.DisplayName))
+            Next
+            AddSelectorInBed("Drive model", modelSelectorKeyInBed, modelChoicesInBed, AddressOf IdeDriveModelSelectionChangedInBed)
+            If _selectorsInBed.ContainsKey(modelSelectorKeyInBed) Then _selectorsInBed(modelSelectorKeyInBed).Tag = slotInBed
+            AddValueInBed("Drive model information", "ide-model-info", _ownerInBed.GetIdeDriveModelDetailsInBed(channelInBed, slaveInBed), 156)
+            AddValueInBed("Drive unit / backing image", "ide-attachment", attachmentInBed, 62)
+            AddNoteInBed("The selected HDD model defines IDENTIFY DEVICE, capacity, CHS translation and timing identity. Its raw .hdd/.img platter and adjacent .meta sidecar are one physical drive. Incompatible model changes disconnect the old image intact rather than resizing it. Hard Drive Utilities creates a new shelf drive at the selected model's exact capacity.")
+        ElseIf kindInBed = IdeDeviceKind.AtapiCdRom Then
+            AddValueInBed("Optical mechanism", "ide-atapi-model", "Generic ATAPI CD-ROM — packet PIO")
+            AddValueInBed("Disc / media", "ide-attachment", attachmentInBed)
+            AddNoteInBed("ATAPI mechanism selection is now attached to this electrical socket. A later optical model catalog can add period-specific drive identities without changing the channel/device topology.")
+        Else
+            AddValueInBed("Socket state", "ide-attachment", attachmentInBed)
+            AddNoteInBed("No device is electrically installed at this IDE position. Probing software should see an empty socket rather than a phantom ATA or ATAPI mechanism.")
+        End If
     End Sub
 
     Private Sub AddBackupPathEditorInBed()
@@ -954,6 +1113,114 @@ Public NotInheritable Class SystemConfigurationDrawer
         RefreshFromMachine()
     End Sub
 
+    Private Sub IdeHardwareSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing OrElse comboInBed.Tag Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+
+        Dim slotInBed As String = CStr(comboInBed.Tag)
+        _ownerInBed.StageIdeHardwareKindInBed(slotInBed, choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub IdeDriveModelSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing OrElse comboInBed.Tag Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        Dim slotInBed As String = CStr(comboInBed.Tag)
+        _ownerInBed.StageIdeDriveModelInBed(slotInBed, choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageMotherboardSelectionInBed(choiceInBed.Id)
+        BuildPageInBed(_currentPageInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardClockSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageMotherboardClockSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub MotherboardCacheSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        Dim cacheKbInBed As Integer
+        If Not Integer.TryParse(choiceInBed.Id, cacheKbInBed) Then Return
+        _ownerInBed.StageMotherboardCacheSelectionInBed(cacheKbInBed)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub CpuSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageCpuSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub NumericCoprocessorSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageNumericCoprocessorSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub VideoSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageVideoSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub AudioSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageAudioSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
+    Private Sub NetworkSelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
+        If _updatingControlsInBed Then Return
+        Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
+        If comboInBed Is Nothing Then Return
+        Dim choiceInBed As HardwareProfileChoice = TryCast(comboInBed.SelectedItem, HardwareProfileChoice)
+        If choiceInBed Is Nothing Then Return
+        _ownerInBed.StageNetworkSelectionInBed(choiceInBed.Id)
+        RefreshFromMachine()
+    End Sub
+
     Private Sub MemorySelectionChangedInBed(senderInBed As Object, eInBed As EventArgs)
         If _updatingControlsInBed Then Return
         Dim comboInBed As ComboBox = TryCast(senderInBed, ComboBox)
@@ -1029,6 +1296,12 @@ Public NotInheritable Class SystemConfigurationDrawer
         For Each comboInBed As ComboBox In _selectorsInBed.Values
             If comboInBed.DroppedDown Then Return
         Next
+
+        ' Poll exactly one tiny producer-owned metadata file.  Only a changed
+        ' board count earns a VCB Store rescan / selector rebuild.
+        If VmbCompiledCardStore.PollBoardCountChanged() Then
+            BuildPageInBed(_currentPageInBed)
+        End If
         RefreshFromMachine()
     End Sub
 

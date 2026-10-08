@@ -1,0 +1,6 @@
+{
+  "test": "board-code property mutation changes generated VB",
+  "original_sha256": "7f3fce65925c26764b48dae2f3c8def6e8ae198b9bb132040a1aa4db5393aaf1",
+  "mutated_sha256": "8517051cb3acd41c78600d98a1095340f9ea23210dd08b8f8799fadd8ed69e17",
+  "pass": true
+}

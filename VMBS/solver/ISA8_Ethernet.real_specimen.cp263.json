@@ -1,0 +1,259 @@
+{
+  "format": "VMBS-REAL-SPECIMEN-INTEGRATION-CP263",
+  "board": {},
+  "inventory": {
+    "bs_components": 34,
+    "nets": 135,
+    "missing_geometry": [],
+    "orphan_geometry": []
+  },
+  "outline": {
+    "bbox_mm": [
+      101.6,
+      59.69,
+      205.74,
+      134.62
+    ],
+    "bbox_area_mm2": 7803.210200000002,
+    "vertices": 96
+  },
+  "placement": {
+    "coverage": {
+      "components": 34,
+      "courtyard_geometry": 22,
+      "explicit_geometry_gaps": 11
+    },
+    "collision_pairs": [
+      [
+        "RN2",
+        "RN1"
+      ],
+      [
+        "RN2",
+        "RN3"
+      ],
+      [
+        "RN2",
+        "RN4"
+      ],
+      [
+        "C1",
+        "C2"
+      ],
+      [
+        "C1",
+        "R7"
+      ],
+      [
+        "C2",
+        "C4"
+      ],
+      [
+        "C2",
+        "C5"
+      ],
+      [
+        "C2",
+        "C8"
+      ],
+      [
+        "C2",
+        "R1"
+      ],
+      [
+        "C2",
+        "R2"
+      ],
+      [
+        "C2",
+        "R3"
+      ],
+      [
+        "C2",
+        "R7"
+      ],
+      [
+        "C3",
+        "J1"
+      ],
+      [
+        "C4",
+        "C5"
+      ],
+      [
+        "C4",
+        "C8"
+      ],
+      [
+        "C4",
+        "R1"
+      ],
+      [
+        "C4",
+        "R2"
+      ],
+      [
+        "C4",
+        "R3"
+      ],
+      [
+        "C5",
+        "C8"
+      ],
+      [
+        "C5",
+        "R1"
+      ],
+      [
+        "C5",
+        "R2"
+      ],
+      [
+        "C5",
+        "R3"
+      ],
+      [
+        "C8",
+        "R1"
+      ],
+      [
+        "C8",
+        "R2"
+      ],
+      [
+        "C8",
+        "R3"
+      ],
+      [
+        "R1",
+        "R2"
+      ],
+      [
+        "R1",
+        "R3"
+      ],
+      [
+        "R2",
+        "R3"
+      ],
+      [
+        "RN1",
+        "RN3"
+      ],
+      [
+        "RN1",
+        "RN4"
+      ],
+      [
+        "RN3",
+        "RN4"
+      ],
+      [
+        "C9",
+        "C10"
+      ]
+    ],
+    "boundary_crossers": [],
+    "anchor_mismatch": [],
+    "locked_reconstruction": true
+  },
+  "topology": {
+    "fanout_histogram": {
+      "0": 1,
+      "4": 26,
+      "2": 48,
+      "46": 1,
+      "34": 1,
+      "1": 47,
+      "3": 9,
+      "5": 2
+    },
+    "singleton_or_empty_nets": [
+      "",
+      "Net-(BUS1-Pad5)",
+      "Net-(BUS1-Pad6)",
+      "Net-(BUS1-Pad7)",
+      "Net-(BUS1-Pad8)",
+      "Net-(BUS1-Pad9)",
+      "Net-(BUS1-Pad15)",
+      "Net-(BUS1-Pad16)",
+      "Net-(BUS1-Pad17)",
+      "Net-(BUS1-Pad18)",
+      "Net-(BUS1-Pad19)",
+      "Net-(BUS1-Pad20)",
+      "Net-(BUS1-Pad21)",
+      "Net-(BUS1-Pad22)",
+      "Net-(BUS1-Pad26)",
+      "Net-(BUS1-Pad27)",
+      "Net-(BUS1-Pad28)",
+      "Net-(BUS1-Pad30)",
+      "Net-(BUS1-Pad32)",
+      "Net-(U1-Pad48)",
+      "Net-(U1-Pad49)",
+      "Net-(U1-Pad53)",
+      "Net-(U1-Pad54)",
+      "Net-(U1-Pad55)",
+      "Net-(U1-Pad56)",
+      "Net-(U1-Pad60)",
+      "Net-(U3-Pad7)",
+      "Net-(U1-Pad63)",
+      "Net-(U1-Pad87)",
+      "Net-(U1-Pad88)",
+      "Net-(U1-Pad90)",
+      "Net-(U1-Pad91)",
+      "Net-(U1-Pad92)",
+      "Net-(U1-Pad93)",
+      "Net-(U1-Pad94)",
+      "Net-(U1-Pad95)",
+      "Net-(U1-Pad97)",
+      "Net-(U1-Pad98)",
+      "Net-(U1-Pad99)",
+      "Net-(U1-Pad100)",
+      "Net-(J1-PadR7)",
+      "Net-(J2-Pad3)",
+      "Net-(J2-Pad5)",
+      "Net-(J2-Pad7)",
+      "Net-(RN4-Pad3)",
+      "Net-(RN4-Pad4)",
+      "Net-(RN4-Pad6)",
+      "Net-(RN4-Pad5)"
+    ]
+  },
+  "gaps": {
+    "J2": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "BUS1": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "SW4": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "SW3": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "SW2": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "SW1": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "Y1": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "U2": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "REF**": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "HOLE1": "NO_COURTYARD_COLLISION_ENVELOPE",
+    "HOLE2": "NO_COURTYARD_COLLISION_ENVELOPE"
+  },
+  "mutations": {
+    "forced_overlap_detected": true,
+    "contour_closed_evidence": true
+  },
+  "readiness": {
+    "chess": true,
+    "routing": false,
+    "physics": false,
+    "physics_reason": "Electrical/timing evidence is not yet complete enough for SOLVED_VERIFIED."
+  },
+  "result_state": "SOLVED_UNVERIFIED",
+  "explanations": [
+    {
+      "code": "MISSING_COURTYARD_GEOMETRY",
+      "severity": "GAP"
+    }
+  ],
+  "digests": {
+    "placement": "1ca2f62a39812d34fedbf6dc3b9ec449a4e5dd342c0b52356bf8ac6268a63575",
+    "nets": "d902a7a0f20c04010f4fa38e15140c728d5bb83ea6550f30ed41daf73764edc7",
+    "topology": "efcb3fdbfeebf7a1e15cf6b6919177264053b44decf260590e2153abce66d45a",
+    "geometry": "87c0f600ed7148041fc399ff6b889fcbad76231db8d490e59450f474febaa3fb",
+    "run": "cbc98871ba808abfd910d398857911a4c3d03535b890a594be3a133c4dfc0291"
+  }
+}

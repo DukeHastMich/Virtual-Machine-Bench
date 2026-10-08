@@ -1,0 +1,74 @@
+{
+  "format": "VMBS-CIRCUIT-STORE-2",
+  "recipes": [
+    {
+      "circuit_id": "POWER_DECOUPLING",
+      "purpose": "local supply decoupling",
+      "inputs": [
+        "POWER_PIN_GROUP",
+        "GROUND"
+      ],
+      "outputs": [
+        "DECOUPLED_POWER_GROUP"
+      ],
+      "constraints": [
+        "component record/rule supplies capacitance and placement limits when known"
+      ],
+      "required_parts": [
+        "CAPACITOR"
+      ],
+      "generated_requirements": [
+        "PLACEMENT_NEAR_POWER_GROUP"
+      ]
+    },
+    {
+      "circuit_id": "ORG_STRAP_OR_CONTROL",
+      "purpose": "realize selectable logic strap",
+      "inputs": [
+        "CONFIG_PIN",
+        "LEGAL_LOGIC_LEVELS"
+      ],
+      "outputs": [
+        "PHYSICAL_CONFIGURATION_POINT"
+      ],
+      "required_parts": [
+        "DIRECT_STRAP_OR_JUMPER_OR_SWITCH"
+      ],
+      "generated_requirements": []
+    },
+    {
+      "circuit_id": "ISA_CONFIGURATION_REALIZATION",
+      "purpose": "realize VMB-visible ISA configuration points",
+      "inputs": [
+        "MODULE_CONFIGURATION_POINTS"
+      ],
+      "outputs": [
+        "JUMPER_DIP_STRAP_OR_PNP_CONFIGURATION"
+      ],
+      "constraints": [
+        "preserve legal values declared by MODULE_ID"
+      ],
+      "required_parts": [],
+      "generated_requirements": [
+        "SILKSCREEN_LABELS_WHEN_PHYSICAL"
+      ]
+    },
+    {
+      "circuit_id": "CLOCK_SOURCE",
+      "purpose": "satisfy IC clock endpoint",
+      "inputs": [
+        "CLOCK_REQUIREMENT"
+      ],
+      "outputs": [
+        "CLOCK_SIGNAL"
+      ],
+      "required_parts": [
+        "CRYSTAL_OR_OSCILLATOR_AND_SUPPORT_AS_REQUIRED"
+      ],
+      "generated_requirements": [
+        "PLACEMENT",
+        "ROUTING_CLOCK_RULES"
+      ]
+    }
+  ]
+}

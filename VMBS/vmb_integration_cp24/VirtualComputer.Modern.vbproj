@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?><Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>WindowsApplication1</RootNamespace>
+    <StartupObject>WindowsApplication1.Program</StartupObject>
+    <PlatformTarget>x64</PlatformTarget>
+    <OptionExplicit>On</OptionExplicit>
+    <OptionStrict>Off</OptionStrict>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <ApplicationIcon />
+  </PropertyGroup>
+  <ItemGroup>
+    <Import Include="System.Drawing" />
+    <Import Include="System.Diagnostics" />
+    <Import Include="System.Windows.Forms" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Firmware\atbios.rom" Link="Firmware\atbios.rom" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="bin\Debug\Roms\*.ROM" Link="Roms\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\Teac-Floppy.png" Link="Resources\System Images\Teac-Floppy.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\five and a quarter floppy.png" Link="Resources\System Images\five and a quarter floppy.png" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Resources\System Images\five and a quarter face plate.png" Link="Resources\System Images\five and a quarter face plate.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="On-Screen-Keyboard.Designer.vb" />
+    <Compile Include="On-Screen-Keyboard.vb" />
+    <Compile Include="Program.vb" />
+    <Compile Include="Declares.vb" />
+    <Compile Include="FloppyMedia.vb" />
+    <Compile Include="FloppyController.vb" />
+    <Compile Include="Form1.vb" />
+    <Compile Include="Form1.Diagnostics.vb">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </Compile>
+    <Compile Include="Form1.Designer.vb">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </Compile>
+    <Compile Include="HardwareBus.vb" />
+    <Compile Include="LegacyIoPorts.vb" />
+    <Compile Include="Expansion Cards\Network Cards\NE2000-ISA\Ne2000Isa.vb" />
+    <Compile Include="Expansion Cards\IsaCardCatalog286.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\SoundBlaster16Isa.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableProfile.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableMidiParser.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableMidiState.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableDiagnostics.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WavetableRenderEvent.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterDaughterboard.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Device\WaveBlasterConnector.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableSettings.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\SoundFontCatalog.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableConfigForm.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableRenderer.vb" />
+    <Compile Include="Expansion Cards\Audio Cards\Soundblaster 16-ISA\Wavetable\Host\WavetableHost.vb" />
+    <Compile Include="EpsonFxVirtualPrinter.vb" />
+    <Compile Include="IdeController.vb" />
+    <Compile Include="KeyboardRealityDiagnostics.vb" />
+    <Compile Include="SuperIoRealityDiagnostics.vb" />
+    <Compile Include="AtKeyboard101.vb" />
+    <Compile Include="MotherboardDevices.vb" />
+    <Compile Include="Processors\80286\ProcessorCore.vb" />
+    <Compile Include="Processors\ProcessorCatalog286.vb" />
+    <Compile Include="SingleStep80286TestHost.vb" />
+    <Compile Include="StorageDevices.vb" />
+    <Compile Include="My Project\Resources.Designer.vb">
+      <AutoGen>true</AutoGen>
+      <DesignTime>true</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="My Project\Settings.Designer.vb">
+      <AutoGen>true</AutoGen>
+      <DesignTimeSharedInput>true</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  <Compile Include="MachineTiming.vb" /><Compile Include="Processors\80286\ProcessorTiming.vb" /></ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="ChassisPanelForm.resx" />
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.vb</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="My Project\Resources.resx">
+      <Generator>VbMyResourcesResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.vb</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="On-Screen-Keyboard.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="My Project\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.vb</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Expansion Cards\Video Cards\Diamond Stealth Pro 928-Isa\DiamondStealthPro928.vb" />
+    <None Update="Firmware\stealthpro.rom"><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></None>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="IdeDriveShelf.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="CrtPresenter.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MachineConfiguration.vb" />
+    <Compile Include="MachineBuildScript.vb" />
+    <Compile Include="MachineMaterialization.vb" />
+    <Compile Include="Generated Boards\ISA8 Ethernet\ISA8_Ethernet.GeneratedBoard.vb" />
+    <Compile Include="Generated Boards\ISA8 Ethernet\VmbGeneratedBoardRuntime.vb" />
+    <Compile Include="Motherboards\MotherboardCatalog.vb" />
+    <Compile Include="Motherboards\MotherboardRuntime.vb" />
+    <Compile Include="Motherboards\Common\MachineFabricContracts.vb" />
+    <Compile Include="Processors\Common\ProcessorPackageContracts.vb" />
+    <Compile Include="Processors\Common\DeterministicSiliconWorkerPool.vb" />
+    <Compile Include="Processors\80486\Intel486IntegratedFpu.vb" />
+    <Compile Include="Processors\80486\Intel486Mmu.vb" />
+    <Compile Include="Processors\80486\Intel486ExecutionTypes.vb" />
+    <Compile Include="Processors\80486\Intel486ExecutionEngine.vb" />
+    <Compile Include="Processors\80486\Intel486Dx2.vb" />
+    <Compile Include="Motherboards\QDI V4P895P3\Opti895Chipset486.vb" />
+    <Compile Include="HardwarePopulation.vb" />
+    <Compile Include="IsaCardJumperPanels.vb" />
+    <Compile Include="IsaBackplane.vb" />
+    <Compile Include="SystemConfigurationDrawer.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="FrontPanelState.vb" />
+    <Compile Include="ChassisPanelForm.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="SneakerNet.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Math Coprocessors\Intel 80287\Intel80287.vb" />
+    <Compile Include="Math Coprocessors\NumericCoprocessorCatalog286.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PcSpeakerAudio.vb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="MediaWorkbenchSupport.vb" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MeltySynth" Version="2.4.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="Hardware\Board Script\BoardScriptModel.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptLexer.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptParser.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptCatalog.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptWorkers.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptCompiler.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptRuntimeAdapter.vb" />
+    <Compile Include="Hardware\Board Script\BoardScriptCli.vb" />
+    <Compile Include="Hardware\Chipsets\Headland\HT12\HeadlandHt12.vb" />
+    <Compile Include="Hardware\Chipsets\Headland\HT12\Ht12MemoryFabric.vb" />
+    <Compile Include="Hardware\Support Chips\RTC\Hualon HM6818\Hm6818Rtc.vb" />
+    <Compile Include="Motherboards\Octek\FOX II 286 Rev 3.2\FoxII286Rev32Board.vb" />
+    <Compile Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\CtNeatBoardScriptWorkers.vb" />
+    <Content Include="Hardware\Chipsets\Headland\HT12\PARTS-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Hardware\Chipsets\Headland\HT12\WORKER-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Firmware\octek-fox-ii-286-rev3-2.rom" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\PARTS-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Hardware\Chipsets\Chips and Technologies\CS8221 NEAT\WORKER-METADATA.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="Board Scripts\Samples\*.bs" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

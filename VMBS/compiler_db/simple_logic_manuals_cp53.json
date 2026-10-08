@@ -1,0 +1,5 @@
+{"format":"VMBS-COMPONENT-EVIDENCE-1","checkpoint":"CP53","scope":"simple tri-state and AOI glue","parts":[
+{"module_id":"VMB.LOGIC.74XX125","documented_variant":"SN74LS125A","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/product/SN74LS125A","facts":{"function":"quad non-inverting bus buffer","output":"3-state","control":"separate active-low enable per channel","supply_v_min":4.75,"supply_v_max":5.25,"operating_c_min":0,"operating_c_max":70}},
+{"module_id":"VMB.LOGIC.74XX126","documented_variant":"SN74LS126A","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/product/SN74LS126A","facts":{"function":"quad non-inverting bus buffer","output":"3-state","control":"separate active-high enable per channel","supply_v_min":4.75,"supply_v_max":5.25,"operating_c_min":0,"operating_c_max":70}},
+{"module_id":"VMB.LOGIC.74XX51","documented_variant":"SN74LS51","manufacturer":"Texas Instruments","primary_url":"https://www.ti.com/product/SN74LS51","facts":{"function":"dual AND-OR-INVERT gate","technology":"LS TTL"}}
+]}

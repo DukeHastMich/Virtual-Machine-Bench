@@ -1,0 +1,13 @@
+{
+  "schema": "vmb.worker-metadata/1",
+  "bindings": [
+    {
+      "part_id": "headland-ht12-a",
+      "worker_id": "headland.ht12-a",
+      "physical_pin_map_complete": false,
+      "footprint_known": false,
+      "pins": []
+    }
+  ],
+  "notes": "The HT12/A behavior worker is real and reusable. Exact package pin map and fabrication footprint remain evidence-gated, so physical manufacturing validation must not pass yet."
+}

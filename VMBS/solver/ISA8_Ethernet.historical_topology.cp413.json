@@ -1,0 +1,5936 @@
+{
+  "grid_mm": 1.27,
+  "bounds": [
+    80,
+    47,
+    162,
+    106
+  ],
+  "net_count": 134,
+  "connected_net_count": 7,
+  "unresolved_net_count": 127,
+  "evidence_gap_count": 212,
+  "nets": [
+    {
+      "net": "/A0",
+      "copper_state_count": 202,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "31",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "62",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "12",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "5",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A0",
+          "ref": "J2",
+          "pad": "31"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A0",
+          "ref": "U2",
+          "pad": "12"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A0",
+          "ref": "U1",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "/A1",
+      "copper_state_count": 210,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "29",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "61",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "11",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "7",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A1",
+          "ref": "J2",
+          "pad": "29"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A1",
+          "ref": "U2",
+          "pad": "11"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A1",
+          "ref": "U1",
+          "pad": "7"
+        }
+      ]
+    },
+    {
+      "net": "/A10",
+      "copper_state_count": 225,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "26",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "52",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "23",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "18",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A10",
+          "ref": "J2",
+          "pad": "26"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A10",
+          "ref": "U2",
+          "pad": "23"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A10",
+          "ref": "U1",
+          "pad": "18"
+        }
+      ]
+    },
+    {
+      "net": "/A11",
+      "copper_state_count": 225,
+      "component_count": 2,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "22",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "51",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "25",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "19",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A11",
+          "ref": "J2",
+          "pad": "22"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A11",
+          "ref": "U2",
+          "pad": "25"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A11",
+          "ref": "U1",
+          "pad": "19"
+        }
+      ]
+    },
+    {
+      "net": "/A12",
+      "copper_state_count": 236,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "15",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "50",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "4",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "20",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A12",
+          "ref": "J2",
+          "pad": "15"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A12",
+          "ref": "U2",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A12",
+          "ref": "U1",
+          "pad": "20"
+        }
+      ]
+    },
+    {
+      "net": "/A13",
+      "copper_state_count": 242,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "16",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "49",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "28",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "21",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A13",
+          "ref": "J2",
+          "pad": "16"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A13",
+          "ref": "U2",
+          "pad": "28"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A13",
+          "ref": "U1",
+          "pad": "21"
+        }
+      ]
+    },
+    {
+      "net": "/A14",
+      "copper_state_count": 88,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "48",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "22",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A14",
+          "ref": "U1",
+          "pad": "22"
+        }
+      ]
+    },
+    {
+      "net": "/A15",
+      "copper_state_count": 80,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "47",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "23",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A15",
+          "ref": "U1",
+          "pad": "23"
+        }
+      ]
+    },
+    {
+      "net": "/A16",
+      "copper_state_count": 77,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "46",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "24",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A16",
+          "ref": "U1",
+          "pad": "24"
+        }
+      ]
+    },
+    {
+      "net": "/A17",
+      "copper_state_count": 74,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "45",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "25",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A17",
+          "ref": "U1",
+          "pad": "25"
+        }
+      ]
+    },
+    {
+      "net": "/A18",
+      "copper_state_count": 68,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "44",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "26",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A18",
+          "ref": "U1",
+          "pad": "26"
+        }
+      ]
+    },
+    {
+      "net": "/A19",
+      "copper_state_count": 68,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "43",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "27",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A19",
+          "ref": "U1",
+          "pad": "27"
+        }
+      ]
+    },
+    {
+      "net": "/A2",
+      "copper_state_count": 212,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "27",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "60",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "10",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "8",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A2",
+          "ref": "J2",
+          "pad": "27"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A2",
+          "ref": "U2",
+          "pad": "10"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A2",
+          "ref": "U1",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "/A3",
+      "copper_state_count": 216,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "25",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "59",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "9",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "9",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A3",
+          "ref": "J2",
+          "pad": "25"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A3",
+          "ref": "U2",
+          "pad": "9"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A3",
+          "ref": "U1",
+          "pad": "9"
+        }
+      ]
+    },
+    {
+      "net": "/A4",
+      "copper_state_count": 222,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "23",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "58",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "8",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "10",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A4",
+          "ref": "J2",
+          "pad": "23"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A4",
+          "ref": "U2",
+          "pad": "8"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A4",
+          "ref": "U1",
+          "pad": "10"
+        }
+      ]
+    },
+    {
+      "net": "/A5",
+      "copper_state_count": 225,
+      "component_count": 3,
+      "pad_count": 4,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "21",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "57",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "7",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "11",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A5",
+          "ref": "U2",
+          "pad": "7"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A5",
+          "ref": "U1",
+          "pad": "11"
+        }
+      ]
+    },
+    {
+      "net": "/A6",
+      "copper_state_count": 234,
+      "component_count": 3,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "19",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "56",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "6",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "12",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A6",
+          "ref": "J2",
+          "pad": "19"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A6",
+          "ref": "U2",
+          "pad": "6"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A6",
+          "ref": "U1",
+          "pad": "12"
+        }
+      ]
+    },
+    {
+      "net": "/A7",
+      "copper_state_count": 238,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "17",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "55",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "5",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "13",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A7",
+          "ref": "J2",
+          "pad": "17"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A7",
+          "ref": "U2",
+          "pad": "5"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A7",
+          "ref": "U1",
+          "pad": "13"
+        }
+      ]
+    },
+    {
+      "net": "/A8",
+      "copper_state_count": 244,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "18",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "54",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "27",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "15",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A8",
+          "ref": "J2",
+          "pad": "18"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A8",
+          "ref": "U2",
+          "pad": "27"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A8",
+          "ref": "U1",
+          "pad": "15"
+        }
+      ]
+    },
+    {
+      "net": "/A9",
+      "copper_state_count": 236,
+      "component_count": 3,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "20",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "53",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "26",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "16",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A9",
+          "ref": "J2",
+          "pad": "20"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A9",
+          "ref": "U2",
+          "pad": "26"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/A9",
+          "ref": "U1",
+          "pad": "16"
+        }
+      ]
+    },
+    {
+      "net": "/AEN",
+      "copper_state_count": 99,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "42",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "34",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/AEN",
+          "ref": "U1",
+          "pad": "34"
+        }
+      ]
+    },
+    {
+      "net": "/AUI",
+      "copper_state_count": 35,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "64",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN4",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/AUI",
+          "ref": "U1",
+          "pad": "64"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/AUI",
+          "ref": "RN4",
+          "pad": "1"
+        }
+      ]
+    },
+    {
+      "net": "/BA14",
+      "copper_state_count": 115,
+      "component_count": 4,
+      "pad_count": 3,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "14",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "29",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "74",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA14",
+          "ref": "J2",
+          "pad": "14"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA14",
+          "ref": "U2",
+          "pad": "29"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA14",
+          "ref": "U1",
+          "pad": "74"
+        }
+      ]
+    },
+    {
+      "net": "/BA15",
+      "copper_state_count": 125,
+      "component_count": 4,
+      "pad_count": 3,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "13",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "3",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "73",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA15",
+          "ref": "J2",
+          "pad": "13"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA15",
+          "ref": "U2",
+          "pad": "3"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA15",
+          "ref": "U1",
+          "pad": "73"
+        }
+      ]
+    },
+    {
+      "net": "/BA16",
+      "copper_state_count": 166,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "11",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "2",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "72",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN4",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA16",
+          "ref": "J2",
+          "pad": "11"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA16",
+          "ref": "U2",
+          "pad": "2"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA16",
+          "ref": "U1",
+          "pad": "72"
+        }
+      ]
+    },
+    {
+      "net": "/BA17",
+      "copper_state_count": 180,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "12",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "30",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN3",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "71",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA17",
+          "ref": "J2",
+          "pad": "12"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA17",
+          "ref": "U2",
+          "pad": "30"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA17",
+          "ref": "RN3",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA17",
+          "ref": "U1",
+          "pad": "71"
+        }
+      ]
+    },
+    {
+      "net": "/BA18",
+      "copper_state_count": 174,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "9",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "1",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN3",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "69",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA18",
+          "ref": "J2",
+          "pad": "9"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA18",
+          "ref": "U2",
+          "pad": "1"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA18",
+          "ref": "U1",
+          "pad": "69"
+        }
+      ]
+    },
+    {
+      "net": "/BA19",
+      "copper_state_count": 177,
+      "component_count": 3,
+      "pad_count": 3,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "8",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN3",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "68",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA19",
+          "ref": "J2",
+          "pad": "8"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA19",
+          "ref": "U1",
+          "pad": "68"
+        }
+      ]
+    },
+    {
+      "net": "/BA20",
+      "copper_state_count": 174,
+      "component_count": 3,
+      "pad_count": 3,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "6",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN3",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "67",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA20",
+          "ref": "J2",
+          "pad": "6"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA20",
+          "ref": "RN3",
+          "pad": "1"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA20",
+          "ref": "U1",
+          "pad": "67"
+        }
+      ]
+    },
+    {
+      "net": "/BA21",
+      "copper_state_count": 145,
+      "component_count": 3,
+      "pad_count": 3,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "4",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN1",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "66",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA21",
+          "ref": "J2",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BA21",
+          "ref": "U1",
+          "pad": "66"
+        }
+      ]
+    },
+    {
+      "net": "/BD0",
+      "copper_state_count": 174,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "33",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "13",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN2",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "85",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD0",
+          "ref": "J2",
+          "pad": "33"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD0",
+          "ref": "U2",
+          "pad": "13"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD0",
+          "ref": "RN2",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD0",
+          "ref": "U1",
+          "pad": "85"
+        }
+      ]
+    },
+    {
+      "net": "/BD1",
+      "copper_state_count": 176,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "35",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "14",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN2",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "84",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD1",
+          "ref": "J2",
+          "pad": "35"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD1",
+          "ref": "U2",
+          "pad": "14"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD1",
+          "ref": "U1",
+          "pad": "84"
+        }
+      ]
+    },
+    {
+      "net": "/BD2",
+      "copper_state_count": 164,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "37",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "15",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN2",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "82",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD2",
+          "ref": "J2",
+          "pad": "37"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD2",
+          "ref": "U2",
+          "pad": "15"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD2",
+          "ref": "U1",
+          "pad": "82"
+        }
+      ]
+    },
+    {
+      "net": "/BD3",
+      "copper_state_count": 165,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "38",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "17",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "81",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD3",
+          "ref": "J2",
+          "pad": "38"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD3",
+          "ref": "U2",
+          "pad": "17"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD3",
+          "ref": "RN2",
+          "pad": "1"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD3",
+          "ref": "U1",
+          "pad": "81"
+        }
+      ]
+    },
+    {
+      "net": "/BD4",
+      "copper_state_count": 116,
+      "component_count": 4,
+      "pad_count": 3,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "36",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "18",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "80",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD4",
+          "ref": "J2",
+          "pad": "36"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD4",
+          "ref": "U2",
+          "pad": "18"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD4",
+          "ref": "U1",
+          "pad": "80"
+        }
+      ]
+    },
+    {
+      "net": "/BD5",
+      "copper_state_count": 173,
+      "component_count": 5,
+      "pad_count": 5,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "34",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "19",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U3",
+          "pad": "2",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN1",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "79",
+          "components": [
+            4
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD5",
+          "ref": "J2",
+          "pad": "34"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD5",
+          "ref": "U2",
+          "pad": "19"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD5",
+          "ref": "U3",
+          "pad": "2"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD5",
+          "ref": "RN1",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD5",
+          "ref": "U1",
+          "pad": "79"
+        }
+      ]
+    },
+    {
+      "net": "/BD6",
+      "copper_state_count": 155,
+      "component_count": 5,
+      "pad_count": 5,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "32",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "20",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U3",
+          "pad": "3",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "RN1",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "78",
+          "components": [
+            4
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD6",
+          "ref": "J2",
+          "pad": "32"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD6",
+          "ref": "U2",
+          "pad": "20"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD6",
+          "ref": "U3",
+          "pad": "3"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD6",
+          "ref": "U1",
+          "pad": "78"
+        }
+      ]
+    },
+    {
+      "net": "/BD7",
+      "copper_state_count": 126,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "30",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "21",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U3",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "77",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD7",
+          "ref": "J2",
+          "pad": "30"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD7",
+          "ref": "U2",
+          "pad": "21"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD7",
+          "ref": "U3",
+          "pad": "4"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/BD7",
+          "ref": "U1",
+          "pad": "77"
+        }
+      ]
+    },
+    {
+      "net": "/D0",
+      "copper_state_count": 103,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "40",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "36",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D0",
+          "ref": "U1",
+          "pad": "36"
+        }
+      ]
+    },
+    {
+      "net": "/D1",
+      "copper_state_count": 101,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "39",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "37",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D1",
+          "ref": "U1",
+          "pad": "37"
+        }
+      ]
+    },
+    {
+      "net": "/D2",
+      "copper_state_count": 101,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "38",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "38",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D2",
+          "ref": "U1",
+          "pad": "38"
+        }
+      ]
+    },
+    {
+      "net": "/D3",
+      "copper_state_count": 100,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "37",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "39",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D3",
+          "ref": "U1",
+          "pad": "39"
+        }
+      ]
+    },
+    {
+      "net": "/D4",
+      "copper_state_count": 101,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "36",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "40",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D4",
+          "ref": "U1",
+          "pad": "40"
+        }
+      ]
+    },
+    {
+      "net": "/D5",
+      "copper_state_count": 101,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "35",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "41",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D5",
+          "ref": "U1",
+          "pad": "41"
+        }
+      ]
+    },
+    {
+      "net": "/D6",
+      "copper_state_count": 104,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "34",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "42",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D6",
+          "ref": "U1",
+          "pad": "42"
+        }
+      ]
+    },
+    {
+      "net": "/D7",
+      "copper_state_count": 107,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "33",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "43",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/D7",
+          "ref": "U1",
+          "pad": "43"
+        }
+      ]
+    },
+    {
+      "net": "/EECS",
+      "copper_state_count": 56,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U3",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "76",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/EECS",
+          "ref": "U1",
+          "pad": "76"
+        }
+      ]
+    },
+    {
+      "net": "/IOCHRDY",
+      "copper_state_count": 97,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "41",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "35",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/IOCHRDY",
+          "ref": "U1",
+          "pad": "35"
+        }
+      ]
+    },
+    {
+      "net": "/IRQ3",
+      "copper_state_count": 115,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "25",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "3",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/IRQ3",
+          "ref": "U1",
+          "pad": "3"
+        }
+      ]
+    },
+    {
+      "net": "/IRQ4",
+      "copper_state_count": 103,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "24",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "2",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/IRQ4",
+          "ref": "U1",
+          "pad": "2"
+        }
+      ]
+    },
+    {
+      "net": "/IRQ5",
+      "copper_state_count": 100,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "23",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "1",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/IRQ5",
+          "ref": "U1",
+          "pad": "1"
+        }
+      ]
+    },
+    {
+      "net": "/IRQ9",
+      "copper_state_count": 105,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "4",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/IRQ9",
+          "ref": "U1",
+          "pad": "4"
+        }
+      ]
+    },
+    {
+      "net": "/JP",
+      "copper_state_count": 64,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "65",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/JP",
+          "ref": "U1",
+          "pad": "65"
+        }
+      ]
+    },
+    {
+      "net": "/LED_CRS",
+      "copper_state_count": 122,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R3",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "62",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/LED_CRS",
+          "ref": "U1",
+          "pad": "62"
+        }
+      ]
+    },
+    {
+      "net": "/LED_LINK",
+      "copper_state_count": 107,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R2",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "61",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/LED_LINK",
+          "ref": "U1",
+          "pad": "61"
+        }
+      ]
+    },
+    {
+      "net": "/RSTDRV",
+      "copper_state_count": 88,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "33",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/RSTDRV",
+          "ref": "U1",
+          "pad": "33"
+        }
+      ]
+    },
+    {
+      "net": "/TP_RX+",
+      "copper_state_count": 116,
+      "component_count": 3,
+      "pad_count": 3,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "59",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J1",
+          "pad": "R3",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_RX+",
+          "ref": "U1",
+          "pad": "59"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_RX+",
+          "ref": "J1",
+          "pad": "R3"
+        }
+      ]
+    },
+    {
+      "net": "/TP_RX-",
+      "copper_state_count": 100,
+      "component_count": 3,
+      "pad_count": 3,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R1",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "58",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J1",
+          "pad": "R6",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_RX-",
+          "ref": "U1",
+          "pad": "58"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_RX-",
+          "ref": "J1",
+          "pad": "R6"
+        }
+      ]
+    },
+    {
+      "net": "/TP_TX+",
+      "copper_state_count": 59,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "45",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J1",
+          "pad": "R1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_TX+",
+          "ref": "U1",
+          "pad": "45"
+        }
+      ]
+    },
+    {
+      "net": "/TP_TX-",
+      "copper_state_count": 56,
+      "component_count": 3,
+      "pad_count": 2,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "46",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J1",
+          "pad": "R2",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_TX-",
+          "ref": "U1",
+          "pad": "46"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/TP_TX-",
+          "ref": "J1",
+          "pad": "R2"
+        }
+      ]
+    },
+    {
+      "net": "/~BCS",
+      "copper_state_count": 122,
+      "component_count": 4,
+      "pad_count": 3,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "28",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U2",
+          "pad": "22",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "75",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~BCS",
+          "ref": "J2",
+          "pad": "28"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~BCS",
+          "ref": "U2",
+          "pad": "22"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~BCS",
+          "ref": "U1",
+          "pad": "75"
+        }
+      ]
+    },
+    {
+      "net": "/~IOCS16",
+      "copper_state_count": 17,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R6",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "96",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~IOCS16",
+          "ref": "U1",
+          "pad": "96"
+        }
+      ]
+    },
+    {
+      "net": "/~IOR",
+      "copper_state_count": 87,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "14",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "29",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~IOR",
+          "ref": "U1",
+          "pad": "29"
+        }
+      ]
+    },
+    {
+      "net": "/~IOW",
+      "copper_state_count": 82,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "13",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "30",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~IOW",
+          "ref": "U1",
+          "pad": "30"
+        }
+      ]
+    },
+    {
+      "net": "/~SMEMR",
+      "copper_state_count": 260,
+      "component_count": 3,
+      "pad_count": 4,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "24",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "12",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "24",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "31",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~SMEMR",
+          "ref": "J2",
+          "pad": "24"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~SMEMR",
+          "ref": "U1",
+          "pad": "31"
+        }
+      ]
+    },
+    {
+      "net": "/~SMEMW",
+      "copper_state_count": 291,
+      "component_count": 4,
+      "pad_count": 4,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "10",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "11",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "31",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "32",
+          "components": [
+            3
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~SMEMW",
+          "ref": "J2",
+          "pad": "10"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~SMEMW",
+          "ref": "U2",
+          "pad": "31"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "/~SMEMW",
+          "ref": "U1",
+          "pad": "32"
+        }
+      ]
+    },
+    {
+      "net": "GND",
+      "copper_state_count": 2655,
+      "component_count": 3,
+      "pad_count": 46,
+      "pads_touching_copper": 41,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "40",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J2",
+          "pad": "39",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "10",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "31",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "16",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "HOLE2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "5",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C3",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C4",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C5",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C6",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C7",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C8",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R6",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "14",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "28",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "44",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "52",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "83",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "86",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "13",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C9",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C10",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "GND",
+          "ref": "U2",
+          "pad": "16"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "GND",
+          "ref": "U3",
+          "pad": "5"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "GND",
+          "ref": "U1",
+          "pad": "14"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "GND",
+          "ref": "U1",
+          "pad": "28"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "GND",
+          "ref": "RN4",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad15)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "15",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad15)",
+          "ref": "BUS1",
+          "pad": "15"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad16)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "16",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad16)",
+          "ref": "BUS1",
+          "pad": "16"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad17)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "17",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad17)",
+          "ref": "BUS1",
+          "pad": "17"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad18)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "18",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad18)",
+          "ref": "BUS1",
+          "pad": "18"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad19)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "19",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad19)",
+          "ref": "BUS1",
+          "pad": "19"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad20)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "20",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad20)",
+          "ref": "BUS1",
+          "pad": "20"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad21)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "21",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad21)",
+          "ref": "BUS1",
+          "pad": "21"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad22)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "22",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad22)",
+          "ref": "BUS1",
+          "pad": "22"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad26)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "26",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad26)",
+          "ref": "BUS1",
+          "pad": "26"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad27)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "27",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad27)",
+          "ref": "BUS1",
+          "pad": "27"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad28)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "28",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad28)",
+          "ref": "BUS1",
+          "pad": "28"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad30)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "30",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad30)",
+          "ref": "BUS1",
+          "pad": "30"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad32)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "32",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad32)",
+          "ref": "BUS1",
+          "pad": "32"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad5)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad5)",
+          "ref": "BUS1",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad6)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad6)",
+          "ref": "BUS1",
+          "pad": "6"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad7)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad7)",
+          "ref": "BUS1",
+          "pad": "7"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad8)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad8)",
+          "ref": "BUS1",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "Net-(BUS1-Pad9)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "BUS1",
+          "pad": "9",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(BUS1-Pad9)",
+          "ref": "BUS1",
+          "pad": "9"
+        }
+      ]
+    },
+    {
+      "net": "Net-(C1-Pad2)",
+      "copper_state_count": 37,
+      "component_count": 2,
+      "pad_count": 4,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "Y1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C1",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R7",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "50",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C1-Pad2)",
+          "ref": "Y1",
+          "pad": "1"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C1-Pad2)",
+          "ref": "U1",
+          "pad": "50"
+        }
+      ]
+    },
+    {
+      "net": "Net-(C2-Pad2)",
+      "copper_state_count": 50,
+      "component_count": 3,
+      "pad_count": 4,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "Y1",
+          "pad": "2",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C2",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "R7",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "51",
+          "components": [
+            2
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C2-Pad2)",
+          "ref": "Y1",
+          "pad": "2"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C2-Pad2)",
+          "ref": "U1",
+          "pad": "51"
+        }
+      ]
+    },
+    {
+      "net": "Net-(C3-Pad1)",
+      "copper_state_count": 17,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "C3",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R4",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C3-Pad1)",
+          "ref": "J1",
+          "pad": "R4"
+        }
+      ]
+    },
+    {
+      "net": "Net-(C4-Pad1)",
+      "copper_state_count": 32,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "C4",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "R5",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(C4-Pad1)",
+          "ref": "J1",
+          "pad": "R5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J1-PadL2)",
+      "copper_state_count": 26,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R3",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L2",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J1-PadL2)",
+          "ref": "J1",
+          "pad": "L2"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J1-PadL3)",
+      "copper_state_count": 41,
+      "component_count": 2,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "R2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L3",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J1-PadL3)",
+          "ref": "J1",
+          "pad": "L3"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J1-PadR7)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J1",
+          "pad": "R7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J1-PadR7)",
+          "ref": "J1",
+          "pad": "R7"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J2-Pad3)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J2-Pad3)",
+          "ref": "J2",
+          "pad": "3"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J2-Pad5)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J2-Pad5)",
+          "ref": "J2",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(J2-Pad7)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(J2-Pad7)",
+          "ref": "J2",
+          "pad": "7"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN1-Pad5)",
+      "copper_state_count": 19,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW2",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN1-Pad5)",
+          "ref": "RN1",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN1-Pad6)",
+      "copper_state_count": 17,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN1-Pad7)",
+      "copper_state_count": 17,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW1",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN1-Pad8)",
+      "copper_state_count": 19,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW1",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN1",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN1-Pad8)",
+          "ref": "RN1",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN2-Pad5)",
+      "copper_state_count": 37,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN2-Pad5)",
+          "ref": "RN2",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN2-Pad6)",
+      "copper_state_count": 35,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN2-Pad7)",
+      "copper_state_count": 29,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN2-Pad8)",
+      "copper_state_count": 26,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW3",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN2",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN2-Pad8)",
+          "ref": "RN2",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN3-Pad5)",
+      "copper_state_count": 35,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN3-Pad5)",
+          "ref": "RN3",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN3-Pad6)",
+      "copper_state_count": 34,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN3-Pad7)",
+      "copper_state_count": 31,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(RN3-Pad8)",
+      "copper_state_count": 26,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 1,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN3",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN3-Pad8)",
+          "ref": "RN3",
+          "pad": "8"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN4-Pad3)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN4-Pad3)",
+          "ref": "RN4",
+          "pad": "3"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN4-Pad4)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN4-Pad4)",
+          "ref": "RN4",
+          "pad": "4"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN4-Pad5)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN4-Pad5)",
+          "ref": "RN4",
+          "pad": "5"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN4-Pad6)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "RN4",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(RN4-Pad6)",
+          "ref": "RN4",
+          "pad": "6"
+        }
+      ]
+    },
+    {
+      "net": "Net-(RN4-Pad7)",
+      "copper_state_count": 64,
+      "component_count": 1,
+      "pad_count": 2,
+      "pads_touching_copper": 2,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "CONNECTED",
+      "contacts": [
+        {
+          "ref": "SW4",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "RN4",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": []
+    },
+    {
+      "net": "Net-(U1-Pad100)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "100",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad100)",
+          "ref": "U1",
+          "pad": "100"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad48)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "48",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad48)",
+          "ref": "U1",
+          "pad": "48"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad49)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "49",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad49)",
+          "ref": "U1",
+          "pad": "49"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad53)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "53",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad53)",
+          "ref": "U1",
+          "pad": "53"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad54)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "54",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad54)",
+          "ref": "U1",
+          "pad": "54"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad55)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "55",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad55)",
+          "ref": "U1",
+          "pad": "55"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad56)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "56",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad56)",
+          "ref": "U1",
+          "pad": "56"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad60)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "60",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad60)",
+          "ref": "U1",
+          "pad": "60"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad63)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "63",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad63)",
+          "ref": "U1",
+          "pad": "63"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad87)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "87",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad87)",
+          "ref": "U1",
+          "pad": "87"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad88)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "88",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad88)",
+          "ref": "U1",
+          "pad": "88"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad90)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "90",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad90)",
+          "ref": "U1",
+          "pad": "90"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad91)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "91",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad91)",
+          "ref": "U1",
+          "pad": "91"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad92)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "92",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad92)",
+          "ref": "U1",
+          "pad": "92"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad93)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "93",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad93)",
+          "ref": "U1",
+          "pad": "93"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad94)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "94",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad94)",
+          "ref": "U1",
+          "pad": "94"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad95)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "95",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad95)",
+          "ref": "U1",
+          "pad": "95"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad97)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "97",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad97)",
+          "ref": "U1",
+          "pad": "97"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad98)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "98",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad98)",
+          "ref": "U1",
+          "pad": "98"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U1-Pad99)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U1",
+          "pad": "99",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U1-Pad99)",
+          "ref": "U1",
+          "pad": "99"
+        }
+      ]
+    },
+    {
+      "net": "Net-(U3-Pad7)",
+      "copper_state_count": 0,
+      "component_count": 1,
+      "pad_count": 1,
+      "pads_touching_copper": 0,
+      "touched_component_count": 0,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "U3",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "Net-(U3-Pad7)",
+          "ref": "U3",
+          "pad": "7"
+        }
+      ]
+    },
+    {
+      "net": "VCC",
+      "copper_state_count": 1520,
+      "component_count": 2,
+      "pad_count": 34,
+      "pads_touching_copper": 27,
+      "touched_component_count": 1,
+      "historical_pad_connectivity": "UNRESOLVED",
+      "contacts": [
+        {
+          "ref": "J2",
+          "pad": "2",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J2",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "BUS1",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "BUS1",
+          "pad": "29",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "10",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "9",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW4",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "7",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW3",
+          "pad": "5",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW2",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW2",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW1",
+          "pad": "4",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "SW1",
+          "pad": "3",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U2",
+          "pad": "32",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U3",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U3",
+          "pad": "8",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C5",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C6",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C7",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C8",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "6",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "17",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "47",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "U1",
+          "pad": "57",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "70",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "U1",
+          "pad": "89",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "J1",
+          "pad": "L1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "J1",
+          "pad": "L4",
+          "components": [
+            1
+          ],
+          "touches_explicit_copper": false
+        },
+        {
+          "ref": "C9",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        },
+        {
+          "ref": "C10",
+          "pad": "1",
+          "components": [
+            0
+          ],
+          "touches_explicit_copper": true
+        }
+      ],
+      "evidence_gaps": [
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "J2",
+          "pad": "2"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "J2",
+          "pad": "1"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "U3",
+          "pad": "6"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "U3",
+          "pad": "8"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "U1",
+          "pad": "47"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "U1",
+          "pad": "89"
+        },
+        {
+          "code": "TITS_UP_PAD_NOT_CONNECTED_TO_EXPLICIT_COPPER",
+          "net": "VCC",
+          "ref": "J1",
+          "pad": "L4"
+        }
+      ]
+    }
+  ],
+  "state": "TITS_UP",
+  "digest": "e7e161122a17b3c72766a41c516d01490f203a1c68502cfda3d2fdb5b92cb061"
+}

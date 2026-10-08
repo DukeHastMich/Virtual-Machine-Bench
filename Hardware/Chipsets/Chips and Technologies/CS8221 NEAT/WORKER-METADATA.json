@@ -1,0 +1,55 @@
+{
+  "schema": "vmb.worker-metadata/1",
+  "bindings": [
+    {
+      "part_id": "ct-82c211",
+      "worker_id": "ct.neat.82c211",
+      "physical_pin_map_complete": false,
+      "footprint_known": false,
+      "pins": [
+        {"name":"PROCCLK","number":2,"direction":"out"},
+        {"name":"RESET4","number":38,"direction":"out"},
+        {"name":"HLDA1","number":40,"direction":"out"},
+        {"name":"PAR_ERR","number":11,"direction":"in"},
+        {"name":"ACEN","number":47,"direction":"out"}
+      ]
+    },
+    {
+      "part_id": "ct-82c212",
+      "worker_id": "ct.neat.82c212",
+      "physical_pin_map_complete": false,
+      "footprint_known": false,
+      "pins": [
+        {"name":"PROCCLK","number":83,"direction":"in"},
+        {"name":"RESET4","number":12,"direction":"in"},
+        {"name":"HLDA1","number":19,"direction":"in"},
+        {"name":"ROM_CS","number":13,"direction":"out"},
+        {"name":"DLE","number":45,"direction":"out"},
+        {"name":"DRD","number":33,"direction":"out"},
+        {"name":"GA20","number":31,"direction":"io"},
+        {"name":"GATEA20","number":30,"direction":"in"}
+      ]
+    },
+    {
+      "part_id": "ct-82c215",
+      "worker_id": "ct.neat.82c215",
+      "physical_pin_map_complete": false,
+      "footprint_known": false,
+      "pins": [
+        {"name":"ACEN","number":14,"direction":"in"},
+        {"name":"HLDA1","number":53,"direction":"in"},
+        {"name":"DLE","number":76,"direction":"in"},
+        {"name":"DRD","number":74,"direction":"in"},
+        {"name":"PAR_ERR","number":83,"direction":"out"}
+      ]
+    },
+    {
+      "part_id": "ct-82c206",
+      "worker_id": "ct.neat.82c206",
+      "physical_pin_map_complete": false,
+      "footprint_known": false,
+      "pins": []
+    }
+  ],
+  "notes": "This prototype captures only the pins used by the first Board Script conformance board. physical_pin_map_complete remains false until the complete selected-package pin map and footprint are entered."
+}

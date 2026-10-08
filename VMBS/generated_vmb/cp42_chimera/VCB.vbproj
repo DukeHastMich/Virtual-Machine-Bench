@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><TargetFramework>net8.0-windows</TargetFramework><RootNamespace></RootNamespace><OptionStrict>On</OptionStrict><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+<ItemGroup>
+  <Compile Include="GeneratedBoard.vb"/>
+  <Compile Include="modules/M0001_Microwire93Lc46c.vb"/>
+  <Compile Include="modules/M0002_Sst39Sf040.vb"/>
+  <Compile Include="modules/M0003_Rtl8019As.vb"/>
+<Reference Include="VirtualComputer.Modern"><HintPath>__VMB_REFERENCE__</HintPath><Private>false</Private></Reference>
+</ItemGroup>
+</Project>

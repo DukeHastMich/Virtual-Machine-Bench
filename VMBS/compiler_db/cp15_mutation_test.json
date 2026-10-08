@@ -1,0 +1,7 @@
+{
+  "test": "INTERFACE_LINK_FOLLOWS_TOPOLOGY",
+  "mutation": "U3 CS rewired from /EECS to GND",
+  "before_u1_u3_microwire_cs_link": true,
+  "after_u1_u3_microwire_cs_link": false,
+  "pass": true
+}

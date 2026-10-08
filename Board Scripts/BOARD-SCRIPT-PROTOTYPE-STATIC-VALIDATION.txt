@@ -1,0 +1,9 @@
+PASS grammar/catalog: Octek-FOX-II-286-Rev3.2.bs (5 components, 0 nets)
+PASS grammar/catalog: NEAT-CS8221-Reference.bs (4 components, 7 nets)
+PASS negative test: invented part rejected
+PASS NEAT sourced pin subset
+PASS FOX HT12 strap encoding: REG10=76h
+PASS split NEAT reset-surface parity with live worker
+PASS project Compile list: 75 unique entries
+PASS coarse VB type/module block-balance scan
+NOTE no dotnet/MSBuild/VBC toolchain present; this is not a compile claim

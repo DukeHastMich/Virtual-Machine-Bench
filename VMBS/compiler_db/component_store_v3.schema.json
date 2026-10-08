@@ -1,0 +1,162 @@
+{
+  "format": "VMBS-COMPONENT-STORE-SCHEMA-3",
+  "schema_version": 3,
+  "principles": {
+    "unknowns": "Unknown values remain absent/null/empty; migration never invents facts.",
+    "compatibility": "Legacy v2 fields remain readable during transition; v3 domains are additive.",
+    "evidence": "Facts and support-mesh edges may carry provenance/confidence independently.",
+    "programmed_state": "Programmable contents are separate from silicon identity. Simulation consumption and reverse physical delivery are independently explicit."
+  },
+  "domains": {
+    "identity": [
+      "part_id",
+      "display_name",
+      "class",
+      "manufacturer",
+      "manufacturer_part_number",
+      "aliases"
+    ],
+    "physical": [
+      "package",
+      "footprints",
+      "dimensions",
+      "orientation",
+      "mounting"
+    ],
+    "pins": [
+      "pins"
+    ],
+    "electrical": [
+      "electrical",
+      "timing",
+      "thermal"
+    ],
+    "interfaces": [
+      "interfaces"
+    ],
+    "support_mesh": [
+      "requirements",
+      "provides",
+      "alternatives",
+      "patterns"
+    ],
+    "implementation": [
+      "vmb_binding",
+      "behavior_model",
+      "electrical_model"
+    ],
+    "evidence": [
+      "sources",
+      "confidence"
+    ],
+    "rules": [
+      "validation_rules",
+      "synthesis_rules"
+    ],
+    "programmed_state": [
+      "programmed_state"
+    ]
+  },
+  "support_mesh_edge": {
+    "required": [
+      "relation",
+      "subject"
+    ],
+    "relation_examples": [
+      "requires",
+      "provides",
+      "permits",
+      "recommends",
+      "observed_with",
+      "alternative"
+    ],
+    "strength": [
+      "mandatory",
+      "recommended",
+      "reference",
+      "observed",
+      "inferred"
+    ],
+    "note": "No strength is promoted during migration without source evidence."
+  },
+  "support_mesh_contract": {
+    "version": 1,
+    "principle": "Parts declare requirements/provisions and evidence-backed reusable patterns; Circuit Chess solves the mesh. No board-specific recipe is implied.",
+    "edge_fields": {
+      "id": "stable local edge identifier",
+      "relation": [
+        "requires",
+        "provides",
+        "permits",
+        "recommends",
+        "observed_with",
+        "alternative"
+      ],
+      "subject": {
+        "kind": [
+          "capability",
+          "interface",
+          "signal",
+          "rail",
+          "clock",
+          "component",
+          "component_class",
+          "constraint"
+        ],
+        "name": "string"
+      },
+      "object": {
+        "kind": [
+          "capability",
+          "interface",
+          "signal",
+          "rail",
+          "clock",
+          "component",
+          "component_class",
+          "constraint"
+        ],
+        "name": "string"
+      },
+      "strength": [
+        "mandatory",
+        "recommended",
+        "reference",
+        "observed",
+        "inferred"
+      ],
+      "constraints": "structured values/ranges/units; absent means unspecified",
+      "evidence": "zero or more source references; inferred edges must say why",
+      "scope": [
+        "part",
+        "package",
+        "family",
+        "interface",
+        "pin",
+        "board_observation"
+      ]
+    },
+    "pattern_fields": {
+      "id": "stable pattern identifier",
+      "name": "human-readable name",
+      "purpose": "what requirement this pattern satisfies",
+      "participants": "typed roles, not specimen reference designators",
+      "edges": "relations between participant roles",
+      "constraints": "conditions under which the pattern is legal",
+      "strength": [
+        "mandatory",
+        "recommended",
+        "reference",
+        "observed",
+        "inferred"
+      ],
+      "evidence": "source references/provenance"
+    },
+    "anti_hardcoding": [
+      "Patterns use semantic roles, never motherboard/card reference designators.",
+      "Observed topology is not promoted to mandatory without manufacturer/electrical evidence.",
+      "Unknown support circuitry remains unknown and may keep synthesis TITS UP.",
+      "A part may expose multiple legal alternative patterns."
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "format": "VMBS-COMPONENT-STORE-SCHEMA-2",
+  "required_record_fields": [
+    "part_id",
+    "display_name",
+    "class",
+    "record_status",
+    "aliases",
+    "pins",
+    "interfaces",
+    "electrical",
+    "timing",
+    "thermal",
+    "support_requirements",
+    "vmb_binding",
+    "sources"
+  ],
+  "vmb_binding": {
+    "module_id": "string|null",
+    "resolution": "none|primitive|device",
+    "status": "string"
+  },
+  "fact_rule": "Unknown values remain absent/null; never infer unspecified manufacturer/tolerance/rating."
+}

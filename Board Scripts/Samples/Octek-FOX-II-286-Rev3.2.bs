@@ -1,0 +1,33 @@
+# VMB Board Script prototype
+# Logic-valid construction specimen; placement coordinates are rough board-space
+# anchors only and are NOT historical fabrication claims.
+board octek-fox-ii-286-rev3-2 {
+    title "Octek FOX II 286 Rev. 3.2 - Board Script prototype";
+    units mm;
+    outline 220 220;
+
+    component U_HT12 : headland-ht12-a {
+        place 78 92 rot 0 side top;
+        strap RamConfigurationCode = 6;
+        strap AtBusLowSpeed = false;
+        strap ZeroWaitMainMemory = true;
+        strap ExtraWaitStateMode = 3;
+        strap TcStrapHigh = false;
+    }
+
+    component U_CPU : amd-n80l286-16-s {
+        place 102 132 rot 0 side top;
+    }
+
+    component U_RTC : hualon-hm6818p {
+        place 118 201 rot 0 side top;
+    }
+
+    component U_ROM_E : eprom-27256-even {
+        place 132 104 rot 90 side top;
+    }
+
+    component U_ROM_O : eprom-27256-odd {
+        place 148 104 rot 90 side top;
+    }
+}

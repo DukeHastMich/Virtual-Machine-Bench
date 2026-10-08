@@ -1,0 +1,156 @@
+{
+  "schema": "vmb.parts-metadata/1",
+  "family_id": "headland-ht12-a",
+  "family_name": "Headland HT12/A 286 AT chipset family",
+  "generated_from": [
+    "Octek FOX II 286 Rev. 3.2 donor photograph",
+    "Octek FOX-II 286 12/16 MHz manual",
+    "Headland HT12 technical documentation",
+    "Generic HT12/Quadtel motherboard manual",
+    "VMB BIOS archaeology notes"
+  ],
+  "parts": [
+    {
+      "id": "headland-ht12-a",
+      "manufacturer": "Headland Technology",
+      "part_number": "HT12/A",
+      "observed_marking": "HT12/A",
+      "package": "160-pin flat package",
+      "role": "single-chip AT/286 system controller",
+      "scope": "chipset",
+      "evidence": ["chip-datasheet", "exact-board-photo"],
+      "notes": "Integrates AT bus control, dual DMA, dual PIC, PIT, memory controller, shadow/EMS, refresh/parity and related glue functions."
+    },
+    {
+      "id": "amd-n80l286-16-s",
+      "manufacturer": "AMD",
+      "part_number": "N80L286-16/S",
+      "package": "PLCC68",
+      "role": "80286-compatible CPU",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo"]
+    },
+    {
+      "id": "intel-80287-class",
+      "manufacturer": "Intel / compatible",
+      "part_number": "80287",
+      "package": "DIP40 socketed",
+      "role": "numeric coprocessor",
+      "scope": "board-supported",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual", "exact-board-photo"],
+      "notes": "FOX-II manual recommends 80287-10 for 16 MHz system and 80287-8 for 12 MHz system."
+    },
+    {
+      "id": "hualon-hm6818p",
+      "manufacturer": "Hualon Microelectronics",
+      "part_number": "HM6818P",
+      "compatibility": ["MC146818-compatible RTC/CMOS class"],
+      "role": "RTC/CMOS",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo", "family-datasheet"],
+      "notes": "Prior Hitachi attribution was corrected; Hitachi HD146818 is compatibility/reference material, not the observed FOX-II marking."
+    },
+    {
+      "id": "ami-8042-controller",
+      "manufacturer": "AMI-labelled; underlying silicon unresolved",
+      "part_number": null,
+      "observed_marking": "AMI keyboard BIOS/controller label",
+      "package": "DIP40",
+      "role": "8042-compatible keyboard controller",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo", "board-database"],
+      "confidence": "partial",
+      "notes": "Do not invent the underlying controller manufacturer/part number until sticker/ROM evidence resolves it."
+    },
+    {
+      "id": "eprom-27256-even",
+      "manufacturer": "various",
+      "part_number": "27256",
+      "package": "DIP28",
+      "role": "system BIOS EVEN byte lane",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual", "exact-board-photo", "rom-hash-match"]
+    },
+    {
+      "id": "eprom-27256-odd",
+      "manufacturer": "various",
+      "part_number": "27256",
+      "package": "DIP28",
+      "role": "system BIOS ODD byte lane",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual", "exact-board-photo", "rom-hash-match"]
+    },
+    {
+      "id": "dram-44256",
+      "manufacturer": "various",
+      "part_number": "44256",
+      "role": "256Kx4 DRAM data device",
+      "scope": "board-supported",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual"]
+    },
+    {
+      "id": "dram-41256",
+      "manufacturer": "various",
+      "part_number": "41256",
+      "role": "256Kx1 parity DRAM",
+      "scope": "board-supported",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual"]
+    },
+    {
+      "id": "dram-4464",
+      "manufacturer": "various",
+      "part_number": "4464",
+      "role": "64Kx4 DRAM data device for 640 KiB population case",
+      "scope": "board-supported",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual"]
+    },
+    {
+      "id": "dram-4164",
+      "manufacturer": "various",
+      "part_number": "4164",
+      "role": "64Kx1 parity DRAM for 640 KiB population case",
+      "scope": "board-supported",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["close-manual"]
+    },
+    {
+      "id": "oscillator-14-31818mhz",
+      "manufacturer": "unresolved",
+      "part_number": null,
+      "observed_marking": "14.31818 MHz",
+      "role": "system/reference oscillator",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo"]
+    },
+    {
+      "id": "oscillator-32mhz",
+      "manufacturer": "unresolved",
+      "part_number": null,
+      "observed_marking": "32.000000 MHz",
+      "role": "CPU/system clock source for 16 MHz configuration",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo"]
+    },
+    {
+      "id": "rtc-crystal-32-768khz",
+      "manufacturer": "unresolved",
+      "part_number": null,
+      "observed_marking": "32.768 kHz",
+      "role": "RTC crystal",
+      "scope": "board-specific",
+      "boards": ["octek-fox-ii-286-rev3.2"],
+      "evidence": ["exact-board-photo"]
+    }
+  ]
+}

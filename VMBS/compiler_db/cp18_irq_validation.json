@@ -1,0 +1,110 @@
+{
+  "irq_interface_links": [
+    {
+      "net_id": 35,
+      "net": "/IRQ9",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "ref": "U1",
+          "module_id": "VMB.NET.RTL8019AS",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "direction": "output",
+          "pad": "4"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "ref": "BUS1",
+          "platform": "ISA8",
+          "interface": "ISA8",
+          "signal": "IRQ9",
+          "pad": "4"
+        }
+      ]
+    },
+    {
+      "net_id": 51,
+      "net": "/IRQ5",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "ref": "U1",
+          "module_id": "VMB.NET.RTL8019AS",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "direction": "output",
+          "pad": "1"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "ref": "BUS1",
+          "platform": "ISA8",
+          "interface": "ISA8",
+          "signal": "IRQ5",
+          "pad": "23"
+        }
+      ]
+    },
+    {
+      "net_id": 52,
+      "net": "/IRQ4",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "ref": "U1",
+          "module_id": "VMB.NET.RTL8019AS",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "direction": "output",
+          "pad": "2"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "ref": "BUS1",
+          "platform": "ISA8",
+          "interface": "ISA8",
+          "signal": "IRQ4",
+          "pad": "24"
+        }
+      ]
+    },
+    {
+      "net_id": 53,
+      "net": "/IRQ3",
+      "endpoints": [
+        {
+          "kind": "MODULE_PIN",
+          "ref": "U1",
+          "module_id": "VMB.NET.RTL8019AS",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "direction": "output",
+          "pad": "3"
+        },
+        {
+          "kind": "PLATFORM_PIN",
+          "ref": "BUS1",
+          "platform": "ISA8",
+          "interface": "ISA8",
+          "signal": "IRQ3",
+          "pad": "25"
+        }
+      ]
+    }
+  ],
+  "decoded_irq_allowed": [
+    3,
+    4,
+    5,
+    9
+  ],
+  "physical_irq_paths": [
+    3,
+    4,
+    5,
+    9
+  ],
+  "hardware_complete": true,
+  "pass": true
+}

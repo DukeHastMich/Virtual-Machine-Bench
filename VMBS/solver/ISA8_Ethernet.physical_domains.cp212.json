@@ -1,0 +1,724 @@
+{
+  "format": "VMBS-PHYSICAL-DOMAIN-1",
+  "source_pcb": "/mnt/data/cp212/VMB/VMBS/upstream/isa8_eth/KiCad/ISA8_Ethernet.kicad_pcb",
+  "outline": {
+    "evidence": "KICAD_EDGE_CUTS",
+    "bbox_mm": [
+      101.6,
+      59.69,
+      205.74,
+      134.62
+    ],
+    "primitive_count": 11
+  },
+  "components": [
+    {
+      "ref": "J2",
+      "part_id": "629969201D8EA246454A3E638645E87A",
+      "footprint": "My_Components:Conn_Pin_Header_20x2_2.54mm",
+      "at_mm": [
+        106.68,
+        88.9,
+        270.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "BUS1",
+      "part_id": "5A2AC4F3283F9EC959B110FDC2FF1038",
+      "footprint": "My_Components:Conn_Edge_PCB_ISA8",
+      "at_mm": [
+        142.24,
+        130.4925,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "SW4",
+      "part_id": "8F857D68CF6D08FBA5C4A3D15E2705D9",
+      "footprint": "My_Components:Switch_DIP_5_Positions",
+      "at_mm": [
+        176.53,
+        66.04,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "SW3",
+      "part_id": "C55A3A9999D53A944814384EFFAA7122",
+      "footprint": "My_Components:Switch_DIP_4_Positions",
+      "at_mm": [
+        160.02,
+        66.04,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "SW2",
+      "part_id": "328141E1EF8F781E19DF04D2ECABC282",
+      "footprint": "My_Components:Switch_DIP_2_Positions",
+      "at_mm": [
+        147.32,
+        66.04,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "SW1",
+      "part_id": "84BF01AA0CAFBB5C00C6F1235C19ED70",
+      "footprint": "My_Components:Switch_DIP_2_Positions",
+      "at_mm": [
+        137.16,
+        66.04,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "Y1",
+      "part_id": "5E223850BB86D3DF73FABC4DAD213CAA",
+      "footprint": "My_Components:Crystal_HC-49U_Vert",
+      "at_mm": [
+        177.8,
+        86.36,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "U2",
+      "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+      "footprint": "My_Components:Socket_DIP32_600",
+      "at_mm": [
+        121.92,
+        91.44,
+        270.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "REF**",
+      "part_id": "5AAA7B8675077E25898261ECB9DD2583",
+      "footprint": "Symbol:OSHW-Logo_5.7x6mm_SilkScreen",
+      "at_mm": [
+        191.77,
+        117.475,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "REF**",
+      "part_id": "CF96DDC659D5B9A6183F0F5A18159CC5",
+      "footprint": "Symbol:KiCad-Logo2_5mm_SilkScreen",
+      "at_mm": [
+        191.77,
+        117.475,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "RN2",
+      "part_id": "1ACF747EA70EAAF365873D6EC00B5B64",
+      "footprint": "Resistor_SMD:R_Array_Convex_4x0603",
+      "at_mm": [
+        149.86,
+        74.93,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.55,
+        -1.85,
+        1.55,
+        1.85
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "HOLE1",
+      "part_id": "56B9B34218AD43344DB962BE03572ADB",
+      "footprint": "MountingHole:MountingHole_3.2mm_M3_Pad_Via",
+      "at_mm": [
+        201.041,
+        66.04,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "HOLE2",
+      "part_id": "56B9B34218AD43344DB962BE03572ADB",
+      "footprint": "MountingHole:MountingHole_3.2mm_M3_Pad_Via",
+      "at_mm": [
+        201.041,
+        122.555,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": null,
+      "courtyard_evidence": null,
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "U3",
+      "part_id": "BBF5502243066D8F17C8F57329479768",
+      "footprint": "Package_SO:SO-8_3.9x4.9mm_P1.27mm",
+      "at_mm": [
+        134.62,
+        88.9,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -3.7,
+        -2.7,
+        3.7,
+        2.7
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C1",
+      "part_id": "E290CAD4A78191B6F544A6B3C3E51D7A",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        172.72,
+        90.17,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C2",
+      "part_id": "E290CAD4A78191B6F544A6B3C3E51D7A",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        172.72,
+        82.55,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C3",
+      "part_id": "A6F2ACDBB2EDD8D831CC5413AAC1512E",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        181.9275,
+        92.71,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C4",
+      "part_id": "A6F2ACDBB2EDD8D831CC5413AAC1512E",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        190.8175,
+        82.55,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C5",
+      "part_id": "E36D0F0136382BE15A8D4D11F49DCBF6",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        167.64,
+        82.55,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C6",
+      "part_id": "E36D0F0136382BE15A8D4D11F49DCBF6",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        142.24,
+        110.49,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C7",
+      "part_id": "E36D0F0136382BE15A8D4D11F49DCBF6",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        127.0,
+        69.215,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C8",
+      "part_id": "E36D0F0136382BE15A8D4D11F49DCBF6",
+      "footprint": "Capacitor_SMD:C_0603_1608Metric_Pad1.08x0.95mm_HandSolder",
+      "at_mm": [
+        134.62,
+        82.55,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "R1",
+      "part_id": "BE959A349B958FA12EE1ECB13AA3B83B",
+      "footprint": "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",
+      "at_mm": [
+        185.7375,
+        82.55,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "R2",
+      "part_id": "FEE468791FA9E4466D3A020D9B17EC1C",
+      "footprint": "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",
+      "at_mm": [
+        195.8975,
+        82.55,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "R3",
+      "part_id": "FEE468791FA9E4466D3A020D9B17EC1C",
+      "footprint": "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",
+      "at_mm": [
+        200.9775,
+        82.55,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "R6",
+      "part_id": "7C2B896A5DBFAEE9CADCA3DF17F2108A",
+      "footprint": "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",
+      "at_mm": [
+        137.16,
+        102.87,
+        0.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "R7",
+      "part_id": "0CC9D4FEE68E2C8C821DAC87E0426990",
+      "footprint": "Resistor_SMD:R_0603_1608Metric_Pad0.98x0.95mm_HandSolder",
+      "at_mm": [
+        172.72,
+        86.36,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.65,
+        -0.73,
+        1.65,
+        0.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "RN1",
+      "part_id": "1ACF747EA70EAAF365873D6EC00B5B64",
+      "footprint": "Resistor_SMD:R_Array_Convex_4x0603",
+      "at_mm": [
+        142.24,
+        74.93,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.55,
+        -1.85,
+        1.55,
+        1.85
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "RN3",
+      "part_id": "1ACF747EA70EAAF365873D6EC00B5B64",
+      "footprint": "Resistor_SMD:R_Array_Convex_4x0603",
+      "at_mm": [
+        165.1,
+        74.93,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.55,
+        -1.85,
+        1.55,
+        1.85
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "U1",
+      "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+      "footprint": "My_Components:IC_PQFP-100_14x20mm_P0.65mm_Hand_Soldering",
+      "at_mm": [
+        154.94,
+        96.52,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -10.25,
+        -13.25,
+        10.25,
+        13.25
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "J1",
+      "part_id": "EB22F6B1E98598A80E65064CA8D59D74",
+      "footprint": "Connector_RJ:RJ45_Amphenol_RJMG1BD3B8K1ANR",
+      "at_mm": [
+        189.23,
+        99.06,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -5.13,
+        -4.99,
+        14.02,
+        17.73
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "RN4",
+      "part_id": "1ACF747EA70EAAF365873D6EC00B5B64",
+      "footprint": "Resistor_SMD:R_Array_Convex_4x0603",
+      "at_mm": [
+        157.48,
+        74.93,
+        90.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -1.55,
+        -1.85,
+        1.55,
+        1.85
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C9",
+      "part_id": "A1418261ECA251D61D42B652F659B87B",
+      "footprint": "Capacitor_Tantalum_SMD:CP_EIA-3528-15_AVX-H_Pad1.50x2.35mm_HandSolder",
+      "at_mm": [
+        165.1,
+        119.0625,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -2.62,
+        -1.65,
+        2.62,
+        1.65
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    },
+    {
+      "ref": "C10",
+      "part_id": "A1418261ECA251D61D42B652F659B87B",
+      "footprint": "Capacitor_Tantalum_SMD:CP_EIA-3528-15_AVX-H_Pad1.50x2.35mm_HandSolder",
+      "at_mm": [
+        106.68,
+        119.0625,
+        180.0
+      ],
+      "courtyard_local_bbox_mm": [
+        -2.62,
+        -1.65,
+        2.62,
+        1.65
+      ],
+      "courtyard_evidence": "KICAD_F.CrtYd",
+      "modes": {
+        "RECONSTRUCTION": "locked_to_evidence",
+        "NOVEL": "seed_only"
+      }
+    }
+  ],
+  "policy": {
+    "RECONSTRUCTION": "CAD placements locked; preserve source board",
+    "NOVEL": "CAD placements are deterministic seeds, not locks; legal domains require outline/courtyard evidence"
+  },
+  "gaps": [
+    {
+      "ref": "J2",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "BUS1",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "SW4",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "SW3",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "SW2",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "SW1",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "Y1",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "U2",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "REF**",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "REF**",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "HOLE1",
+      "reason": "NO_F_CRTYD"
+    },
+    {
+      "ref": "HOLE2",
+      "reason": "NO_F_CRTYD"
+    }
+  ]
+}

@@ -1,0 +1,449 @@
+{
+  "format": "VMBS-HISTORICAL-REUSE-ROUTER-CP413",
+  "mode": "HISTORICAL_AUDIT_REPAIR",
+  "grid_mm": 1.27,
+  "bounds": [
+    80,
+    47,
+    162,
+    106
+  ],
+  "candidate_net_count": 87,
+  "routed_net_count": 13,
+  "failures": [
+    {
+      "net": "/A0",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A1",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A10",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A11",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A12",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A13",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A14",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A15",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A16",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A17",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A18",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A19",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A2",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A3",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A4",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A5",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A6",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A7",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A8",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/A9",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/AEN",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/AUI",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D0",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D1",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D2",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D3",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D4",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D5",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D6",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/D7",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/IRQ3",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/IRQ4",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/IRQ5",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/IRQ9",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA14",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA15",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA16",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA17",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA18",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA19",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA20",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BA21",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD0",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD1",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD2",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD3",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD4",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD5",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD6",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/BD7",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/EECS",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/IOCHRDY",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/JP",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/LED_CRS",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/LED_LINK",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/RSTDRV",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/TP_RX+",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/TP_RX-",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/TP_TX+",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/TP_TX-",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~BCS",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~IOCS16",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~IOR",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~IOW",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~SMEMR",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "/~SMEMW",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "GND",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(C1-Pad2)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(C2-Pad2)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(C3-Pad1)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(C4-Pad1)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(J1-PadL2)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "Net-(J1-PadL3)",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    },
+    {
+      "net": "VCC",
+      "code": "TITS_UP_ROUTE_NO_PATH"
+    }
+  ],
+  "evidence_gaps": [],
+  "shared_new_state_count": 0,
+  "max_new_usage": 0,
+  "new_length_mm": 0,
+  "new_vias": 0,
+  "route_digest": "87a1ef36a3b157b21a9b7b01e7b78a041ceb246f540648fe63fb6d9a9e4cf6cd",
+  "routes": {
+    "Net-(RN1-Pad5)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN1-Pad6)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN1-Pad7)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN1-Pad8)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN2-Pad5)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN2-Pad6)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN2-Pad7)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN2-Pad8)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN3-Pad5)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN3-Pad6)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN3-Pad7)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN3-Pad8)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    },
+    "Net-(RN4-Pad7)": {
+      "netclass": "Default",
+      "trace_width_mm": 0.3683,
+      "clearance_mm": 0.2,
+      "via_dia_mm": 0.889,
+      "via_drill_mm": 0.635,
+      "historical_island_count": 1,
+      "new_branches": [],
+      "new_occupancy_state_count": 0
+    }
+  }
+}

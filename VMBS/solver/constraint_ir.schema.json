@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "VMBS Solver Constraint IR",
+  "type": "object",
+  "required": [
+    "format",
+    "constraints",
+    "gaps"
+  ],
+  "properties": {
+    "format": {
+      "const": "VMBS-SOLVER-CONSTRAINT-IR-1"
+    },
+    "board_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "mode": {
+      "enum": [
+        "AUTHORITATIVE",
+        "PATCH",
+        "REFERENCE",
+        "NOVEL"
+      ]
+    },
+    "constraints": {
+      "type": "array"
+    },
+    "gaps": {
+      "type": "array"
+    }
+  }
+}

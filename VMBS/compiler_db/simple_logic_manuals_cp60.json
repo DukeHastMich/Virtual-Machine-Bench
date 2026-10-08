@@ -1,0 +1,8 @@
+{
+ "checkpoint":"CP60",
+ "documents":[
+  {"parts":["SN74LS123"],"manufacturer":"Texas Instruments","title":"Retriggerable Monostable Multivibrators","url":"https://www.ti.com/lit/ds/symlink/sn74123.pdf","facts":["dual monostable","active-high or active-low gated triggering","retriggering extends pulse duration","overriding clear terminates pulse","pulse duration determined by external timing components"]},
+  {"parts":["SN74LS221"],"manufacturer":"Texas Instruments","title":"Dual Monostable Multivibrators With Schmitt-Trigger Inputs","url":"https://www.ti.com/lit/ds/symlink/sn74ls221.pdf","facts":["dual monostable","negative-transition and positive-transition trigger inputs","once fired outputs are independent of further A/B transitions until timing interval ends","overriding clear terminates pulse","pinout matches LS123 but timing component requirements differ"]}
+ ],
+ "modeling_note":"CP60 introduces a timed digital contract. It deliberately consumes a board-resolved pulse interval; analog RC pulse-width derivation is not fabricated in the digital model."
+}

@@ -1,0 +1,14 @@
+{
+  "format": "VMBS-FIRMWARE-STORE-1",
+  "policy": {
+    "purpose": "Authoritative library of installable firmware payloads; component identity never implies payload identity.",
+    "installation": "PCB Editor manually selects a compatible payload and installs a copy into a machine-local PCB instance.",
+    "mutation": "Runtime writes never modify the global Firmware Store.",
+    "pcb_store_preload": "deferred",
+    "simulation_authenticity": "When component behavior originates from stored program/configuration, VMB should consume/execute the same payload whenever technically possible. Any bypass must be explicit and may not erase the payload artifact.",
+    "reverse_delivery": "Payloads required to realize physical component behavior are emitted with manufacturing/CAD outputs and bound to the exact board instance/component plus hash.",
+    "bypass_rule": "A simulation bypass never makes a payload optional for reverse physical delivery; bypass status must be explicit in the board/load contract.",
+    "identity": "Silicon/component identity never implies payload identity unless the exact factory-programmed order code is itself the selected physical identity."
+  },
+  "payloads": []
+}

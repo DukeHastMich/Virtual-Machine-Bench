@@ -1,0 +1,122 @@
+{
+  "format": "VMBS-BOARD-COMPONENT-MAP-1",
+  "source": "ISA8_Ethernet.kicad_pcb",
+  "local_token_width_bits": 8,
+  "dictionary": [
+    {
+      "token": "0x01",
+      "part_id": "A6F2ACDBB2EDD8D831CC5413AAC1512E",
+      "instances": 2
+    },
+    {
+      "token": "0x02",
+      "part_id": "E36D0F0136382BE15A8D4D11F49DCBF6",
+      "instances": 4
+    },
+    {
+      "token": "0x03",
+      "part_id": "E290CAD4A78191B6F544A6B3C3E51D7A",
+      "instances": 2
+    },
+    {
+      "token": "0x04",
+      "part_id": "A1418261ECA251D61D42B652F659B87B",
+      "instances": 2
+    },
+    {
+      "token": "0x05",
+      "part_id": "EB22F6B1E98598A80E65064CA8D59D74",
+      "instances": 1
+    },
+    {
+      "token": "0x06",
+      "part_id": "56B9B34218AD43344DB962BE03572ADB",
+      "instances": 2
+    },
+    {
+      "token": "0x07",
+      "part_id": "5A2AC4F3283F9EC959B110FDC2FF1038",
+      "instances": 1
+    },
+    {
+      "token": "0x08",
+      "part_id": "629969201D8EA246454A3E638645E87A",
+      "instances": 1
+    },
+    {
+      "token": "0x09",
+      "part_id": "5E223850BB86D3DF73FABC4DAD213CAA",
+      "instances": 1
+    },
+    {
+      "token": "0x0A",
+      "part_id": "4AECB118F6AE94C783F6BA53B22456B7",
+      "instances": 1
+    },
+    {
+      "token": "0x0B",
+      "part_id": "AEBA7B6DF0B6213956905056E5D78D89",
+      "instances": 1
+    },
+    {
+      "token": "0x0C",
+      "part_id": "84BF01AA0CAFBB5C00C6F1235C19ED70",
+      "instances": 1
+    },
+    {
+      "token": "0x0D",
+      "part_id": "328141E1EF8F781E19DF04D2ECABC282",
+      "instances": 1
+    },
+    {
+      "token": "0x0E",
+      "part_id": "C55A3A9999D53A944814384EFFAA7122",
+      "instances": 1
+    },
+    {
+      "token": "0x0F",
+      "part_id": "8F857D68CF6D08FBA5C4A3D15E2705D9",
+      "instances": 1
+    },
+    {
+      "token": "0x10",
+      "part_id": "BBF5502243066D8F17C8F57329479768",
+      "instances": 1
+    },
+    {
+      "token": "0x11",
+      "part_id": "0CC9D4FEE68E2C8C821DAC87E0426990",
+      "instances": 1
+    },
+    {
+      "token": "0x12",
+      "part_id": "BE959A349B958FA12EE1ECB13AA3B83B",
+      "instances": 1
+    },
+    {
+      "token": "0x13",
+      "part_id": "7C2B896A5DBFAEE9CADCA3DF17F2108A",
+      "instances": 1
+    },
+    {
+      "token": "0x14",
+      "part_id": "FEE468791FA9E4466D3A020D9B17EC1C",
+      "instances": 2
+    },
+    {
+      "token": "0x15",
+      "part_id": "1ACF747EA70EAAF365873D6EC00B5B64",
+      "instances": 4
+    },
+    {
+      "token": "0x16",
+      "part_id": "CF96DDC659D5B9A6183F0F5A18159CC5",
+      "instances": 1
+    },
+    {
+      "token": "0x17",
+      "part_id": "5AAA7B8675077E25898261ECB9DD2583",
+      "instances": 1
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "format": "VMBS-MANUAL-EVIDENCE-1",
+  "checkpoint": "CP55",
+  "principle": "Primary manufacturer documentation establishes behavior; electrical/timing facts apply only to documented families/variants.",
+  "devices": [
+    {
+      "module_id": "VMB.LOGIC.74XX192",
+      "documented_part": "SN74LS192",
+      "manufacturer": "Texas Instruments",
+      "source": "TI SN74LS193/192 Synchronous 4-Bit Up/Down Counters datasheet, Mar 1988",
+      "url": "https://www.ti.com/product/SN74LS193",
+      "facts": [
+        "192 is BCD; 193 is binary",
+        "low-to-high transition of either count input counts while other count input high",
+        "LOAD low presets asynchronously",
+        "CLEAR high forces outputs low independently",
+        "carry/borrow cascade pulses"
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX193",
+      "documented_part": "SN74LS193",
+      "manufacturer": "Texas Instruments",
+      "source": "TI SN74LS193 Synchronous 4-Bit Up/Down Counters datasheet, Mar 1988",
+      "url": "https://www.ti.com/product/SN74LS193",
+      "facts": [
+        "4-bit binary",
+        "dual count clocks",
+        "asynchronous load",
+        "active-high independent clear",
+        "carry/borrow cascade outputs"
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX194",
+      "documented_part": "SN74LS194A",
+      "manufacturer": "Texas Instruments",
+      "source": "TI 4-Bit Bidirectional Universal Shift Registers, Mar 1988",
+      "url": "https://www.ti.com/lit/gpn/SN74LS194A",
+      "facts": [
+        "four modes: hold, shift right, shift left, parallel load",
+        "positive-edge clock",
+        "direct overriding clear",
+        "parallel inputs and outputs"
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX280",
+      "documented_part": "SN74LS280",
+      "manufacturer": "Texas Instruments",
+      "source": "TI 9-Bit Odd/Even Parity Generators/Checkers, Mar 1988",
+      "url": "https://www.ti.com/product/SN74LS280",
+      "facts": [
+        "nine data inputs",
+        "odd and even parity outputs",
+        "cascadable"
+      ]
+    },
+    {
+      "module_id": "VMB.LOGIC.74XX283",
+      "documented_part": "SN74LS283",
+      "manufacturer": "Texas Instruments",
+      "source": "TI 4-Bit Binary Full Adders With Fast Carry Rev A",
+      "url": "https://www.ti.com/product/SN74LS283",
+      "facts": [
+        "adds two 4-bit words plus carry input",
+        "four sum outputs and C4 carry",
+        "true-form carry",
+        "functionally identical to LS83A except terminal arrangement"
+      ]
+    }
+  ]
+}

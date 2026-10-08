@@ -1,0 +1,9 @@
+{
+  "test": "KiCad topology mutation propagates through BS/Analyzer/Constructor/BoardCode into VB",
+  "original_io_count": 16,
+  "mutated_io_count": 8,
+  "original_vb_sha256": "a0b04720714c9fc713cd18fa53ec1a25ae63dda7eb13fed04726e23d3282ebdb",
+  "mutated_vb_sha256": "75908c4f6ef305e44055eb553739bf3628a60c6fd60f272218497b8ca3e74798",
+  "mutated_reference_runtime_valid": true,
+  "pass": true
+}

@@ -1,0 +1,31 @@
+--- /mnt/data/vmb_actual/tree/MachineMaterialization.vb	2026-09-16 16:55:27.000000000 +0000
++++ /mnt/data/vmb_integration_cp24/MachineMaterialization.vb	2026-10-01 08:14:18.746533763 +0000
+@@ -1,4 +1,4 @@
+-﻿Imports System
++Imports System
+ Imports System.Collections.Generic
+ Imports System.IO
+ 
+@@ -531,16 +531,12 @@
+                              MachineHardwarePopulationConfiguration.NoneId,
+                              StringComparison.OrdinalIgnoreCase) Then
+             Dim neInBed As Ne2000JumperSettings = definitionInBed.Ne2000Jumpers
+-            Dim networkDefinitionInBed As New IsaCardDefinition286(
+-                MachineHardwarePopulationConfiguration.Ne2000Id,
+-                IsaCardCatalog286.NetworkDisplayName(definitionInBed.NetworkCardId),
+-                IsaSlotConnectorWidth286.SixteenBit,
+-                Function()
+-                    Dim cardInBed As New Ne2000Isa(neInBed.BasePort, neInBed.Irq, MasterPic, SlavePic)
+-                    cardInBed.ConfigureHardware(neInBed.BasePort, neInBed.Irq)
+-                    Return cardInBed
+-                End Function)
+-            Ne2000 = DirectCast(IsaBackplane.InstallCard(NetworkIsaSlotId, networkDefinitionInBed), Ne2000Isa)
++            ' VMBS generated-board path.  The CAD-derived board definition owns the
++            ' physically legal IO/IRQ domains; Machine Build Script may select only
++            ' values that the generated board declares reachable.
++            Dim generatedBoardRuntimeInBed As New VmbGeneratedBoardRuntime(neInBed.BasePort, neInBed.Irq)
++            ISA8_Ethernet_FromCAD.Build(generatedBoardRuntimeInBed)
++            Ne2000 = generatedBoardRuntimeInBed.InstalledNe2000
+         End If
+     End Sub
+ 

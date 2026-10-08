@@ -1,0 +1,45 @@
+{
+  "format": "VMB-CHIMERA-SOURCE-API-VALIDATION-1",
+  "checked": [
+    {
+      "module_id": "VMB.NET.RTL8019AS",
+      "class": "Rtl8019As",
+      "source": "Expansion Cards/Network Cards/RTL8019AS/Rtl8019As.vb",
+      "direct_members": [
+        "EepromClock",
+        "EepromChipSelect",
+        "EepromDataIn",
+        "RemoteDmaReadByte",
+        "RemoteDmaWriteByte",
+        "MicrowirePinsChanged",
+        "TransmitRequested",
+        "InterruptChanged",
+        "ReadRegister",
+        "WriteRegister",
+        "SetEepromDataOut"
+      ]
+    },
+    {
+      "module_id": "VMB.MEM.SST39SF040",
+      "class": "Sst39Sf040",
+      "source": "Expansion Cards/Memory/Sst39Sf040.vb",
+      "direct_members": [
+        "ReadByte",
+        "Snapshot",
+        "WriteByte"
+      ]
+    },
+    {
+      "module_id": "VMB.MEM.MICROWIRE_93LC46C",
+      "class": "Microwire93Lc46c",
+      "source": "Expansion Cards/Memory/Microwire93Lc46c.vb",
+      "direct_members": [
+        "SetSerialPins",
+        "SerialDataOut",
+        "Snapshot"
+      ]
+    }
+  ],
+  "errors": [],
+  "ready": true
+}

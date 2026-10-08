@@ -1,0 +1,22 @@
+{
+  "format": "VMBS-COMPONENT-TEMPLATE-1",
+  "class": "fpga",
+  "status": "template_not_a_part_record",
+  "principle": "Reusable FPGA silicon facts belong in Component Store; board-selected personality and pin/bank use belong in Board Script occurrence data.",
+  "required_identity": ["manufacturer", "manufacturer_part_number", "package"],
+  "physical_domains": ["package", "pins", "io_banks", "dedicated_clock_pins", "configuration_pins", "jtag_pins"],
+  "electrical_domains": ["core_rails", "aux_rails", "bank_rails", "io_standards", "absolute_limits"],
+  "timing_domains": ["configuration_clock", "user_clock_limits", "startup_sequence"],
+  "programmable_logic": {
+    "resources": ["logic_cells_or_equivalent", "block_ram", "dsp_or_multiplier_blocks", "clock_management", "global_clock_networks"],
+    "configuration": ["supported_modes", "volatile_or_nonvolatile", "external_configuration_memory_requirements", "startup_constraints"],
+    "payload_contract": {
+      "board_script_owns": ["payload_identity", "payload_hash", "pin_assignments", "bank_voltage_selection", "io_standard_selection", "board_clocks", "configuration_topology"],
+      "component_store_owns": ["legal_pins", "legal_bank_voltages", "supported_io_standards", "configuration_capabilities", "resource_limits"]
+    }
+  },
+  "execution": {
+    "rule": "A physical FPGA record does not imply executable behavior. VMB execution requires an evidence-backed payload implementation or a separately resolved behavioral representation.",
+    "missing_payload_state": "TITS_UP_FOR_EXECUTION"
+  }
+}

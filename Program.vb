@@ -4,6 +4,13 @@ Imports System.Windows.Forms
 Module Program
     <STAThread>
     Public Sub Main()
+        Dim rawArgsInBed As String() = Environment.GetCommandLineArgs()
+        If rawArgsInBed.Length > 1 Then
+            Dim forwardedArgsInBed(rawArgsInBed.Length - 2) As String
+            Array.Copy(rawArgsInBed, 1, forwardedArgsInBed, 0, forwardedArgsInBed.Length)
+            If BoardScriptCli.TryRunFromCommandLine(forwardedArgsInBed) Then Return
+        End If
+
         Application.EnableVisualStyles()
         Application.SetCompatibleTextRenderingDefault(False)
         ' Install this filter before constructing Form1 so it gets first crack at
